@@ -3,7 +3,7 @@
   position: fixed;
   z-index: -1;
   height: 200vh;
-  width: 200vw;
+  width: 200vh;
   margin: 0 auto;
   background-image: url("../assets/img/bg.jpg");
   background-position: center;
