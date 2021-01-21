@@ -11,18 +11,20 @@ body {
 .background {
   display: block;
   position: fixed;
-  height: 200%;
-  width: 200%;
+  z-index: -1;
+  height: 200vh;
+  width: 200vw;
   margin: 0 auto;
   background-image: url("../assets/img/bg.jpg");
   background-position: center;
   background-size: contain;
+  background-repeat: repeat;
   left: -50%;
   top: -50%;
-  animation: 150s 0s movebg infinite linear;
+  animation: 300s 0s movebg infinite linear;
 }
 
-#stars {
+.stars {
   width: 1px;
   height: 1px;
   background: transparent;
@@ -205,7 +207,7 @@ body {
     1052px 1442px #fff, 1324px 1208px #fff, 48px 766px #fff, 497px 158px #fff;
   animation: animStar 100s linear infinite;
 }
-#stars:after {
+.stars:after {
   content: " ";
   position: absolute;
   top: 2000px;
@@ -391,7 +393,7 @@ body {
     1052px 1442px #fff, 1324px 1208px #fff, 48px 766px #fff, 497px 158px #fff;
 }
 
-#stars2 {
+.stars2 {
   width: 2px;
   height: 2px;
   background: transparent;
@@ -448,7 +450,7 @@ body {
     1938px 564px #fff;
   animation: animStar 200s linear infinite;
 }
-#stars2:after {
+.stars2:after {
   content: " ";
   position: absolute;
   top: 2000px;
@@ -508,7 +510,7 @@ body {
     1938px 564px #fff;
 }
 
-#stars3 {
+.stars3 {
   width: 3px;
   height: 3px;
   background: transparent;
@@ -540,7 +542,7 @@ body {
     728px 913px #fff;
   animation: animStar 300s linear infinite;
 }
-#stars3:after {
+.stars3:after {
   content: " ";
   position: absolute;
   top: 2000px;
@@ -624,7 +626,7 @@ body {
   transform: translateX(50%) rotateZ(-45deg);
 }
 
-#title {
+.title {
   position: absolute;
   top: 50%;
   left: 0;
@@ -638,7 +640,7 @@ body {
   margin-top: -60px;
   padding-left: 10px;
 }
-#title span {
+.title span {
   background: -webkit-linear-gradient(white, #38495a);
   -webkit-background-clip: text;
   -webkit-text-fill-color: #fffefe45;
@@ -714,25 +716,18 @@ body {
     transform: translateX(100vw);
   }
 }
-
-html {
-  font: 5vmin/1.3 Serif;
-  overflow: hidden;
-  background: #123;
+.galaxies{
+    display: block;
+    font-size: 52px;
+    margin: 0;
+    color: transparent;
+    filter: opacity(95%) grayscale(25%) blur(50px);
 }
 
-body,
-head {
-  display: block;
-  font-size: 52px;
-  margin: 0;
-  color: transparent;
-}
-
-head::before,
-head::after,
-body::before,
-body::after {
+.smaller::before,
+.smaller::after,
+.bigger::before,
+.bigger::after {
   position: fixed;
   top: 50%;
   left: 50%;
@@ -740,10 +735,10 @@ body::after {
   height: 3em;
   content: ".";
   mix-blend-mode: screen;
-  animation: 77s -27s move infinite ease-in-out alternate;
+  animation: 377s -27s move infinite ease-in-out alternate;
 }
 
-body::before {
+.bigger::before {
   overflow: hidden;
   animation: 7s 0 move infinite ease-in-out alternate;
   text-shadow: -0.4203276414em 1.6807023289em 7px rgba(0, 255, 241, 0.9),
@@ -787,11 +782,11 @@ body::before {
     0.7664343486em 1.3819394047em 7px rgba(236, 0, 255, 0.9),
     2.2643166539em -0.208957745em 7px rgba(0, 111, 255, 0.9),
     0.1972708935em 0.1496119195em 7px rgba(255, 21, 0, 0.9);
-  animation-duration: 66s;
+  animation-duration: 266s;
   animation-delay: -27s;
 }
 
-body::after {
+.bigger::after {
   text-shadow: 2.051859523em -0.4058758416em 7px rgba(255, 0, 73, 0.9),
     1.9214651135em -0.1480719553em 7px rgba(0, 167, 255, 0.9),
     0.7241090436em 0.8049689069em 7px rgba(255, 0, 187, 0.9),
@@ -833,11 +828,11 @@ body::after {
     1.5371744787em 2.4281154275em 7px rgba(48, 255, 0, 0.9),
     1.6883760886em 1.4688677935em 7px rgba(0, 44, 255, 0.9),
     -0.1602742342em -0.2411462082em 7px rgba(27, 0, 255, 0.9);
-  animation-duration: 55s;
+  animation-duration: 155s;
   animation-delay: -32s;
 }
 
-head::before {
+.smaller::before {
   text-shadow: 0.9928081067em 0.1211687754em 7px rgba(40, 0, 255, 0.9),
     0.4862564138em -0.2608492583em 7px rgba(203, 0, 255, 0.9),
     0.2777778879em 2.1073486741em 7px rgba(0, 255, 135, 0.9),
@@ -879,11 +874,11 @@ head::before {
     0.3102820267em 2.4686849243em 7px rgba(0, 255, 196, 0.9),
     2.447767177em 1.1603739263em 7px rgba(114, 255, 0, 0.9),
     2.3105280851em 1.981806693em 7px rgba(255, 0, 78, 0.9);
-  animation-duration: 88s;
+  animation-duration: 188s;
   animation-delay: -23s;
 }
 
-head::after {
+.smaller::after {
   text-shadow: -0.4216394035em -0.242623967em 7px rgba(255, 0, 3, 0.9),
     1.3129381325em -0.3929468075em 7px rgba(0, 204, 255, 0.9),
     -0.0184856686em 0.7678972967em 7px rgba(65, 0, 255, 0.9),
@@ -925,7 +920,7 @@ head::after {
     2.2201778714em 0.5655386264em 7px rgba(255, 0, 156, 0.9),
     1.2620157581em 1.4661936151em 7px rgba(0, 192, 255, 0.9),
     1.0848309991em 0.3758929768em 7px rgba(255, 98, 0, 0.9);
-  animation-duration: 99s;
+  animation-duration: 199s;
   animation-delay: -19s;
 }
 
