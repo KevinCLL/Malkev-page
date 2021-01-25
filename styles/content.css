@@ -1,3 +1,4 @@
+@media only screen and (min-width: 768px) {
 .content {
   background-color: #685fa04a;
   border-radius: 23px;
@@ -73,6 +74,7 @@
   -webkit-animation: shining 3000ms ease-in-out infinite;
   animation: shining 3000ms ease-in-out infinite;
   transform: translateX(50%) rotateZ(-45deg);
+}
 }
 
 .links {
