@@ -1,6 +1,6 @@
 .content {
   padding: 40px;
-  width: 500px;
+  width: 100vw;
   margin: 0 auto;
   text-align: center;
   font-family: "lato", sans-serif;
@@ -155,17 +155,17 @@ a:active {
 }
 @-webkit-keyframes shooting {
   0% {
-    transform: translateX(0);
+    transform: translate(0, -25px);
   }
   100% {
-    transform: translateX(500px);
+    transform: translate(100vw, -25px);
   }
 }
 @keyframes shooting {
   0% {
-    transform: translateX(0);
+    transform: translate(0, -25px);
   }
   100% {
-    transform: translateX(500px);
+    transform: translate(100vw, -25px);
   }
 }
