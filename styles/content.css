@@ -1,6 +1,5 @@
 .content {
   padding: 40px;
-  width: 100vw;
   margin: 0 auto;
   text-align: center;
   font-family: "lato", sans-serif;
@@ -16,10 +15,6 @@
   text-shadow: 0 0 9px rgb(0 0 0 / 50%), 0 0 20px rgb(0 0 0 / 50%),
     0 0 35px rgb(0 0 0 / 50%), 0 0 30px rgb(0 0 0 / 50%),
     0 0 35px rgb(0 0 0 / 50%), 0 0 30px rgb(0 0 0 / 50%);
-}
-
-.title {
-  margin-bottom: 25px;
 }
 
 .shooting-star {
@@ -80,6 +75,11 @@
   border-radius: 13px;
   display: flex;
   flex-direction: column;
+}
+
+p {
+  color: #435fbd;
+  text-shadow: 0 0 30px #ffffff;
 }
 
 a {
