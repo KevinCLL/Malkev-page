@@ -15,6 +15,43 @@
   pointer-events: none;
 }
 
+.background::before,
+.background::after {
+  content: "";
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(80px);
+  pointer-events: none;
+}
+
+.background::before {
+  top: 15%;
+  left: -5%;
+  width: 45vw;
+  height: 45vh;
+  background: radial-gradient(ellipse, rgba(127, 56, 150, 0.12) 0%, transparent 70%);
+  animation: nebulaFloat1 30s ease-in-out infinite alternate;
+}
+
+.background::after {
+  bottom: 10%;
+  right: -5%;
+  width: 40vw;
+  height: 40vh;
+  background: radial-gradient(ellipse, rgba(67, 95, 189, 0.1) 0%, transparent 70%);
+  animation: nebulaFloat2 25s ease-in-out infinite alternate;
+}
+
+@keyframes nebulaFloat1 {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(5vw, 3vh) scale(1.2); }
+}
+
+@keyframes nebulaFloat2 {
+  from { transform: translate(0, 0) scale(1); }
+  to { transform: translate(-4vw, -5vh) scale(1.1); }
+}
+
 .stars, .stars2, .stars3 {
   position: fixed;
   top: 0;
@@ -297,7 +334,16 @@
     467px 1999px #fff, 89px 1236px #fff, 1095px 1631px #fff, 1429px 1195px #fff,
     1776px 1501px #fff, 35px 1357px #fff, 1316px 869px #fff, 201px 359px #fff,
     728px 913px #fff;
-  animation: animStar 700s linear infinite;
+  animation: animStar 700s linear infinite, twinkle 4s ease-in-out infinite alternate;
+}
+
+@keyframes twinkle {
+  from {
+    opacity: 0.4;
+  }
+  to {
+    opacity: 1;
+  }
 }
 
 @keyframes animStar {
@@ -306,15 +352,6 @@
   }
   to {
     transform: translateY(-2000px);
-  }
-}
-
-@keyframes rotateSlowly {
-  0% {
-    transform: translate(-50%, -50%) rotate(0deg);
-  }
-  100% {
-    transform: translate(-50%, -50%) rotate(360deg);
   }
 }
 
