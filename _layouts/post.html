@@ -35,10 +35,29 @@ layout: default
     data-page-id="{{ page.url | slugify }}"
     data-page-url="{{ site.url }}{{ page.url }}"
     data-page-title="{{ page.title | escape }}"
-    data-theme="dark"
-    data-lang="es">
+    data-theme="dark">
   </div>
-  <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"></script>
+  <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"
+    onload="window.CUSDIS && window.CUSDIS.setTheme && window.CUSDIS.setTheme('dark')"></script>
+  <script>
+    // Cusdis pinta su iframe con altura fija y a veces deja scroll
+    // interno. Escuchamos los postMessage que el script de Cusdis
+    // envía cuando cambia el alto del contenido, y forzamos esa
+    // altura en el iframe para que el scroll sea siempre el de la
+    // página, no el del iframe.
+    (function () {
+      function resize(height) {
+        var iframe = document.querySelector('#cusdis_thread iframe');
+        if (!iframe || !height || height < 50) return;
+        iframe.style.height = (height + 8) + 'px';
+      }
+      window.addEventListener('message', function (e) {
+        var d = e && e.data;
+        if (!d || typeof d !== 'object') return;
+        if (d.from === 'cusdis' && d.event === 'resize') resize(Number(d.data));
+      });
+    })();
+  </script>
 </section>
 {% else %}
 <section class="section comments comments-disabled">
