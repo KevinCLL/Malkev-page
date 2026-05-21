@@ -44,40 +44,32 @@
 }
 
 /* ---------- Cabecera de /blog/ ---------- */
+/* MALKEVNIA es la marca principal (grande, animada). Aquí el "BLOG"
+   es solo un subtítulo discreto bajo la línea decorativa del título. */
 
 .blog-header {
   text-align: center;
-  margin: 0.5rem 0 2rem;
+  margin: -0.5rem 0 2.25rem;
 }
 
 .blog-title {
-  font-size: 3.2rem;
+  font-size: 1.05rem;
   font-weight: 300;
-  letter-spacing: 14px;
-  margin: 0 0 0.6rem;
+  letter-spacing: 6px;
+  margin: 0;
   line-height: 1;
-  padding-left: 14px;        /* compensa letter-spacing del último char */
+  padding-left: 6px;        /* compensa letter-spacing del último char */
+  text-transform: uppercase;
+  color: var(--color-muted);
+  opacity: 0.85;
 }
 
 .blog-title > span {
   display: inline-block;
-  background: linear-gradient(45deg, var(--color-purple), var(--color-blue), var(--color-cyan));
-  background-size: 200% 200%;
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 0 25px rgba(127, 56, 150, 0.5));
-  animation: gradientShift 8s ease infinite;
 }
 
 .blog-subtitle {
-  color: var(--color-muted);
-  font-size: 0.85rem;
-  letter-spacing: 4px;
-  text-transform: uppercase;
-  margin: 0;
-  opacity: 0.75;
-  font-weight: 300;
+  display: none;            /* el "BLOG" arriba ya da contexto suficiente */
 }
 
 /* ---------- Controles: buscador + tags ---------- */
@@ -191,10 +183,17 @@
 .blog-empty,
 .no-results {
   text-align: center;
-  color: var(--color-muted);
+  color: var(--color-link-soft);
+  -webkit-text-fill-color: var(--color-link-soft);
   font-style: italic;
   font-size: 1rem;
-  padding: 1rem 0;
+  padding: 1.25rem 1.5rem;
+  margin: 0.5rem 0 0;
+  background: rgba(22, 24, 29, 0.55);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  box-shadow: 0 8px 32px 0 rgba(14, 24, 85, 0.08);
 }
 
 .post-list {
@@ -607,9 +606,13 @@
 }
 
 /* Cusdis: el iframe es cross-origin, no podemos meterle CSS dentro.
-   Solo controlamos su contenedor. Dejamos que el script de Cusdis
-   ajuste el alto vía postMessage; nuestro layout-listener (en post.html)
-   se asegura de que no quede scroll interno. */
+   El script propio de Cusdis ya escucha postMessages del iframe
+   interior y le va ajustando la altura cuando crece (más comentarios).
+   Pero en el estado inicial el iframe queda con la altura por defecto
+   del navegador (~150px) y el form de comentar excede esa altura,
+   apareciendo un scroll interno feo. Forzamos un min-height generoso
+   para que el form quepa sin scroll; si el contenido crece más, el
+   handler de Cusdis seteará un height inline mayor y todo OK. */
 #cusdis_thread {
   width: 100%;
   color-scheme: dark;
@@ -617,6 +620,7 @@
 
 #cusdis_thread iframe {
   width: 100% !important;
+  min-height: 720px;
   border: none !important;
   background: transparent !important;
   display: block;
