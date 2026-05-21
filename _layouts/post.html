@@ -8,6 +8,9 @@ layout: default
 <div class="reading-progress" aria-hidden="true"><div class="reading-progress-bar"></div></div>
 
 <article class="section post">
+  <button type="button" class="reading-mode-toggle" aria-pressed="false" aria-label="Activar modo lectura" title="Modo lectura">
+    <i class="fas fa-book-open" aria-hidden="true"></i>
+  </button>
   <header class="post-header">
     <h1 class="post-title">{{ page.title }}</h1>
     <p class="post-meta">
@@ -50,14 +53,12 @@ layout: default
   </nav>
 </article>
 
-<button type="button" class="reading-mode-fab" aria-pressed="false" aria-label="Activar modo lectura" title="Modo lectura (R)">
-  <i class="fas fa-book-open fab-icon-off" aria-hidden="true"></i>
-  <i class="fas fa-xmark fab-icon-on" aria-hidden="true"></i>
-</button>
 
 <script>
   // Barra de progreso de scroll: rellena la barra superior en función
   // de cuánto del artículo se ha visto.
+  // Nota: en este sitio el scroll ocurre en <body> (no en window),
+  // por eso escuchamos en document con capture para recibir el evento.
   (function () {
     const bar = document.querySelector('.reading-progress-bar');
     const article = document.querySelector('.post');
@@ -70,16 +71,16 @@ layout: default
       pct = Math.max(0, Math.min(100, pct));
       bar.style.width = pct + '%';
     }
-    window.addEventListener('scroll', update, { passive: true });
+    document.addEventListener('scroll', update, { capture: true, passive: true });
     window.addEventListener('resize', update);
     update();
   })();
 
-  // Modo lectura: botón flotante en esquina inferior derecha.
+  // Modo lectura: botón en la esquina superior derecha del post.
   // Atenúa fondo animado, ensancha contenedor, aumenta tipografía.
-  // Persiste con localStorage. Tecla "R" como atajo.
+  // Persiste con localStorage entre visitas.
   (function () {
-    const btn = document.querySelector('.reading-mode-fab');
+    const btn = document.querySelector('.reading-mode-toggle');
     if (!btn) return;
     const KEY = 'malkev-reading-mode';
     function apply(on) {
@@ -87,18 +88,11 @@ layout: default
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
       btn.setAttribute('aria-label', on ? 'Salir del modo lectura' : 'Activar modo lectura');
     }
-    function toggle() {
+    apply(localStorage.getItem(KEY) === '1');
+    btn.addEventListener('click', () => {
       const next = !document.body.classList.contains('reading-mode');
       localStorage.setItem(KEY, next ? '1' : '0');
       apply(next);
-    }
-    apply(localStorage.getItem(KEY) === '1');
-    btn.addEventListener('click', toggle);
-    document.addEventListener('keydown', e => {
-      if (e.key === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey
-          && !['INPUT','TEXTAREA'].includes((e.target||{}).tagName)) {
-        toggle();
-      }
     });
   })();
 </script>
