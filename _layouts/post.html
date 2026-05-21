@@ -39,6 +39,29 @@ layout: default
   </div>
   <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"
     onload="window.CUSDIS && window.CUSDIS.setTheme && window.CUSDIS.setTheme('dark')"></script>
+  <script>
+    // Consultamos la API pública de Cusdis para saber si este post
+    // tiene comentarios. Si no los tiene, marcamos el contenedor con
+    // .no-comments y blog.css aplica un mask que oculta el branding.
+    // (Con comentarios no aplicamos mask para no esconderlos.)
+    (async () => {
+      const thread = document.getElementById('cusdis_thread');
+      if (!thread) return;
+      const { appId, pageId, host } = thread.dataset;
+      if (!appId || !pageId) return;
+      try {
+        const url = (host || 'https://cusdis.com')
+          + '/api/open/comments?appId=' + encodeURIComponent(appId)
+          + '&pageId=' + encodeURIComponent(pageId);
+        const res = await fetch(url);
+        const json = await res.json();
+        const count = json && json.data && json.data.commentCount;
+        if (!count) thread.classList.add('no-comments');
+      } catch (e) {
+        // En error, no aplicamos mask — preferimos branding visible a romper el render.
+      }
+    })();
+  </script>
 </section>
 {% else %}
 <section class="section comments comments-disabled">
