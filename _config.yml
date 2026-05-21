@@ -1,0 +1,29 @@
+title: Malkevnia
+description: Notas, pensamientos y comentarios de Malkev
+url: https://malkevnia.com
+lang: es
+
+permalink: /blog/:year/:month/:day/:title/
+
+markdown: kramdown
+kramdown:
+  input: GFM
+  syntax_highlighter: rouge
+
+# Plugins compatibles con GitHub Pages
+plugins:
+  - jekyll-feed
+  - jekyll-seo-tag
+
+# No procesar estos archivos / carpetas
+exclude:
+  - README.md
+  - nul
+  - Gemfile
+  - Gemfile.lock
+  - vendor
+
+# Comentarios (Cusdis)
+cusdis:
+  app_id: "c9dcecb8-7b6d-450f-9f1e-33fef2297d27"
+  host: https://cusdis.com

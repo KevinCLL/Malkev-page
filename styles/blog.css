@@ -1,0 +1,338 @@
+/* ============================================
+   Blog — overrides y estilos específicos
+   ============================================ */
+
+/* El linktree usa un font-size enorme (8vmin) que no
+   sirve para texto largo. Devolvemos algo legible. */
+.content-blog {
+  font-size: 1rem;
+  letter-spacing: normal;
+  justify-content: flex-start;
+  padding: 40px 20px 60px;
+  min-height: 100vh;
+  max-width: 800px;
+}
+
+.content-blog .title {
+  margin-bottom: 2rem;
+}
+
+.title-link,
+.title-link:link,
+.title-link:visited {
+  text-decoration: none;
+  color: inherit;
+  -webkit-text-fill-color: inherit;
+}
+
+/* Cuando el span de MALKEVNIA está dentro del enlace, recuperamos
+   la animación de respiración que content.css aplica a .title > span */
+.title > .title-link > span {
+  display: inline-block;
+  animation: breathingGlow 4s ease-in-out infinite alternate;
+}
+
+/* ---------- Índice de blog ---------- */
+
+.blog-index {
+  width: 100%;
+}
+
+.blog-empty {
+  color: var(--color-muted);
+  font-style: italic;
+  font-size: 1rem;
+}
+
+.post-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 1.75rem;
+}
+
+.post-list-item {
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.post-list-item:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.post-list-link {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  text-decoration: none;
+  background: none;
+  -webkit-background-clip: initial;
+  background-clip: initial;
+  -webkit-text-fill-color: initial;
+  filter: none;
+}
+
+.post-list-title {
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  background: linear-gradient(90deg, var(--color-link-soft), #ffffff);
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  transition: filter 0.3s ease;
+}
+
+.post-list-link:hover .post-list-title {
+  filter: drop-shadow(0 0 15px rgba(255, 255, 255, 0.6));
+}
+
+.post-list-date {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  letter-spacing: 1px;
+  text-transform: lowercase;
+}
+
+.post-list-excerpt {
+  margin-top: 0.5rem;
+  color: var(--color-link-soft);
+  font-size: 1rem;
+  line-height: 1.6;
+  opacity: 0.85;
+  text-align: left;
+}
+
+/* ---------- Post individual ---------- */
+
+.post {
+  width: 100%;
+  text-align: left;
+}
+
+.post-header {
+  margin-bottom: 2rem;
+  padding-bottom: 1.25rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.post-title {
+  font-size: 2rem;
+  font-weight: 400;
+  letter-spacing: 2px;
+  line-height: 1.2;
+  margin: 0 0 0.75rem;
+  background: linear-gradient(45deg, var(--color-pink), var(--color-sky));
+  background-size: 200% 200%;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 20px rgba(127, 56, 150, 0.4));
+  animation: gradientShift 8s ease infinite;
+}
+
+.post-meta {
+  font-size: 0.85rem;
+  color: var(--color-muted);
+  letter-spacing: 1px;
+  margin: 0;
+}
+
+.post-tag {
+  color: var(--color-link);
+}
+
+/* Contenido (Markdown renderizado) */
+.post-content {
+  color: var(--color-link-soft);
+  font-size: 1.05rem;
+  line-height: 1.75;
+}
+
+.post-content p {
+  margin: 0 0 1.25rem;
+}
+
+.post-content h1,
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+  color: var(--color-heading);
+  font-weight: 400;
+  letter-spacing: 1px;
+  margin: 2rem 0 1rem;
+  text-shadow: 0 0 15px rgba(163, 204, 255, 0.4);
+}
+
+.post-content h1 { font-size: 1.7rem; }
+.post-content h2 { font-size: 1.4rem; }
+.post-content h3 { font-size: 1.2rem; }
+.post-content h4 { font-size: 1.05rem; }
+
+.post-content a {
+  color: var(--color-link);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(139, 168, 255, 0.3);
+  transition: border-color 0.3s ease, color 0.3s ease;
+}
+
+.post-content a:hover {
+  color: #ffffff;
+  border-bottom-color: rgba(255, 255, 255, 0.8);
+}
+
+.post-content ul,
+.post-content ol {
+  margin: 0 0 1.25rem;
+  padding-left: 1.5rem;
+}
+
+.post-content li {
+  margin-bottom: 0.4rem;
+}
+
+.post-content blockquote {
+  margin: 1.5rem 0;
+  padding: 0.5rem 1.25rem;
+  border-left: 3px solid var(--color-purple);
+  background: rgba(127, 56, 150, 0.08);
+  color: var(--color-link-soft);
+  font-style: italic;
+  border-radius: 0 8px 8px 0;
+}
+
+.post-content code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  color: var(--color-cyan);
+}
+
+.post-content pre {
+  background: rgba(0, 0, 0, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 1rem;
+  overflow-x: auto;
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+
+.post-content pre code {
+  background: none;
+  padding: 0;
+  color: var(--color-link-soft);
+}
+
+.post-content img {
+  max-width: 100%;
+  height: auto;
+  border-radius: 8px;
+  margin: 1.5rem 0;
+}
+
+.post-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 2rem 0;
+}
+
+/* Navegación dentro del post */
+.post-nav {
+  margin-top: 2.5rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.back-link {
+  color: var(--color-link);
+  text-decoration: none;
+  font-size: 0.95rem;
+  letter-spacing: 1px;
+  transition: color 0.3s ease, transform 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.back-link:hover {
+  color: #ffffff;
+  transform: translateX(-3px);
+}
+
+/* ---------- Comentarios (Cusdis) ---------- */
+
+.comments {
+  width: 100%;
+  text-align: left;
+  margin-top: 2rem;
+}
+
+.comments h2 {
+  font-size: 1.5rem;
+  font-weight: 400;
+  letter-spacing: 3px;
+  text-transform: uppercase;
+  background: linear-gradient(45deg, var(--color-pink), var(--color-sky));
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  margin-bottom: 1.5rem;
+}
+
+.comments-placeholder {
+  color: var(--color-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+}
+
+.comments-placeholder code {
+  background: rgba(255, 255, 255, 0.08);
+  padding: 0.15em 0.4em;
+  border-radius: 4px;
+  font-size: 0.9em;
+  color: var(--color-cyan);
+}
+
+.comments-placeholder a {
+  color: var(--color-link);
+  text-decoration: none;
+  border-bottom: 1px solid rgba(139, 168, 255, 0.3);
+}
+
+.comments-placeholder a:hover {
+  color: #ffffff;
+}
+
+/* Forzamos el tema oscuro del iframe de Cusdis */
+#cusdis_thread iframe {
+  color-scheme: dark;
+}
+
+/* ---------- Responsive ---------- */
+
+@media screen and (max-width: 767px) {
+  .content-blog {
+    padding: 20px 15px 40px;
+    font-size: 1rem;
+    letter-spacing: normal;
+  }
+
+  .post-title {
+    font-size: 1.5rem;
+    letter-spacing: 1px;
+  }
+
+  .post-list-title {
+    font-size: 1.2rem;
+  }
+
+  .post-content {
+    font-size: 1rem;
+  }
+}
