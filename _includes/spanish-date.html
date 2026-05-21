@@ -1,0 +1,7 @@
+{%- capture day -%}{{ include.date | date: "%-d" }}{%- endcapture -%}
+{%- capture month_num -%}{{ include.date | date: "%-m" }}{%- endcapture -%}
+{%- capture year -%}{{ include.date | date: "%Y" }}{%- endcapture -%}
+{%- assign months = "enero,febrero,marzo,abril,mayo,junio,julio,agosto,septiembre,octubre,noviembre,diciembre" | split: "," -%}
+{%- assign month_idx = month_num | plus: 0 | minus: 1 -%}
+{%- assign month = months[month_idx] -%}
+{{ day }} de {{ month }} de {{ year }}

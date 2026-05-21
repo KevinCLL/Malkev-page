@@ -4,28 +4,133 @@ title: Blog
 description: Notas y pensamientos de Malkev
 permalink: /blog/
 ---
-<section class="section blog-index">
-  <h2>BLOG</h2>
+{%- assign all_tags = "" | split: "" -%}
+{%- for post in site.posts -%}
+  {%- for t in post.tags -%}
+    {%- assign all_tags = all_tags | push: t -%}
+  {%- endfor -%}
+{%- endfor -%}
+{%- assign unique_tags = all_tags | uniq | sort -%}
 
+<header class="blog-header">
+  <h1 class="blog-title"><span>BLOG</span></h1>
+  <p class="blog-subtitle">Notas y pensamientos</p>
+</header>
+
+<section class="section blog-controls">
+  <div class="search-wrap">
+    <i class="fas fa-magnifying-glass search-icon" aria-hidden="true"></i>
+    <input type="search" id="blog-search" placeholder="Buscar entradas..." aria-label="Buscar entradas" autocomplete="off" />
+  </div>
+  {% if unique_tags.size > 0 %}
+    <div class="tag-cloud" id="tag-cloud" role="group" aria-label="Filtrar por etiqueta">
+      <button type="button" class="tag-chip active" data-tag="all">Todos</button>
+      {% for tag in unique_tags %}
+        <button type="button" class="tag-chip" data-tag="{{ tag }}">#{{ tag }}</button>
+      {% endfor %}
+    </div>
+  {% endif %}
+</section>
+
+<section class="blog-list-section">
   {% if site.posts.size == 0 %}
     <p class="blog-empty">Todavía no hay entradas. Vuelve pronto.</p>
   {% else %}
-    <ul class="post-list">
+    <ul class="post-list" id="post-list">
       {% for post in site.posts %}
-        <li class="post-list-item">
+        {%- capture tags_data -%}{% for t in post.tags %}{{ t }} {% endfor %}{%- endcapture -%}
+        {%- if post.description -%}
+          {%- assign excerpt_text = post.description -%}
+        {%- else -%}
+          {%- assign excerpt_text = post.excerpt | strip_html | truncate: 220 -%}
+        {%- endif -%}
+        <li class="post-list-item"
+            data-title="{{ post.title | downcase | escape }}"
+            data-excerpt="{{ excerpt_text | downcase | escape }}"
+            data-tags="{{ tags_data | strip | downcase }}">
           <a class="post-list-link" href="{{ post.url }}">
             <span class="post-list-title">{{ post.title }}</span>
             <time class="post-list-date" datetime="{{ post.date | date_to_xmlschema }}">
-              {{ post.date | date: "%-d de %B, %Y" }}
+              {% include spanish-date.html date=post.date %}
             </time>
+            {% if excerpt_text and excerpt_text != "" %}
+              <span class="post-list-excerpt">{{ excerpt_text }}</span>
+            {% endif %}
+            {% if post.tags and post.tags.size > 0 %}
+              <span class="post-list-tags">
+                {% for t in post.tags %}<span class="post-list-tag">#{{ t }}</span>{% endfor %}
+              </span>
+            {% endif %}
           </a>
-          {% if post.description %}
-            <p class="post-list-excerpt">{{ post.description }}</p>
-          {% elsif post.excerpt %}
-            <div class="post-list-excerpt">{{ post.excerpt | strip_html | truncate: 200 }}</div>
-          {% endif %}
         </li>
       {% endfor %}
     </ul>
+    <p class="no-results" id="no-results" hidden>No se encontraron entradas con esos criterios.</p>
   {% endif %}
 </section>
+
+<script>
+(function () {
+  const searchInput = document.getElementById('blog-search');
+  const list = document.getElementById('post-list');
+  const noResults = document.getElementById('no-results');
+  const tagButtons = Array.from(document.querySelectorAll('.tag-chip'));
+  const items = list ? Array.from(list.querySelectorAll('.post-list-item')) : [];
+
+  if (!list || items.length === 0) return;
+
+  let activeTag = 'all';
+  let query = '';
+
+  // Lee ?tag=foo de la URL si viene de un enlace de tag
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('tag')) {
+    const requested = params.get('tag').toLowerCase();
+    const match = tagButtons.find(b => b.dataset.tag.toLowerCase() === requested);
+    if (match) {
+      activeTag = match.dataset.tag;
+      tagButtons.forEach(b => b.classList.toggle('active', b === match));
+    }
+  }
+
+  function applyFilters() {
+    let visibleCount = 0;
+    items.forEach(item => {
+      const title = item.dataset.title || '';
+      const excerpt = item.dataset.excerpt || '';
+      const tagsAttr = item.dataset.tags || '';
+      const itemTags = tagsAttr.split(/\s+/).filter(Boolean);
+
+      const matchesQuery =
+        !query ||
+        title.indexOf(query) !== -1 ||
+        excerpt.indexOf(query) !== -1 ||
+        itemTags.some(t => t.indexOf(query) !== -1);
+
+      const matchesTag = activeTag === 'all' || itemTags.indexOf(activeTag.toLowerCase()) !== -1;
+      const show = matchesQuery && matchesTag;
+
+      item.hidden = !show;
+      if (show) visibleCount++;
+    });
+    if (noResults) noResults.hidden = visibleCount > 0;
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', e => {
+      query = e.target.value.trim().toLowerCase();
+      applyFilters();
+    });
+  }
+
+  tagButtons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      activeTag = btn.dataset.tag;
+      tagButtons.forEach(b => b.classList.toggle('active', b === btn));
+      applyFilters();
+    });
+  });
+
+  applyFilters();
+})();
+</script>
