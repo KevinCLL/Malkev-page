@@ -2,6 +2,37 @@
    Blog — overrides y estilos específicos
    ============================================ */
 
+/* Cursor estándar del SO en todo el blog (la home conserva el
+   crosshair custom). main.css aplica `cursor: none !important` a
+   todos los elementos; aquí lo revertimos con !important + mayor
+   especificidad (body.blog *). */
+body.blog,
+body.blog *,
+body.blog *::before,
+body.blog *::after {
+  cursor: auto !important;
+}
+
+body.blog a,
+body.blog button,
+body.blog .tag-chip,
+body.blog .post-list-link {
+  cursor: pointer !important;
+}
+
+body.blog input,
+body.blog textarea {
+  cursor: text !important;
+}
+
+/* Los elementos custom (crosshair + glow) los inyecta main.js
+   incondicionalmente; los ocultamos en el blog. */
+body.blog .cursor-crosshair,
+body.blog .cursor-glow {
+  display: none !important;
+}
+
+
 /* El linktree usa font-size: 8vmin (gigante) y centra
    verticalmente. Para el blog mantenemos el padding/anchura
    pero permitimos que el contenido del cuerpo sea legible.
@@ -610,20 +641,30 @@
    interior y le va ajustando la altura cuando crece (más comentarios).
    Pero en el estado inicial el iframe queda con la altura por defecto
    del navegador (~150px) y el form de comentar excede esa altura,
-   apareciendo un scroll interno feo. Forzamos un min-height generoso
-   para que el form quepa sin scroll; si el contenido crece más, el
-   handler de Cusdis seteará un height inline mayor y todo OK. */
+   apareciendo un scroll interno feo. Forzamos un min-height para que
+   el form quepa sin scroll; si el contenido crece más, el handler
+   de Cusdis seteará un height inline mayor y todo OK. */
 #cusdis_thread {
   width: 100%;
   color-scheme: dark;
+  /* Tapa los últimos pixeles del iframe con un degradado opaco que
+     funde con el fondo de la card. Sirve para esconder el "Powered
+     by Cusdis": como el iframe es cross-origin, no podemos quitar
+     ese branding desde dentro, así que lo enmascaramos desde fuera. */
+  position: relative;
 }
 
 #cusdis_thread iframe {
   width: 100% !important;
-  min-height: 720px;
+  min-height: 470px;
   border: none !important;
   background: transparent !important;
   display: block;
+  /* Recorta los últimos 28px del iframe — donde Cusdis pinta su
+     branding "Powered by Cusdis" — y compensa con margin negativo
+     para que el espacio recortado no quede en blanco. */
+  clip-path: inset(0 0 28px 0);
+  margin-bottom: -28px;
 }
 
 /* ---------- Responsive ---------- */
