@@ -10,7 +10,10 @@
   --color-heading: #a3ccff;
 }
 
-*, *::before, *::after {
+body:not(.blog),
+body:not(.blog) *,
+body:not(.blog) *::before,
+body:not(.blog) *::after {
   cursor: none !important;
 }
 

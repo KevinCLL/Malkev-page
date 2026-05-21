@@ -146,6 +146,7 @@ function initParallax() {
 
 function initCursorGlow() {
   if ('ontouchstart' in window) return;
+  if (document.body.classList.contains('blog')) return;
 
   const crosshair = document.createElement('div');
   crosshair.className = 'cursor-crosshair';
