@@ -1,0 +1,44 @@
+---
+layout: default
+title: Archivo
+description: Todas las entradas del blog agrupadas por año
+permalink: /blog/archivo/
+---
+<header class="blog-header">
+  <h1 class="blog-title"><span>ARCHIVO</span></h1>
+  <p class="archive-intro">Todas las entradas, en orden cronológico inverso.</p>
+</header>
+
+<section class="blog-list-section archive">
+  {% if site.posts.size == 0 %}
+    <p class="blog-empty">Todavía no hay entradas.</p>
+  {% else %}
+    {%- assign posts_by_year = site.posts | group_by_exp: "post", "post.date | date: '%Y'" -%}
+    {% for year_group in posts_by_year %}
+      <div class="archive-year">
+        <h2 class="archive-year-title">{{ year_group.name }}</h2>
+        <ul class="archive-list">
+          {% for post in year_group.items %}
+            <li class="archive-item">
+              <a href="{{ post.url }}" class="archive-link-row">
+                <time class="archive-date" datetime="{{ post.date | date_to_xmlschema }}">
+                  {{ post.date | date: "%d/%m" }}
+                </time>
+                <span class="archive-title">{{ post.title }}</span>
+                {% if post.tags and post.tags.size > 0 %}
+                  <span class="archive-tags">
+                    {% for t in post.tags limit: 3 %}<span class="archive-tag">#{{ t }}</span>{% endfor %}
+                  </span>
+                {% endif %}
+              </a>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+    {% endfor %}
+  {% endif %}
+
+  <p class="archive-back">
+    <a href="/blog/" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver al blog</a>
+  </p>
+</section>

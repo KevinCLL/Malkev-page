@@ -1,6 +1,12 @@
 ---
 layout: default
 ---
+{%- assign words = content | strip_html | number_of_words -%}
+{%- assign reading_time = words | divided_by: 200.0 | ceil -%}
+{%- if reading_time < 1 -%}{%- assign reading_time = 1 -%}{%- endif -%}
+
+<div class="reading-progress" aria-hidden="true"><div class="reading-progress-bar"></div></div>
+
 <article class="section post">
   <header class="post-header">
     <h1 class="post-title">{{ page.title }}</h1>
@@ -8,6 +14,8 @@ layout: default
       <time datetime="{{ page.date | date_to_xmlschema }}">
         {% include spanish-date.html date=page.date %}
       </time>
+      <span class="post-meta-sep">·</span>
+      <span class="post-reading-time"><i class="fas fa-clock" aria-hidden="true"></i> {{ reading_time }} min lectura</span>
       {% if page.tags and page.tags.size > 0 %}
         <span class="post-meta-sep">·</span>
         <span class="post-tags">
@@ -15,6 +23,10 @@ layout: default
         </span>
       {% endif %}
     </p>
+    <button type="button" class="reading-mode-toggle" aria-pressed="false" title="Modo lectura (atenúa el fondo)">
+      <i class="fas fa-book-open" aria-hidden="true"></i>
+      <span class="reading-mode-label">Modo lectura</span>
+    </button>
   </header>
 
   <div class="post-content">
@@ -22,9 +34,63 @@ layout: default
   </div>
 
   <nav class="post-nav">
-    <a href="/blog/" class="back-link"><i class="fas fa-arrow-left"></i> Volver a la lista de entradas</a>
+    {% if page.previous %}
+      <a href="{{ page.previous.url }}" class="post-nav-link post-nav-prev">
+        <span class="post-nav-direction"><i class="fas fa-arrow-left" aria-hidden="true"></i> Anterior</span>
+        <span class="post-nav-title">{{ page.previous.title }}</span>
+      </a>
+    {% endif %}
+    {% if page.next %}
+      <a href="{{ page.next.url }}" class="post-nav-link post-nav-next">
+        <span class="post-nav-direction">Siguiente <i class="fas fa-arrow-right" aria-hidden="true"></i></span>
+        <span class="post-nav-title">{{ page.next.title }}</span>
+      </a>
+    {% endif %}
+  </nav>
+
+  <nav class="post-back">
+    <a href="/blog/" class="back-link"><i class="fas fa-list" aria-hidden="true"></i> Volver a la lista de entradas</a>
+    <a href="/blog/archivo/" class="back-link archive-link"><i class="fas fa-box-archive" aria-hidden="true"></i> Archivo</a>
   </nav>
 </article>
+
+<script>
+  // Barra de progreso de scroll: rellena la barra superior en función
+  // de cuánto del artículo se ha visto.
+  (function () {
+    const bar = document.querySelector('.reading-progress-bar');
+    const article = document.querySelector('.post');
+    if (!bar || !article) return;
+    function update() {
+      const rect = article.getBoundingClientRect();
+      const total = rect.height - window.innerHeight;
+      const scrolled = -rect.top;
+      let pct = total > 0 ? (scrolled / total) * 100 : 0;
+      pct = Math.max(0, Math.min(100, pct));
+      bar.style.width = pct + '%';
+    }
+    window.addEventListener('scroll', update, { passive: true });
+    window.addEventListener('resize', update);
+    update();
+  })();
+
+  // Modo lectura: atenúa fondo animado y ensancha contenedor.
+  (function () {
+    const btn = document.querySelector('.reading-mode-toggle');
+    if (!btn) return;
+    const KEY = 'malkev-reading-mode';
+    function apply(on) {
+      document.body.classList.toggle('reading-mode', on);
+      btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    apply(localStorage.getItem(KEY) === '1');
+    btn.addEventListener('click', () => {
+      const next = !document.body.classList.contains('reading-mode');
+      localStorage.setItem(KEY, next ? '1' : '0');
+      apply(next);
+    });
+  })();
+</script>
 
 {% if site.cusdis.app_id and site.cusdis.app_id != "" %}
 <section class="section comments">
@@ -40,10 +106,10 @@ layout: default
   <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"
     onload="window.CUSDIS && window.CUSDIS.setTheme && window.CUSDIS.setTheme('dark')"></script>
   <script>
-    // Consultamos la API pública de Cusdis para saber si este post
-    // tiene comentarios. Si no los tiene, marcamos el contenedor con
-    // .no-comments y blog.css aplica un mask que oculta el branding.
-    // (Con comentarios no aplicamos mask para no esconderlos.)
+    // Consultamos la API pública de Cusdis para saber cuántos
+    // comentarios tiene este post. Con ese número calculamos dónde
+    // aplicar el mask que tapa el "Comments powered by Cusdis":
+    // 280px de form + 100px estimados por comentario.
     (async () => {
       const thread = document.getElementById('cusdis_thread');
       if (!thread) return;
@@ -55,8 +121,14 @@ layout: default
           + '&pageId=' + encodeURIComponent(pageId);
         const res = await fetch(url);
         const json = await res.json();
-        const count = json && json.data && json.data.commentCount;
-        if (!count) thread.classList.add('no-comments');
+        const count = (json && json.data && json.data.commentCount) || 0;
+        const maskStart = 280 + 100 * count;
+        const maskEnd = maskStart + 20;
+        const minH = Math.max(470, maskStart + 100);
+        thread.style.setProperty('--mask-start', maskStart + 'px');
+        thread.style.setProperty('--mask-end', maskEnd + 'px');
+        thread.style.setProperty('--iframe-min-h', minH + 'px');
+        thread.classList.add('mask-ready');
       } catch (e) {
         // En error, no aplicamos mask — preferimos branding visible a romper el render.
       }

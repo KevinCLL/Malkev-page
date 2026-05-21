@@ -305,6 +305,27 @@ body.blog .cursor-glow {
   -webkit-text-fill-color: var(--color-link);
 }
 
+/* ---------- Barra de progreso de scroll ---------- */
+
+.reading-progress {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  z-index: 9998;
+  pointer-events: none;
+}
+
+.reading-progress-bar {
+  width: 0;
+  height: 100%;
+  background: linear-gradient(90deg, var(--color-purple), var(--color-cyan));
+  filter: drop-shadow(0 0 8px rgba(127, 56, 150, 0.6));
+  transition: width 0.08s linear;
+}
+
 /* ---------- Post individual ---------- */
 
 .post {
@@ -347,6 +368,58 @@ body.blog .cursor-glow {
 
 .post-meta-sep {
   opacity: 0.5;
+}
+
+.post-reading-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+}
+
+.post-reading-time i {
+  font-size: 0.75rem;
+  opacity: 0.7;
+  -webkit-text-fill-color: var(--color-muted);
+}
+
+/* Botón "Modo lectura" en el header del post */
+.reading-mode-toggle {
+  margin-top: 1rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.4rem 0.95rem;
+  color: var(--color-link-soft);
+  -webkit-text-fill-color: var(--color-link-soft);
+  font-family: "Lato", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  transition: all 0.25s ease;
+}
+
+.reading-mode-toggle:hover {
+  background: rgba(139, 168, 255, 0.12);
+  border-color: rgba(139, 168, 255, 0.35);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.reading-mode-toggle[aria-pressed="true"] {
+  background: linear-gradient(90deg, rgba(127, 56, 150, 0.35), rgba(53, 184, 224, 0.25));
+  border-color: rgba(127, 56, 150, 0.6);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.reading-mode-toggle i {
+  font-size: 0.85rem;
+  -webkit-text-fill-color: inherit;
 }
 
 .post-tags {
@@ -551,6 +624,206 @@ body.blog .cursor-glow {
   margin-top: 2.5rem;
   padding-top: 1.25rem;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.post-nav-link {
+  flex: 1 1 240px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  padding: 0.85rem 1.1rem;
+  border-radius: 12px;
+  background: rgba(22, 24, 29, 0.45);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  text-decoration: none;
+  color: var(--color-link-soft);
+  -webkit-text-fill-color: var(--color-link-soft);
+  transition: all 0.25s ease;
+}
+
+.post-nav-link:hover {
+  transform: translateY(-2px);
+  border-color: rgba(139, 168, 255, 0.3);
+  box-shadow: 0 10px 25px rgba(14, 24, 85, 0.15);
+}
+
+.post-nav-next {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.post-nav-direction {
+  font-size: 0.75rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.post-nav-title {
+  font-size: 0.95rem;
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.post-back {
+  margin-top: 1.5rem;
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.archive-link {
+  opacity: 0.85;
+}
+
+/* ---------- Modo lectura ---------- */
+
+body.reading-mode .background,
+body.reading-mode body::before {
+  opacity: 0.18 !important;
+  filter: blur(3px);
+}
+
+body.reading-mode .content-blog {
+  max-width: 720px;
+}
+
+body.reading-mode .title,
+body.reading-mode .footer {
+  opacity: 0.55;
+  transition: opacity 0.4s ease;
+}
+
+body.reading-mode .post {
+  background: rgba(15, 17, 22, 0.85);
+  backdrop-filter: blur(20px);
+}
+
+body.reading-mode .post-content {
+  font-size: 1.1rem;
+  line-height: 1.85;
+}
+
+/* ---------- Página de archivo ---------- */
+
+.archive-intro {
+  text-align: center;
+  color: var(--color-muted);
+  font-size: 0.9rem;
+  letter-spacing: 1px;
+  margin: 0.5rem 0 1.5rem;
+  -webkit-text-fill-color: var(--color-muted);
+}
+
+.archive {
+  width: 100%;
+}
+
+.archive-year {
+  margin-bottom: 2rem;
+}
+
+.archive-year-title {
+  font-size: 1.6rem;
+  font-weight: 400;
+  letter-spacing: 4px;
+  color: var(--color-heading);
+  -webkit-text-fill-color: var(--color-heading);
+  margin: 0 0 0.85rem;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  text-shadow: 0 0 15px rgba(163, 204, 255, 0.4);
+}
+
+.archive-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.archive-item {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.archive-item:last-child {
+  border-bottom: none;
+}
+
+.archive-link-row {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  gap: 0.85rem;
+  align-items: center;
+  padding: 0.65rem 0.5rem;
+  text-decoration: none;
+  border-radius: 8px;
+  transition: background 0.2s ease, transform 0.2s ease;
+  color: inherit;
+}
+
+.archive-link-row:hover {
+  background: rgba(139, 168, 255, 0.06);
+  transform: translateX(4px);
+}
+
+.archive-date {
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  letter-spacing: 1px;
+  font-variant-numeric: tabular-nums;
+}
+
+.archive-title {
+  font-size: 1rem;
+  color: var(--color-link-soft);
+  -webkit-text-fill-color: var(--color-link-soft);
+}
+
+.archive-link-row:hover .archive-title {
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.archive-tags {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.archive-tag {
+  font-size: 0.7rem;
+  padding: 0.1rem 0.45rem;
+  border-radius: 999px;
+  background: rgba(139, 168, 255, 0.06);
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  border: 1px solid rgba(139, 168, 255, 0.12);
+}
+
+.archive-back {
+  margin-top: 1.5rem;
+  text-align: center;
+}
+
+@media screen and (max-width: 600px) {
+  .archive-link-row {
+    grid-template-columns: 48px 1fr;
+    grid-template-areas:
+      "date title"
+      ".    tags";
+  }
+  .archive-date { grid-area: date; }
+  .archive-title { grid-area: title; }
+  .archive-tags { grid-area: tags; }
 }
 
 .back-link {
@@ -632,26 +905,27 @@ body.blog .cursor-glow {
   display: block;
 }
 
-/* Cuando el post NO tiene comentarios (lo decide post.html consultando
-   la API pública de Cusdis y añadiendo .no-comments al thread),
-   aplicamos un mask que vuelve el iframe transparente desde y=300.
-   Eso oculta el "Comments powered by Cusdis" que aparece justo después
-   del form. Si HAY comentarios, no se aplica el mask: el branding queda
-   visible al final del thread (después de los comentarios) pero los
-   comentarios no se ocultan. */
-#cusdis_thread.no-comments iframe {
+/* Mask dinámico para ocultar el "Comments powered by Cusdis".
+   post.html consulta la API pública para saber cuántos comentarios
+   hay y setea las variables --mask-start / --mask-end / --iframe-min-h
+   (calculadas como 280 + count * 100). Al añadir la clase .mask-ready
+   se aplica el mask: opaco hasta justo antes del branding, transparente
+   desde ahí. El iframe también se estira lo necesario para que los
+   comentarios + branding "quepan" antes del corte. */
+#cusdis_thread.mask-ready iframe {
+  min-height: var(--iframe-min-h, 470px) !important;
   mask-image: linear-gradient(
     to bottom,
     #000 0,
-    #000 280px,
-    transparent 300px,
+    #000 var(--mask-start, 280px),
+    transparent var(--mask-end, 300px),
     transparent 100%
   );
   -webkit-mask-image: linear-gradient(
     to bottom,
     #000 0,
-    #000 280px,
-    transparent 300px,
+    #000 var(--mask-start, 280px),
+    transparent var(--mask-end, 300px),
     transparent 100%
   );
 }
