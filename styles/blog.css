@@ -312,17 +312,19 @@ body.blog .cursor-glow {
   top: 0;
   left: 0;
   right: 0;
-  height: 3px;
-  background: rgba(255, 255, 255, 0.04);
+  height: 4px;
+  background: rgba(0, 0, 0, 0.45);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   z-index: 9998;
   pointer-events: none;
+  box-shadow: 0 1px 6px rgba(0, 0, 0, 0.3);
 }
 
 .reading-progress-bar {
   width: 0;
   height: 100%;
-  background: linear-gradient(90deg, var(--color-purple), var(--color-cyan));
-  filter: drop-shadow(0 0 8px rgba(127, 56, 150, 0.6));
+  background: linear-gradient(90deg, var(--color-purple), var(--color-pink), var(--color-cyan));
+  filter: drop-shadow(0 0 10px rgba(231, 82, 255, 0.7));
   transition: width 0.08s linear;
 }
 
@@ -384,42 +386,136 @@ body.blog .cursor-glow {
   -webkit-text-fill-color: var(--color-muted);
 }
 
-/* Botón "Modo lectura" en el header del post */
-.reading-mode-toggle {
-  margin-top: 1rem;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.04);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 999px;
-  padding: 0.4rem 0.95rem;
+/* Botón flotante (FAB) "Modo lectura" — esquina inferior derecha */
+.reading-mode-fab {
+  position: fixed;
+  bottom: 22px;
+  right: 22px;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(22, 24, 29, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
   color: var(--color-link-soft);
   -webkit-text-fill-color: var(--color-link-soft);
-  font-family: "Lato", sans-serif;
+  z-index: 9990;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.1rem;
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.35);
+  transition: all 0.25s ease;
+  opacity: 0.7;
+}
+
+.reading-mode-fab:hover {
+  opacity: 1;
+  transform: translateY(-2px);
+  border-color: rgba(139, 168, 255, 0.5);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.reading-mode-fab[aria-pressed="true"] {
+  opacity: 1;
+  background: linear-gradient(135deg, rgba(127, 56, 150, 0.7), rgba(53, 184, 224, 0.55));
+  border-color: rgba(231, 82, 255, 0.45);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+  filter: drop-shadow(0 0 15px rgba(127, 56, 150, 0.5));
+}
+
+.reading-mode-fab i {
+  -webkit-text-fill-color: inherit;
+}
+
+.reading-mode-fab .fab-icon-on { display: none; }
+.reading-mode-fab .fab-icon-off { display: block; }
+.reading-mode-fab[aria-pressed="true"] .fab-icon-on { display: block; }
+.reading-mode-fab[aria-pressed="true"] .fab-icon-off { display: none; }
+
+@media (max-width: 600px) {
+  .reading-mode-fab {
+    bottom: 16px;
+    right: 16px;
+    width: 44px;
+    height: 44px;
+  }
+}
+
+/* Nav superior del listado /blog/ (Archivo, RSS) */
+.blog-subnav {
+  display: flex;
+  gap: 1rem;
+  justify-content: center;
+  margin-top: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.blog-subnav-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  text-decoration: none;
   font-size: 0.82rem;
-  font-weight: 300;
-  letter-spacing: 0.5px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  padding: 0.3rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   transition: all 0.25s ease;
 }
 
-.reading-mode-toggle:hover {
-  background: rgba(139, 168, 255, 0.12);
-  border-color: rgba(139, 168, 255, 0.35);
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
+.blog-subnav-link:hover {
+  color: var(--color-link);
+  -webkit-text-fill-color: var(--color-link);
+  border-color: rgba(139, 168, 255, 0.3);
+  background: rgba(139, 168, 255, 0.06);
 }
 
-.reading-mode-toggle[aria-pressed="true"] {
-  background: linear-gradient(90deg, rgba(127, 56, 150, 0.35), rgba(53, 184, 224, 0.25));
-  border-color: rgba(127, 56, 150, 0.6);
-  color: #ffffff;
-  -webkit-text-fill-color: #ffffff;
-}
-
-.reading-mode-toggle i {
-  font-size: 0.85rem;
+.blog-subnav-link i {
+  font-size: 0.78rem;
   -webkit-text-fill-color: inherit;
+}
+
+/* Meta de las tarjetas de /blog/ (fecha + tiempo de lectura) */
+.post-list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.7rem;
+}
+
+.post-list-dot {
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  opacity: 0.5;
+}
+
+.post-list-time {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.78rem;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  letter-spacing: 0.5px;
+}
+
+.post-list-time i {
+  font-size: 0.72rem;
+  opacity: 0.7;
+  -webkit-text-fill-color: var(--color-muted);
+}
+
+/* En el grid antiguo .post-list-date tenía margin-bottom — el wrap lo gestiona ahora */
+.post-list-meta .post-list-date {
+  margin-bottom: 0;
 }
 
 .post-tags {
@@ -687,30 +783,67 @@ body.blog .cursor-glow {
 
 /* ---------- Modo lectura ---------- */
 
+body.reading-mode {
+  transition: background 0.4s ease;
+}
+
 body.reading-mode .background,
-body.reading-mode body::before {
-  opacity: 0.18 !important;
-  filter: blur(3px);
+body.reading-mode .background .stars,
+body.reading-mode .background .stars2,
+body.reading-mode .background .stars3 {
+  opacity: 0.08 !important;
+  filter: blur(2px);
+  transition: opacity 0.4s ease, filter 0.4s ease;
+}
+
+body.reading-mode::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: rgba(8, 9, 12, 0.7);
+  z-index: 1;
+  pointer-events: none;
 }
 
 body.reading-mode .content-blog {
-  max-width: 720px;
+  max-width: 740px;
 }
 
 body.reading-mode .title,
-body.reading-mode .footer {
-  opacity: 0.55;
+body.reading-mode .footer,
+body.reading-mode .comments {
+  opacity: 0.35;
   transition: opacity 0.4s ease;
 }
 
+body.reading-mode .title:hover,
+body.reading-mode .footer:hover,
+body.reading-mode .comments:hover {
+  opacity: 0.9;
+}
+
 body.reading-mode .post {
-  background: rgba(15, 17, 22, 0.85);
-  backdrop-filter: blur(20px);
+  background: rgba(13, 14, 18, 0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border-color: rgba(255, 255, 255, 0.06);
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.4);
 }
 
 body.reading-mode .post-content {
-  font-size: 1.1rem;
-  line-height: 1.85;
+  font-size: 1.15rem;
+  line-height: 1.9;
+  letter-spacing: 0.2px;
+}
+
+body.reading-mode .post-content p {
+  margin-bottom: 1.5rem;
+}
+
+body.reading-mode .post-content h1,
+body.reading-mode .post-content h2,
+body.reading-mode .post-content h3 {
+  margin-top: 2.5rem;
 }
 
 /* ---------- Página de archivo ---------- */

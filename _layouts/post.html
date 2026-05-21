@@ -23,10 +23,6 @@ layout: default
         </span>
       {% endif %}
     </p>
-    <button type="button" class="reading-mode-toggle" aria-pressed="false" title="Modo lectura (atenúa el fondo)">
-      <i class="fas fa-book-open" aria-hidden="true"></i>
-      <span class="reading-mode-label">Modo lectura</span>
-    </button>
   </header>
 
   <div class="post-content">
@@ -54,6 +50,11 @@ layout: default
   </nav>
 </article>
 
+<button type="button" class="reading-mode-fab" aria-pressed="false" aria-label="Activar modo lectura" title="Modo lectura (R)">
+  <i class="fas fa-book-open fab-icon-off" aria-hidden="true"></i>
+  <i class="fas fa-xmark fab-icon-on" aria-hidden="true"></i>
+</button>
+
 <script>
   // Barra de progreso de scroll: rellena la barra superior en función
   // de cuánto del artículo se ha visto.
@@ -74,20 +75,30 @@ layout: default
     update();
   })();
 
-  // Modo lectura: atenúa fondo animado y ensancha contenedor.
+  // Modo lectura: botón flotante en esquina inferior derecha.
+  // Atenúa fondo animado, ensancha contenedor, aumenta tipografía.
+  // Persiste con localStorage. Tecla "R" como atajo.
   (function () {
-    const btn = document.querySelector('.reading-mode-toggle');
+    const btn = document.querySelector('.reading-mode-fab');
     if (!btn) return;
     const KEY = 'malkev-reading-mode';
     function apply(on) {
       document.body.classList.toggle('reading-mode', on);
       btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      btn.setAttribute('aria-label', on ? 'Salir del modo lectura' : 'Activar modo lectura');
     }
-    apply(localStorage.getItem(KEY) === '1');
-    btn.addEventListener('click', () => {
+    function toggle() {
       const next = !document.body.classList.contains('reading-mode');
       localStorage.setItem(KEY, next ? '1' : '0');
       apply(next);
+    }
+    apply(localStorage.getItem(KEY) === '1');
+    btn.addEventListener('click', toggle);
+    document.addEventListener('keydown', e => {
+      if (e.key === 'r' && !e.ctrlKey && !e.metaKey && !e.altKey
+          && !['INPUT','TEXTAREA'].includes((e.target||{}).tagName)) {
+        toggle();
+      }
     });
   })();
 </script>

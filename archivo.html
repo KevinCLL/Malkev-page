@@ -9,7 +9,7 @@ permalink: /blog/archivo/
   <p class="archive-intro">Todas las entradas, en orden cronológico inverso.</p>
 </header>
 
-<section class="blog-list-section archive">
+<section class="section archive">
   {% if site.posts.size == 0 %}
     <p class="blog-empty">Todavía no hay entradas.</p>
   {% else %}
@@ -37,8 +37,8 @@ permalink: /blog/archivo/
       </div>
     {% endfor %}
   {% endif %}
-
-  <p class="archive-back">
-    <a href="/blog/" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver al blog</a>
-  </p>
 </section>
+
+<p class="archive-back">
+  <a href="/blog/" class="back-link"><i class="fas fa-arrow-left" aria-hidden="true"></i> Volver al blog</a>
+</p>

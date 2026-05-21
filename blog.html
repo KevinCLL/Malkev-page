@@ -15,6 +15,10 @@ permalink: /blog/
 <header class="blog-header">
   <h1 class="blog-title"><span>BLOG</span></h1>
   <p class="blog-subtitle">Notas y pensamientos</p>
+  <nav class="blog-subnav">
+    <a href="/blog/archivo/" class="blog-subnav-link"><i class="fas fa-box-archive" aria-hidden="true"></i> Archivo</a>
+    <a href="/feed.xml" class="blog-subnav-link"><i class="fas fa-rss" aria-hidden="true"></i> RSS</a>
+  </nav>
 </header>
 
 <section class="section blog-controls">
@@ -44,15 +48,22 @@ permalink: /blog/
         {%- else -%}
           {%- assign excerpt_text = post.excerpt | strip_html | truncate: 220 -%}
         {%- endif -%}
+        {%- assign post_words = post.content | strip_html | number_of_words -%}
+        {%- assign post_reading = post_words | divided_by: 200.0 | ceil -%}
+        {%- if post_reading < 1 -%}{%- assign post_reading = 1 -%}{%- endif -%}
         <li class="post-list-item"
             data-title="{{ post.title | downcase | escape }}"
             data-excerpt="{{ excerpt_text | downcase | escape }}"
             data-tags="{{ tags_data | strip | downcase }}">
           <a class="post-list-link" href="{{ post.url }}">
             <span class="post-list-title">{{ post.title }}</span>
-            <time class="post-list-date" datetime="{{ post.date | date_to_xmlschema }}">
-              {% include spanish-date.html date=post.date %}
-            </time>
+            <span class="post-list-meta">
+              <time class="post-list-date" datetime="{{ post.date | date_to_xmlschema }}">
+                {% include spanish-date.html date=post.date %}
+              </time>
+              <span class="post-list-dot">·</span>
+              <span class="post-list-time"><i class="fas fa-clock" aria-hidden="true"></i> {{ post_reading }} min</span>
+            </span>
             {% if excerpt_text and excerpt_text != "" %}
               <span class="post-list-excerpt">{{ excerpt_text }}</span>
             {% endif %}
