@@ -12,10 +12,25 @@ body.blog .cursor-glow {
 }
 
 /* Defensa global anti-overflow horizontal en mobile.
-   Si cualquier elemento intenta forzar su ancho mayor que el body,
-   queda recortado en lugar de provocar scroll horizontal feo. */
+   1) box-sizing: border-box para que padding/border NO sumen al width.
+   2) overflow-x: hidden en body como red de seguridad.
+   3) max-width 100% en cards .section dentro del blog para que nunca
+      sobrepasen el contenedor.
+   4) min-width: 0 en flex/grid items para que su contenido pueda
+      encogerse y no fuerce el padre a desbordarse. */
+body.blog,
+body.blog *,
+body.blog *::before,
+body.blog *::after {
+  box-sizing: border-box;
+}
+
 body.blog {
   overflow-x: hidden;
+}
+
+body.blog .content-blog .section {
+  max-width: 100%;
 }
 
 
