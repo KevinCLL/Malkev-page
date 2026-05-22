@@ -11,6 +11,13 @@ body.blog .cursor-glow {
   display: none !important;
 }
 
+/* Defensa global anti-overflow horizontal en mobile.
+   Si cualquier elemento intenta forzar su ancho mayor que el body,
+   queda recortado en lugar de provocar scroll horizontal feo. */
+body.blog {
+  overflow-x: hidden;
+}
+
 
 /* El linktree usa font-size: 8vmin (gigante) y centra
    verticalmente. Para el blog mantenemos el padding/anchura
@@ -620,6 +627,19 @@ body.blog .cursor-glow {
   font-size: 0.88rem;
   line-height: 1.55;
   margin: 1.25rem 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+
+.post-content pre code {
+  white-space: pre;
+}
+
+/* Code inline puede tener strings largos sin espacios; permitimos
+   que se rompa en mobile para no causar overflow horizontal. */
+.post-content p code,
+.post-content li code {
+  word-break: break-word;
 }
 
 .post-content pre code {
@@ -658,14 +678,18 @@ body.blog .cursor-glow {
   margin: 2rem 0;
 }
 
+/* Tabla scrolleable horizontalmente en mobile cuando hay muchas columnas. */
 .post-content table {
+  display: block;
   width: 100%;
+  max-width: 100%;
   border-collapse: collapse;
   margin: 1.5rem 0;
   font-size: 0.95rem;
   background: rgba(0, 0, 0, 0.2);
   border-radius: 8px;
-  overflow: hidden;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
 .post-content th,
@@ -928,12 +952,13 @@ body.reading-mode .post-content h3 {
   text-align: center;
 }
 
-@media screen and (max-width: 600px) {
+@media screen and (max-width: 767px) {
   .archive-link-row {
     grid-template-columns: 48px 1fr;
     grid-template-areas:
       "date title"
       ".    tags";
+    gap: 0.4rem 0.85rem;
   }
   .archive-date { grid-area: date; }
   .archive-title { grid-area: title; }
@@ -1013,6 +1038,7 @@ body.reading-mode .post-content h3 {
 
 #cusdis_thread iframe {
   width: 100% !important;
+  max-width: 100% !important;
   min-height: 470px;
   border: none !important;
   background: transparent !important;
@@ -1049,7 +1075,15 @@ body.reading-mode .post-content h3 {
 @media screen and (max-width: 767px) {
   .content-blog {
     padding: 20px 12px 40px;
-    letter-spacing: 6px;
+    letter-spacing: 4px;
+  }
+
+  /* MALKEVNIA arriba: con letter-spacing 10px del .content original
+     se rompía a 2 líneas en mobile. Reducimos y bajamos un poco el tamaño. */
+  .title > .title-link > span,
+  .title > .title-link {
+    letter-spacing: 4px !important;
+    font-size: 5.5vmin !important;
   }
 
   .blog-title {
@@ -1062,8 +1096,34 @@ body.reading-mode .post-content h3 {
     letter-spacing: 2px;
   }
 
+  .blog-controls {
+    padding: 0.9rem 1rem !important;
+  }
+
+  .blog-subnav {
+    gap: 0.6rem;
+  }
+
+  .blog-subnav-link {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.55rem;
+    letter-spacing: 1px;
+  }
+
   .post {
     padding: 1.1rem 1.2rem !important;
+  }
+
+  .post-header {
+    padding-right: 2.5rem;
+  }
+
+  .reading-mode-toggle {
+    top: 0.85rem;
+    right: 0.85rem;
+    width: 34px;
+    height: 34px;
+    font-size: 0.85rem;
   }
 
   .post-title {
@@ -1071,19 +1131,55 @@ body.reading-mode .post-content h3 {
     letter-spacing: 1px;
   }
 
-  .post-list-title {
-    font-size: 1.2rem;
+  .post-meta {
+    gap: 0.5rem;
+    row-gap: 0.4rem;
   }
 
-  .post-content {
-    font-size: 1rem;
+  .post-list-title {
+    font-size: 1.2rem;
   }
 
   .post-list-link {
     padding: 1rem 1.15rem;
   }
 
+  .post-content {
+    font-size: 1rem;
+  }
+
+  /* Prev/Next: en mobile cada card ocupa su propia fila */
+  .post-nav {
+    flex-direction: column;
+    gap: 0.7rem;
+  }
+
+  .post-nav-link {
+    flex: 1 1 100%;
+  }
+
+  .post-nav-next {
+    text-align: right;
+  }
+
+  .post-back {
+    gap: 1rem;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
   .comments {
     padding: 1.15rem 1.2rem !important;
+  }
+
+  /* Archive: chips más compactos y nueva fila para tags */
+  .archive-year-title {
+    font-size: 1.3rem;
+    letter-spacing: 3px;
+  }
+
+  .archive-tag {
+    font-size: 0.65rem;
+    padding: 0.08rem 0.4rem;
   }
 }
