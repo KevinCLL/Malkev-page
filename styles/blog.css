@@ -630,19 +630,25 @@ body.blog .content-blog .section {
 }
 
 /* Justification "opción A" — CSS puro, sin librerías:
-   - text-align: justify para los párrafos.
-   - hyphens: auto activa la división silábica con el diccionario
-     del idioma (necesita lang="es" en <html>, ya está en default.html).
+   - Sin hyphens: cortar palabras (pue-/des) corta el flujo de lectura.
    - text-wrap: pretty rebalancea la última línea para evitar huérfanas
      (soportado en Chromium 117+, Safari 18, Firefox 121+).
-   - hyphenate-limit-chars evita guiones en palabras de 1-2 letras. */
+   - En desktop (>= 768px) usamos text-align: justify: caben suficientes
+     palabras por línea para que el espaciado entre ellas quede regular.
+   - En mobile dejamos text-align: left (ragged-right): en columnas
+     estrechas el justify sin hyphens crea "rivers" feos. */
 .post-content p {
   margin: 0 0 1.2rem;
-  text-align: justify;
+  text-align: left;
   text-wrap: pretty;
-  hyphens: auto;
-  -webkit-hyphens: auto;
-  hyphenate-limit-chars: 6 3 2;
+  hyphens: none;
+  -webkit-hyphens: none;
+}
+
+@media (min-width: 768px) {
+  .post-content p {
+    text-align: justify;
+  }
 }
 
 /* Títulos balanceados (no justified — se ven raros con pocas palabras). */
@@ -653,10 +659,10 @@ body.blog .content-blog .section {
   text-wrap: balance;
 }
 
-/* Items de lista también con hyphens, pero NO justified (queda feo en bullets). */
+/* Items de lista: sin hyphens, left siempre. */
 .post-content li {
-  hyphens: auto;
-  -webkit-hyphens: auto;
+  hyphens: none;
+  -webkit-hyphens: none;
 }
 
 .post-content h1,

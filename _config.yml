@@ -9,6 +9,11 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
+  # Convierte cada salto de línea simple del .md en un <br>. Permite
+  # escribir los posts como en un editor normal (una frase por línea)
+  # sin tener que poner línea en blanco entre cada párrafo. Igual que
+  # GitHub hace en los comentarios de PRs e issues.
+  hard_wrap: true
 
 # Plugins compatibles con GitHub Pages
 plugins:
