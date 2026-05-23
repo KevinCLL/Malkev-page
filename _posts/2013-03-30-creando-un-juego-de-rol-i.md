@@ -71,8 +71,8 @@ Y... de momento eso es todo, a medida que vaya realizando cambios y cosas, las i
 
 **Indice de entradas**
 
-- [Las bases](http://www.malkevnia.com/index.php/?p=4410)
+- [Las bases](/blog/2013/03/30/creando-un-juego-de-rol-i/)
 
-- [Panacea](http://www.malkevnia.com/index.php/?p=4808)
+- [Panacea](/blog/2013/04/19/creando-un-juego-de-rol-panacea/)
 
 ---

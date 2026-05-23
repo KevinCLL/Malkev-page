@@ -4,7 +4,7 @@ title: "Declarándome a Lix"
 date: 2011-09-05 10:05:28 +0200
 description: "Quedamos en un Bar, le dije, a modo de coña, que quería hablar de economía. Llevaba meses perdidito por ella. Me habia ayudado un montón a superar mi..."
 tags: [archivo, diario, relaciones]
-published: true
+published: false
 redirect_from:
   - /?p=2028/
 ---
@@ -13,7 +13,7 @@ redirect_from:
 
 *🎵 On my shoulders (audio no recuperado)*
 
-[Quedamos en un Bar](http://www.malkevnia.com/lix/), le dije, a modo de coña, que quería hablar de economía.
+[Quedamos en un Bar](/personajes/lix/), le dije, a modo de coña, que quería hablar de economía.
 
 Llevaba meses perdidito por ella. Me habia ayudado un montón a superar mi ultima ruptura, habiamos pasado borracheras, fiestas, momentos consoleros e instantes tirados por el suelo, pero aun así, a pesar de ser amigos verdaderamente íntimos, casi la pareja perfecta, algo impedía que hubiera algo mas, una simple aunque abrumadora cosa, su sexualidad.
 

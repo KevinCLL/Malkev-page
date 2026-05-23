@@ -10,7 +10,7 @@ redirect_from:
 
 ![](/assets/img/blog/2010/11/Nueva-imagen.jpg)
 
-Cuando tengo que tomar una decisión que tal vez pueda desenvocar en problemas o considere que es una locura, decido lanzar una moneda, a la cual llamo, la moneda del destino. Hoy, es el cumpleaños de [Dormael](http://www.malkevnia.com/dormael/), la chica que conocí el [otro día](http://www.malkevnia.com/index.php/2010/11/22/desconexion/), y que ademas, menciono que quería una "moneda de esas". Asi que aqui estoy, haciendo un tutorial sobre como quedar "toh proh" haciendo un regalo barato, sencillo, pero muy personal y reshulon.
+Cuando tengo que tomar una decisión que tal vez pueda desenvocar en problemas o considere que es una locura, decido lanzar una moneda, a la cual llamo, la moneda del destino. Hoy, es el cumpleaños de [Dormael](/personajes/dormael/), la chica que conocí el [otro día](/blog/2010/11/22/desconexion/), y que ademas, menciono que quería una "moneda de esas". Asi que aqui estoy, haciendo un tutorial sobre como quedar "toh proh" haciendo un regalo barato, sencillo, pero muy personal y reshulon.
 
 MATERIALES NECESARIOS
 

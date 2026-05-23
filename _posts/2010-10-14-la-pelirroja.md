@@ -4,7 +4,7 @@ title: "La pelirroja"
 date: 2010-10-14 07:38:52 +0200
 description: "Creo que esta conversación final con la pelirroja da a entender toda nuestra historia. Que cada uno saque su propio mensaje. | | | | --- | --- | | (13:33)..."
 tags: [archivo, diario, relaciones]
-published: true
+published: false
 redirect_from:
   - /?p=1122/
 ---
@@ -13,7 +13,7 @@ redirect_from:
 
 *🎵 Roads - Portishead (audio no recuperado)*
 
-Creo que esta conversación final con [la pelirroja](http://www.malkevnia.com/la-pelirroja/) da a entender toda nuestra historia.
+Creo que esta conversación final con [la pelirroja](/personajes/la-pelirroja/) da a entender toda nuestra historia.
 
 Que cada uno saque su propio mensaje.
 
@@ -124,7 +124,7 @@ Que cada uno saque su propio mensaje.
 | (14:16) **Malkev:** | ***pensando que te encontrare una vez mas*** |
 | (14:17) **Malkev:** | ***pensando que en algún lugar del mundo existe esa princesa que busca un príncipe sinceramente, quise creerlo fue todo tan perfecto, que creí que seguiría siéndolo casi sin dudarlo*** |
 
-Esas ultimas palabras no eran para ella, sino para mi mismo y la "[Helena](http://www.malkevnia.com/index.php/helena/)" de la que me enamore.
+Esas ultimas palabras no eran para ella, sino para mi mismo y la "[Helena](/personajes/helena/)" de la que me enamore.
 
 |  |  |
 | --- | --- |

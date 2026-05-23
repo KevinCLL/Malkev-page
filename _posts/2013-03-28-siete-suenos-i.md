@@ -8,7 +8,7 @@ redirect_from:
   - /?p=4404/
 ---
 
-[![](/assets/img/blog/2013/03/my_teeth_were_falling_out_by_brokenopenseed-d30wxky.jpg)](http://www.malkevnia.com/index.php/2013/03/28/siete-suenos-i/)
+[![](/assets/img/blog/2013/03/my_teeth_were_falling_out_by_brokenopenseed-d30wxky.jpg)](/blog/2013/03/28/siete-suenos-i/)
 
 Últimamente estoy teniendo sueños bastante extraños. Normalmente son raros, pero hay algunos que se llevan la palma, y ya que estaba en racha he decidido ir apuntándolos en un papelito para describirlos después.  Quizás algún día tenga un psicoterapeuta que se frotará las manos con tanta absurdez y podrá sacarme el dinero a gusto durante meses y meses, pero mientras tanto, pues los apunto por aquí.
 
@@ -26,7 +26,7 @@ Empecemos:
 
  Normalmente lo que hago es correr todo lo rápido que puedo, y de repente, lanzarme en plancha de cabeza, como si fuera a darme un barrigazo contra el suelo, extiendo los brazos y noto que voy flotando a poca distancia del suelo. No suelo llegar a despegar, suelo quedarme a esa distancia y ni bajar ni subir, pero avanzando de forma constante o incluso aumentando un poco la velocidad. Nunca hay obstáculos así que no hay peligro de hostiarmela.
 
- De todas formas, lo normal es que en el sueño esté haciendo [parkour](http://www.malkevnia.com/2010/11/04/parkour/), frente un acantilado para lanzarme al mar, en la azotea de un edificio o algo por el estilo, y entonces me lanzo y planeo, evitando así darme una hostia que probablemente sería mortal. Cuando hay agua debajo incluso hago alguna que otra acrobacia, cual gaviota.
+ De todas formas, lo normal es que en el sueño esté haciendo [parkour](/blog/2010/11/04/parkour/), frente un acantilado para lanzarme al mar, en la azotea de un edificio o algo por el estilo, y entonces me lanzo y planeo, evitando así darme una hostia que probablemente sería mortal. Cuando hay agua debajo incluso hago alguna que otra acrobacia, cual gaviota.
 
  Curiosamente, una vez le pregunté a mi padre sobre el tema y sus sueños sobre volar eran bastante parecidos a los míos.
 

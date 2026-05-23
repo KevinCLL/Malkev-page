@@ -12,7 +12,7 @@ redirect_from:
 
 *🎵 Mr Blue Sky (audio no recuperado)*
 
-[Juno Temple](http://es.wikipedia.org/wiki/Juno_Temple), actriz que me tiene enamorado, en la película de Mr. Nobody se tiñe de castaño, y me recuerda horrores a [Helena](http://www.malkevnia.com/helena/). Llamadme obseso si queréis, pero no soy el único que piensa igual.
+[Juno Temple](http://es.wikipedia.org/wiki/Juno_Temple), actriz que me tiene enamorado, en la película de Mr. Nobody se tiñe de castaño, y me recuerda horrores a [Helena](/personajes/helena/). Llamadme obseso si queréis, pero no soy el único que piensa igual.
 
 Una noche mas, cazo al personal desprevenido para forzarles a ver la que es una de mis películas favoritas. Termina la sesión y cada uno se va a su respectiva casa, pero el mensaje enviado directamente a mi cerebro perdura, en este caso, solo tienes una oportunidad para decidir.
 
@@ -23,7 +23,7 @@ Mis estupidos impulsos de montar escenitas, unido al recuerdo creado por la act
 > "A las 19 sobre un puente azul. Te esperare."
 
 Si, un sms citándola para quedar. Que iluso soy.
-Me da por imaginarme un reencuentro super maduro, como el que tuve [Friki](http://www.malkevnia.com/helena/), contarnos lo sucedido a lo largo del tiempo, hacernos reír, dejarnos de niñatadas y mirarnos a los ojos sin odio, y porque no, terminar con un enorme abrazo con el sol del atardecer de fondo para darle mayor dramatismo. Por una vez, no era una escena en plan "Sin ti no hay vida" en la que dejaba a su novio y volvía conmigo, solo quería algo humano, como si de una película de [Kevin Smith](http://es.wikipedia.org/wiki/Kevin_Smith) se tratara.
+Me da por imaginarme un reencuentro super maduro, como el que tuve [Friki](/personajes/helena/), contarnos lo sucedido a lo largo del tiempo, hacernos reír, dejarnos de niñatadas y mirarnos a los ojos sin odio, y porque no, terminar con un enorme abrazo con el sol del atardecer de fondo para darle mayor dramatismo. Por una vez, no era una escena en plan "Sin ti no hay vida" en la que dejaba a su novio y volvía conmigo, solo quería algo humano, como si de una película de [Kevin Smith](http://es.wikipedia.org/wiki/Kevin_Smith) se tratara.
 Unos doce minutos mas tarde, ya en mi estúpida nube peliculera, recibo su respuesta. (Son las 05:36 de la madrugada)
 > **Helena**
 >

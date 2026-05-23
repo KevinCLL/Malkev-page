@@ -4,7 +4,7 @@ title: "Celos vampiricos"
 date: 2011-09-29 05:46:14 +0200
 description: "No, tranquilos, no voy a hablar de Crepúsculo. Son celos de los de verdad, de los de una Vampiresa gótica y demente de las de la vieja escuela, esas que..."
 tags: [archivo, diario, humor]
-published: true
+published: false
 redirect_from:
   - /?p=2956/
 ---
@@ -12,8 +12,8 @@ redirect_from:
 ![](/assets/img/blog/2011/09/sateut-004.jpg)
 
 *🎵 going under (audio no recuperado)*
-No, tranquilos, no voy a hablar de Crepúsculo. Son celos de los de verdad, de los de una [Vampiresa](http://www.malkevnia.com/index.php/la-vampiresa/) gótica y demente de las de la vieja escuela, esas que te chupan la sangre, entre otras cosas, y te dejan seco.
-Estamos a principios del dos mil nueve, mas o menos, y llegaba yo de una guardia de veinticuatro horas, cansado, por supuesto, y un poco mas agobiado de lo normal, porque la convivencia estaba siendo un verdadero caos y no veía forma de arreglarlo. Habia conocido a una chica nueva gracias a la ultima liada parda de la Vampiresa, una tal [Helena](http://www.malkevnia.com/index.php/helena/), y me refugiaba un poco en su amistad para pasar la tormenta que era mi día a día. La Vampiresa veía eso super mal, y no paraba de buscarle cinco pies al gato, como si a mi me gustara esa chiquilla y fuera a terminar con ella. Que locura, verdad?
+No, tranquilos, no voy a hablar de Crepúsculo. Son celos de los de verdad, de los de una [Vampiresa](/personajes/la-vampiresa/) gótica y demente de las de la vieja escuela, esas que te chupan la sangre, entre otras cosas, y te dejan seco.
+Estamos a principios del dos mil nueve, mas o menos, y llegaba yo de una guardia de veinticuatro horas, cansado, por supuesto, y un poco mas agobiado de lo normal, porque la convivencia estaba siendo un verdadero caos y no veía forma de arreglarlo. Habia conocido a una chica nueva gracias a la ultima liada parda de la Vampiresa, una tal [Helena](/personajes/helena/), y me refugiaba un poco en su amistad para pasar la tormenta que era mi día a día. La Vampiresa veía eso super mal, y no paraba de buscarle cinco pies al gato, como si a mi me gustara esa chiquilla y fuera a terminar con ella. Que locura, verdad?
 Abro la puerta de casa, saludo y no recibo respuesta. Bueno, eso es mejor que recibir respuesta de un desconocido que esta durmiendo en el sofá, como ya había pasado otras veces. Debe tener turno de mañana en el hospital, asi que, por desgracia, me tocará dormir solo. Si, a pesar de estar todo el día de bronca, a la hora de dormir, seguíamos tan ñoños como el primer momento.
 Pero antes, toca rutina. Y la rutina, por supuesto, es mirar como van las descargas. Pero antes de llegar al PC, sobre la mesita del salón, me encuentro un taco enorme de folios, perfectamente ordenado. Eso no seria raro si no fuera porque estaban impresos con todas y cada una de las conversaciones que había tenido con Helena, y para mas inri, con decenas y decenas de frases subrayadas y sacadas de contexto.
 “Me caes muy bien” y “Tienes buen gusto con las películas” son ejemplos de frases que recuerdo subrayadas; tal vez no sean las mas rebuscadas, pero se entiende el concepto.

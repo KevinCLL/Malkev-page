@@ -4,7 +4,7 @@ title: "Empezar las cosas con mal pie"
 date: 2011-11-08 23:37:15 +0100
 description: "En mi vida, las personas que me importan pueden contarse con los dedos de las manos, la chica a la que amo, mi mejor amiga, mi mejor y único amigo, las..."
 tags: [archivo, diario]
-published: true
+published: false
 redirect_from:
   - /?p=3098/
 ---

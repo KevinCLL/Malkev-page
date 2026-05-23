@@ -53,12 +53,7 @@ layout: default
   </nav>
 </article>
 
-
 <script>
-  // Barra de progreso de scroll: rellena la barra superior en función
-  // de cuánto del artículo se ha visto.
-  // Nota: en este sitio el scroll ocurre en <body> (no en window),
-  // por eso escuchamos en document con capture para recibir el evento.
   (function () {
     const bar = document.querySelector('.reading-progress-bar');
     const article = document.querySelector('.post');
@@ -76,9 +71,6 @@ layout: default
     update();
   })();
 
-  // Modo lectura: botón en la esquina superior derecha del post.
-  // Atenúa fondo animado, ensancha contenedor, aumenta tipografía.
-  // Persiste con localStorage entre visitas.
   (function () {
     const btn = document.querySelector('.reading-mode-toggle');
     if (!btn) return;
@@ -108,13 +100,8 @@ layout: default
     data-page-title="{{ page.title | escape }}"
     data-theme="dark">
   </div>
-  <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"
-    onload="window.CUSDIS && window.CUSDIS.setTheme && window.CUSDIS.setTheme('dark')"></script>
+  <script async defer src="{{ site.cusdis.host | default: 'https://cusdis.com' }}/js/cusdis.es.js"></script>
   <script>
-    // Consultamos la API pública de Cusdis para saber cuántos
-    // comentarios tiene este post. Con ese número calculamos dónde
-    // aplicar el mask que tapa el "Comments powered by Cusdis":
-    // 280px de form + 100px estimados por comentario.
     (async () => {
       const thread = document.getElementById('cusdis_thread');
       if (!thread) return;
@@ -134,9 +121,7 @@ layout: default
         thread.style.setProperty('--mask-end', maskEnd + 'px');
         thread.style.setProperty('--iframe-min-h', minH + 'px');
         thread.classList.add('mask-ready');
-      } catch (e) {
-        // En error, no aplicamos mask — preferimos branding visible a romper el render.
-      }
+      } catch (e) {}
     })();
   </script>
 </section>

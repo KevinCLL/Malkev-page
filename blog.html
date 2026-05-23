@@ -14,7 +14,6 @@ permalink: /blog/
 
 <header class="blog-header">
   <h1 class="blog-title"><span>BLOG</span></h1>
-  <p class="blog-subtitle">Notas y pensamientos</p>
   <nav class="blog-subnav">
     <a href="/blog/archivo/" class="blog-subnav-link"><i class="fas fa-box-archive" aria-hidden="true"></i> Archivo</a>
     <a href="/feed.xml" class="blog-subnav-link"><i class="fas fa-rss" aria-hidden="true"></i> RSS</a>
@@ -106,7 +105,6 @@ permalink: /blog/
   let activeTag = 'all';
   let query = '';
 
-  // Toggle del despliegue de tags
   function setTagsOpen(open) {
     if (!tagCloud || !tagToggle) return;
     tagCloud.hidden = !open;
@@ -114,13 +112,13 @@ permalink: /blog/
     tagToggle.classList.toggle('is-open', open);
     try { localStorage.setItem(TAG_OPEN_KEY, open ? '1' : '0'); } catch (e) {}
   }
+
   if (tagToggle) {
     tagToggle.addEventListener('click', () => {
       setTagsOpen(tagToggle.getAttribute('aria-expanded') !== 'true');
     });
   }
 
-  // Lee ?tag=foo de la URL si viene de un enlace de tag
   const params = new URLSearchParams(window.location.search);
   if (params.has('tag')) {
     const requested = params.get('tag').toLowerCase();
@@ -128,10 +126,9 @@ permalink: /blog/
     if (match) {
       activeTag = match.dataset.tag;
       tagButtons.forEach(b => b.classList.toggle('active', b === match));
-      setTagsOpen(true);                  // si viene filtrado, abre el cloud
+      setTagsOpen(true);
     }
   } else {
-    // restaura estado previo (si lo había)
     try { setTagsOpen(localStorage.getItem(TAG_OPEN_KEY) === '1'); } catch (e) {}
   }
 

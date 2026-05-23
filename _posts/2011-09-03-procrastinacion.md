@@ -20,4 +20,4 @@ Hoy, Sary-chan, ha dicho que ha leido un poco mi pagina porque queria conocerme 
 
 Mañana más, y mejor!
 
-*EDITO: Aquí antes había una anécdota llamada "[Celos vampiricos](http://www.malkevnia.com/index.php/?p=2956)" que finalmente he trasladado a una entrada propia con la historia completa. Lo digo mas que nada para que los comentarios no suenen a locura.*
+*EDITO: Aquí antes había una anécdota llamada "[Celos vampiricos](/blog/2011/09/29/celos-vampiricos/)" que finalmente he trasladado a una entrada propia con la historia completa. Lo digo mas que nada para que los comentarios no suenen a locura.*

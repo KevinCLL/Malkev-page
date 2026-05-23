@@ -4,7 +4,7 @@ title: "Sex, hypocrisy & Latin love"
 date: 2011-01-23 14:46:37 +0100
 description: "Jamas podría haberme imaginado que esta historia sucediera de la forma en la que sucedió, y aun mas que me sucediera a mi. “Amiga con derecho a roce”..."
 tags: [archivo, diario, relaciones]
-published: true
+published: false
 redirect_from:
   - /?p=1331/
 ---
@@ -15,7 +15,7 @@ redirect_from:
 
 Jamas podría haberme imaginado que esta historia sucediera de la forma en la que sucedió, y aun mas que me sucediera a mi.
 “Amiga con derecho a roce” (follamiga que se llama comúnmente, pero es que me repatea la palabra), algo que veía ilógico, por muy común que pueda parecerle al mundo, porque para mi una de las cosas mas importantes del sexo, es el amor. Pero he de reconocer, que mirándolo desde el punto de vista biológico y practico, es algo bastante a tener en cuenta, pero no voy a profundizar en eso, porque a lo largo de la historia me voy dando cuenta de los pros y de los contras del asunto. Pido por favor, que cada uno saque sus propias conclusiones.
-El primer Jueves por la mañana del año, llevaba toda la noche despierto, y un poco depre por ya no recuerdo que motivo, alguna ñoñez de las mias probablemente. La única persona en el msn, [mi vecina](http://www.malkevnia.com/index.php/latin-lover/). Se que no se merece que le toquen las narices, pero... era hora de trolear un poquito, crear discusión, que se cagaran en mi, echarme unas risas, olvidarme de los problemas y a la cama.
+El primer Jueves por la mañana del año, llevaba toda la noche despierto, y un poco depre por ya no recuerdo que motivo, alguna ñoñez de las mias probablemente. La única persona en el msn, [mi vecina](/personajes/latin-lover/). Se que no se merece que le toquen las narices, pero... era hora de trolear un poquito, crear discusión, que se cagaran en mi, echarme unas risas, olvidarme de los problemas y a la cama.
 Lo que paso fue algo que aun hoy, no termino de comprender... pero bueno... aquí esta:
 
 |  |  |
@@ -135,12 +135,12 @@ Si, si, ya se, no decírselo a nadie, no subirlo a la pagina, el ir girando la t
 
 Viernes, la llamo y quedamos. No sabia como recibirla, así que le abrí la puerta, ya desnudo y listo para la acción! Que no, que es coña. XD Fuimos a la habitación, estuvimos hablando, yo super cortado sin saber que hacer, aun pensaba que me estaba tomando el pelo. Finalmente, entre frase y frase, nos tumbamos en la cama, una cosa lleva a la otra y zas! Desnudos!
 No entrare en detalles, como buen caballero que soy, pero diré que todo era sudor, sexo salvaje y gemidos, una delicia que debería haber probado antes, pues mi lado mas animal estaba reprimido por mi necesidad patologica de dar amor a la persona que amo (valga la redundancia). La equacion ahora era distinta, sin amor, no se donde tengo que parar, y mis depravaciones, van aflorando.
-Sábado, otra vez,  Domingo, otra, y la historia se ha ido repitiendo exceptuando algunos días en los que ella tenia... digamos que sobrecarga en el cuerpo. Poco a poco, le iba contagiando con mi enfermedad, mis gustos y mis obsesiones sexuales. Un día, llegue incluso a utilizarla en mis bromas contra [Berto](http://www.malkevnia.com/berto/):
+Sábado, otra vez,  Domingo, otra, y la historia se ha ido repitiendo exceptuando algunos días en los que ella tenia... digamos que sobrecarga en el cuerpo. Poco a poco, le iba contagiando con mi enfermedad, mis gustos y mis obsesiones sexuales. Un día, llegue incluso a utilizarla en mis bromas contra [Berto](/personajes/berto/):
 <div class="video-embed"><iframe width="560" height="315" src="https://www.youtube.com/embed/ll4OPUke1rY" frameborder="0" allowfullscreen></iframe></div>
 
-El tiempo pasaba, y yo estaba la mar de feliz, estaba ganando peso, tenia sexo regularmente con la Latin Lover, una amiga increíble, [Lix](http://www.malkevnia.com/lix/), y estaba enamorado de una chica espectacular. ¿Que mas podía pedir?
+El tiempo pasaba, y yo estaba la mar de feliz, estaba ganando peso, tenia sexo regularmente con la Latin Lover, una amiga increíble, [Lix](/personajes/lix/), y estaba enamorado de una chica espectacular. ¿Que mas podía pedir?
 
-Pero... porque siempre hay un "pero", empezaba a sentirme hipócrita. Que diferencia había entre lo que la pelirroja me hizo a mi y lo que yo estaba haciendo en ese momento? No estaba traicionando mi amor por [Dormael](http://www.malkevnia.com/dormael/), que no a la propia Dormael, con todo ese sexo sin sentido? Donde quedaba ese chico que anteponía el amor a todo y que a pesar de ver como le daban la patada de su vida, decidió seguir soñando con princesas y príncipes? Desde luego, ese chico no era yo en ese momento.
+Pero... porque siempre hay un "pero", empezaba a sentirme hipócrita. Que diferencia había entre lo que la pelirroja me hizo a mi y lo que yo estaba haciendo en ese momento? No estaba traicionando mi amor por [Dormael](/personajes/dormael/), que no a la propia Dormael, con todo ese sexo sin sentido? Donde quedaba ese chico que anteponía el amor a todo y que a pesar de ver como le daban la patada de su vida, decidió seguir soñando con princesas y príncipes? Desde luego, ese chico no era yo en ese momento.
 
 Después de declararme a Dormael, y cenar sopa de calabaza con calabazas rellenas de calabaza y guarnición de calabaza, interprete que eso era una señal, una señal "karmica" o alguna estupidez supina de ese palo que me avisaba de mi hipocresía. Yo no quiero ser como ellas! Como todas esas zorras que me han hecho daño, no! Yo quiero ser un príncipe, un príncipe que busca a una princesa, y que por muy depravado que sea en su interior, solo llegara a conocerlo la persona que el ama, y no solo serlo de boquilla, cumplirlo! Aunque nadie lo vea.
 

@@ -5,15 +5,13 @@ document.addEventListener('DOMContentLoaded', () => {
   const currentYear = new Date().getFullYear();
   const footerYear = document.querySelector('.footer p');
   if (footerYear) {
-    footerYear.textContent = `\u00A9 2009-${currentYear} Malkevnia. Todos los derechos reservados.`;
+    footerYear.textContent = `© 2009-${currentYear} Malkevnia. Todos los derechos reservados.`;
   }
 
-  // Letter-by-letter reveal on title
   const titleSpan = document.querySelector('.content span');
   if (titleSpan) {
     const text = titleSpan.textContent;
     titleSpan.textContent = '';
-
     [...text].forEach((char, i) => {
       const letter = document.createElement('span');
       letter.textContent = char;
@@ -23,33 +21,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  document.body.style.overflow = 'hidden';
-
-  content.classList.add('fade-hidden');
-
-  setTimeout(() => {
-    content.style.transition = 'opacity 1s ease, transform 1s ease';
-    content.classList.remove('fade-hidden');
-  }, 300);
-
-  const lastSectionDelay = 600 + ((sections.length - 1) * 200) + 800;
-
-  sections.forEach((section, index) => {
-    section.classList.add('fade-hidden');
-
+  if (content) {
+    document.body.style.overflow = 'hidden';
+    content.classList.add('fade-hidden');
     setTimeout(() => {
-      section.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
-      section.classList.remove('fade-hidden');
+      content.style.transition = 'opacity 1s ease, transform 1s ease';
+      content.classList.remove('fade-hidden');
+    }, 300);
 
+    const lastSectionDelay = 600 + ((sections.length - 1) * 200) + 800;
+    sections.forEach((section, index) => {
+      section.classList.add('fade-hidden');
       setTimeout(() => {
-        section.style.transition = '';
-      }, 800);
-    }, 600 + (index * 200));
-  });
+        section.style.transition = 'opacity 0.8s ease, transform 0.8s ease';
+        section.classList.remove('fade-hidden');
+        setTimeout(() => { section.style.transition = ''; }, 800);
+      }, 600 + (index * 200));
+    });
 
-  setTimeout(() => {
-    document.body.style.overflow = '';
-  }, lastSectionDelay);
+    setTimeout(() => { document.body.style.overflow = ''; }, lastSectionDelay);
+  }
 
   createRandomShootingStars();
   initParallax();
@@ -60,12 +51,12 @@ let shootingStarInterval = null;
 
 function createRandomShootingStars() {
   const background = document.querySelector('.background');
+  if (!background) return;
 
   function startInterval() {
     if (shootingStarInterval) return;
     shootingStarInterval = setInterval(() => {
       const star = document.createElement('div');
-
       const startY = Math.random() * 80;
       const duration = 2 + Math.random() * 3;
       const length = 50 + Math.random() * 100;
@@ -86,10 +77,7 @@ function createRandomShootingStars() {
       `;
 
       background.appendChild(star);
-
-      setTimeout(() => {
-        star.remove();
-      }, duration * 1000);
+      setTimeout(() => { star.remove(); }, duration * 1000);
     }, 5000);
   }
 
@@ -101,11 +89,8 @@ function createRandomShootingStars() {
   }
 
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopInterval();
-    } else {
-      startInterval();
-    }
+    if (document.hidden) stopInterval();
+    else startInterval();
   });
 
   startInterval();
@@ -117,7 +102,6 @@ function initParallax() {
   const starsLayer = document.querySelector('.stars');
   const stars2Layer = document.querySelector('.stars2');
   const stars3Layer = document.querySelector('.stars3');
-
   if (!starsLayer || !stars2Layer || !stars3Layer) return;
 
   let mouseX = 0;
@@ -133,14 +117,11 @@ function initParallax() {
   function update() {
     currentX += (mouseX - currentX) * 0.05;
     currentY += (mouseY - currentY) * 0.05;
-
     starsLayer.style.translate = `${currentX * 10}px ${currentY * 10}px`;
     stars2Layer.style.translate = `${currentX * 25}px ${currentY * 25}px`;
     stars3Layer.style.translate = `${currentX * 45}px ${currentY * 45}px`;
-
     requestAnimationFrame(update);
   }
-
   requestAnimationFrame(update);
 }
 
@@ -181,12 +162,9 @@ function initCursorGlow() {
   function update() {
     glowX += (targetX - glowX) * 0.15;
     glowY += (targetY - glowY) * 0.15;
-
     glow.style.left = glowX + 'px';
     glow.style.top = glowY + 'px';
-
     requestAnimationFrame(update);
   }
-
   requestAnimationFrame(update);
 }

@@ -4,7 +4,7 @@ title: "El día que cumplí los 21"
 date: 2010-12-30 06:00:44 +0100
 description: "Seis y media de la tarde, me levanto porque he quedado con mi Diva para que le compre unos zapatos a su chico. F también se apunta, por lo que somos tres..."
 tags: [archivo, diario]
-published: true
+published: false
 redirect_from:
   - /?p=1152/
 ---
@@ -13,10 +13,10 @@ redirect_from:
 
 *🎵 The passenger - Iggy Pop (audio no recuperado)*
 
-Seis y media de la tarde, me levanto porque he quedado con mi [Diva](http://www.malkevnia.com/la-diva/) para que le compre unos zapatos a su chico. F también se apunta, por lo que somos tres personas vagabundeando por la calle en busca de un calzado decente para un veintiochoañero. Finalmente, al darnos cuenta de que ella no ha cogido la cartera, y después de las risas, decidimos separarnos F y yo para ir al “.Hack café” mientras ella va a casa a buscar su money.
+Seis y media de la tarde, me levanto porque he quedado con mi [Diva](/personajes/la-diva/) para que le compre unos zapatos a su chico. F también se apunta, por lo que somos tres personas vagabundeando por la calle en busca de un calzado decente para un veintiochoañero. Finalmente, al darnos cuenta de que ella no ha cogido la cartera, y después de las risas, decidimos separarnos F y yo para ir al “.Hack café” mientras ella va a casa a buscar su money.
 Llegamos, nos sentamos y empieza la verborrea, para variar un poco, como no, de tías. Bueno, mas que de tías, de relaciones con tías y como afrontarlas, eso si, de una forma super molona y rompedora, porque somos gente guay y tenemos que hacerlo notar. Lo típico, no se que hacer por aquí, que harías tu por allá. El tiene su forma de ver las cosas y yo la mía, aunque coincidimos en muchos puntos, pero la verdad es que es un grandisimo motivador el cabroncete y suelta unos consejos la mar de ingeniosos.
 Al rato llega la Diva de nuevo, seguimos charlando, jugamos un rato al Churrusqui un rato(ya haré una publicación sobre ese juego) y hacemos tiempo hasta que se hace tarde. En realidad, lo de hacer tiempo, lo digo ahora, porque yo no lo sabia, me entere después. He de reconocer que a mi me parecía un día normal y corriente y no me entere en ningún momento de lo que estaba pasando, es mas, gran parte del tiempo hablaba sobre la fiesta que quería hacer yo al día siguiente.
-Toca ir a casa. Yo pensaba que para ver una peli o algo, pero nada mas abrir la puerta, noto algo extraño, los condones que habíamos hinchado el otro día (a veces hacemos cosas raras) estaban en el salón, que cosa mas rara, ¿Como habían llegado ahí? Enciendo la luz y esta la mesa llena a rebosar de platos con pizzas, frutos secos, ganchitos y bebida... ¡Sorpresa! [Dormael](http://www.malkevnia.com/dormael/) y [Lix](http://www.malkevnia.com/lix/) aparecen de detrás de la puerta...
+Toca ir a casa. Yo pensaba que para ver una peli o algo, pero nada mas abrir la puerta, noto algo extraño, los condones que habíamos hinchado el otro día (a veces hacemos cosas raras) estaban en el salón, que cosa mas rara, ¿Como habían llegado ahí? Enciendo la luz y esta la mesa llena a rebosar de platos con pizzas, frutos secos, ganchitos y bebida... ¡Sorpresa! [Dormael](/personajes/dormael/) y [Lix](/personajes/lix/) aparecen de detrás de la puerta...
 
 SHOCK!
 

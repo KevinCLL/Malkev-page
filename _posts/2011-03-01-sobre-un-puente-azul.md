@@ -4,7 +4,7 @@ title: "Sobre un puente azul"
 date: 2011-03-01 23:27:01 +0100
 description: "No puedo evitar pensar en lo estúpido de mi fe hacia algunas personas, no puedo evitar ser un iluso cuando se trata de alguien importante para mi, no..."
 tags: [archivo, diario]
-published: true
+published: false
 redirect_from:
   - /?p=2063/
 ---
@@ -23,13 +23,13 @@ A medida que me acerco, la silueta se va volviendo mas evidente, aunque yo, no q
 
 Maldito puente, he tenido que subir por el lado largo, tengo que hacer mas camino, hago un ultimo sprint. Mis pesados pasos hacen vibrar el suelo de la estructura levemente, mis ojos no paran de mirar al suelo porque no quieren enfrentarse a la realidad. Giro la esquina, apoyo mis manos en mis rodillas, exhalo por el cansancio, alzo la cabeza, abro los ojos, allí no hay nadie.
 
-Solo son las siete, no pasa nada, [Helena](http://www.malkevnia.com/helena/) nunca ha sido la chica mas puntual del mundo, se habrá liado con algo, estará indecisa o puede que se haya olvidado, pero seguro que aparece, la chica que conocí nunca hubiera faltado a una cosa así, aunque fuera por simple curiosidad o cortesía.
+Solo son las siete, no pasa nada, [Helena](/personajes/helena/) nunca ha sido la chica mas puntual del mundo, se habrá liado con algo, estará indecisa o puede que se haya olvidado, pero seguro que aparece, la chica que conocí nunca hubiera faltado a una cosa así, aunque fuera por simple curiosidad o cortesía.
 
 Hace un frío que pela, mejor me pongo la capucha y meto las manos en la chaqueta a lo muñón. Miro al infinito, esta atardeciendo, recuerdo que ella siempre le hacia fotos desde su ventana, quizás ese es el motivo de su retraso, o puede que este sumergida en sus libros o escribiendo. Si, seguro que es eso.
 
 Los minutos pasan, mis dedos se van congelando, estoy todo lo atento que puedo, seguro que en cualquier momento tras alguna esquina la veo asomarse una cabecita comprobando que ahí estoy, con eso me vale, me daría por satisfecho. Podría afirmar que aun existe un atisbo de lo que la convertía en esa personita tan especial, cogería la poca dignidad que me queda y me largaría de ahí.
 
-Ya es de noche, tal vez me equivoqué de hora y le puse las ocho. Saco el móvil, compruebo el [sms](http://www.malkevnia.com/index.php/?p=2045), no, dije a las siete. Aparecerá, se que aparecerá.
+Ya es de noche, tal vez me equivoqué de hora y le puse las ocho. Saco el móvil, compruebo el [sms](/blog/2011/03/01/sin-ti-no-hay-vida/), no, dije a las siete. Aparecerá, se que aparecerá.
 
 Los malditos focos del puente están todos rotos y no veo a las escasas personas que pasan por este hasta que están a un metro de mi. Alguien viene! Otro corredor... malditos estupidos! Fuera de mi puente!
 

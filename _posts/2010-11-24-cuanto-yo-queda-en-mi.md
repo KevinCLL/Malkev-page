@@ -16,7 +16,7 @@ redirect_from:
 ¿Cómo descubrirle al mundo, y a tí mismo, todo lo que reside dentro de esa cabecita?
 Todos los proyectos, los sueños, las obsesiones compartidas, el afán, el afán de perseguir lo que quieres, aunque nunca nadie se haya preocupado de quitar una piedrecita del camino cuando más la necesitabas... Pero eso no te ha hecho dar media vuelta...
 
-[Helena](http://www.malkevnia.com/index.php/helena/), 19/11/09
+[Helena](/personajes/helena/), 19/11/09
 
 Esa pasión... Esa pasión irrefrenable por tus propios mundo...
 

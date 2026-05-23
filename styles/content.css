@@ -56,11 +56,6 @@
   animation-delay: 1s;
 }
 
-.shooting-star::before,
-.shooting-star::after {
-  display: none;
-}
-
 .links {
   display: flex;
   flex-direction: column;
@@ -134,7 +129,6 @@
   margin-top: -5px;
   transition: filter 0.3s ease;
   animation: gradientShift 8s ease infinite;
-  text-align: left;
 }
 
 .section:hover > h2 {
@@ -157,7 +151,7 @@
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 0 10px rgba(139, 168, 255, 0.3));
-  text-align: left;
+  text-decoration: none;
 }
 
 .links a i {
@@ -168,16 +162,7 @@
   background: none;
 }
 
-.links a:link {
-  text-decoration: none;
-}
-
-.links a:visited {
-  text-decoration: none;
-}
-
 .links a:hover {
-  text-decoration: none;
   background: linear-gradient(90deg, #ffffff, var(--color-link-soft));
   background-size: 200% 200%;
   background-clip: text;
@@ -208,10 +193,6 @@
   width: 100%;
 }
 
-.links a:active {
-  text-decoration: none;
-}
-
 .links a:focus-visible {
   outline: 2px solid var(--color-link-soft);
   outline-offset: 4px;
@@ -225,74 +206,36 @@
 }
 
 @keyframes gradientShift {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 @keyframes shootingStarTitle {
-  0% {
-    opacity: 0;
-    width: 50px;
-    transform: translateX(0);
-  }
-  5% {
-    opacity: 1;
-    width: 150px;
-  }
-  90% {
-    opacity: 1;
-    width: 150px;
-  }
-  100% {
-    opacity: 0;
-    width: 50px;
-    transform: translateX(calc(100vw + 200px));
-  }
+  0% { opacity: 0; width: 50px; transform: translateX(0); }
+  5% { opacity: 1; width: 150px; }
+  90% { opacity: 1; width: 150px; }
+  100% { opacity: 0; width: 50px; transform: translateX(calc(100vw + 200px)); }
 }
 
 @keyframes shootingStar {
-  0% {
-    opacity: 0;
-    transform: rotate(15deg) translateX(0);
-  }
-  5% {
-    opacity: 1;
-  }
-  95% {
-    opacity: 1;
-  }
-  100% {
-    opacity: 0;
-    transform: rotate(15deg) translateX(calc(100vw + 200px));
-  }
+  0% { opacity: 0; transform: rotate(15deg) translateX(0); }
+  5% { opacity: 1; }
+  95% { opacity: 1; }
+  100% { opacity: 0; transform: rotate(15deg) translateX(calc(100vw + 200px)); }
 }
 
 @keyframes breathingGlow {
-  from {
-    filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 10px rgba(127, 56, 150, 0.2));
-  }
-  to {
-    filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 35px rgba(67, 95, 189, 0.5)) drop-shadow(0 0 60px rgba(53, 184, 224, 0.25));
-  }
+  from { filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 10px rgba(127, 56, 150, 0.2)); }
+  to   { filter: drop-shadow(0 0 15px rgba(0, 0, 0, 0.7)) drop-shadow(0 0 35px rgba(67, 95, 189, 0.5)) drop-shadow(0 0 60px rgba(53, 184, 224, 0.25)); }
 }
 
 @keyframes letterReveal {
-  to {
-    opacity: 1;
-  }
+  to { opacity: 1; }
 }
 
 @keyframes borderRotate {
-  to {
-    --border-angle: 360deg;
-  }
+  to { --border-angle: 360deg; }
 }
 
 .footer {
@@ -342,7 +285,6 @@
   color: var(--color-heading);
   text-shadow: 0 0 15px rgba(163, 204, 255, 0.6);
   user-select: none;
-  text-align: left;
 }
 
 .hobbies .subsection a {
@@ -352,27 +294,21 @@
   font-size: 1.1rem;
 }
 
-/* Fade-in animation utility */
 .fade-hidden {
   opacity: 0;
   transform: translateY(20px);
 }
 
-/* Media queries para responsive */
 @media screen and (min-width: 768px) {
   .links {
     display: grid;
     grid-template-columns: 3fr 2fr;
-    grid-template-rows: auto;
-    grid-template-areas:
-      "hobbies right";
+    grid-template-areas: "hobbies right";
     gap: 1.5rem;
     width: 100%;
   }
 
-  .hobbies {
-    grid-area: hobbies;
-  }
+  .hobbies { grid-area: hobbies; }
 
   .right-column {
     grid-area: right;
@@ -381,23 +317,8 @@
     gap: 1.5rem;
   }
 
-  .personal, .gifts {
-    height: auto;
-    margin-bottom: 0;
-  }
-
-  .hobbies .subsection {
-    width: 100%;
-    margin-bottom: 15px;
-  }
-
-  .section > h2 {
-    font-size: 2rem;
-  }
-
-  .links a {
-    font-size: 1.25rem;
-  }
+  .section > h2 { font-size: 2rem; }
+  .links a { font-size: 1.25rem; }
 }
 
 @media screen and (max-width: 767px) {
@@ -405,18 +326,13 @@
     font-size: 6vmin;
     letter-spacing: 6px;
     padding: 15px;
-    align-items: center;
     width: 100%;
     max-width: 100%;
   }
 
-  .title span {
-    font-size: 10vmin;
-  }
+  .title span { font-size: 10vmin; }
 
-  .links {
-    gap: 0;
-  }
+  .links { gap: 0; }
 
   .section {
     margin-bottom: 1.5rem;
@@ -435,9 +351,7 @@
     margin-bottom: 10px;
   }
 
-  .footer p {
-    font-size: 0.8rem;
-  }
+  .footer p { font-size: 0.8rem; }
 
   .shooting-star {
     animation-duration: 2000ms;

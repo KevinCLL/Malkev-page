@@ -4,7 +4,7 @@ title: "La venganza de la vampiresa"
 date: 2010-09-19 03:06:57 +0200
 description: "Habia pasado un año y medio desde que termino nuestra relación, y unos ocho meses desde que nos vimos por ultima vez. Lo que paso ese día... aun escapa a..."
 tags: [archivo, diario, humor]
-published: true
+published: false
 redirect_from:
   - /?p=393/
 ---
@@ -14,9 +14,9 @@ redirect_from:
 Habia pasado un año y medio desde que termino nuestra relación, y unos ocho meses desde que nos vimos por ultima vez.
 Lo que paso ese día... aun escapa a mi razón. Pero como siempre intento con las historias mas bizarras, lo tomare con humor.
 La historia en realidad, no puede dar mucho de si, ya que aconteció en unos pocos minutos, pero añadiré mi punto de vista respecto al tema para matizarlo un poquito.
-Sábado, dormir durante 12 horas después de lo que parecía el final de otro intento de nueva relación, un despertar verdaderamente amargo y muy pocas ganas de hacer cualquier cosa. Me llamo la [Diva](http://www.malkevnia.com/index.php/la-diva/), cosa normal teniendo en cuenta que era de noche, gracias a algún Dios que no iba a estar solo en un día como ese.
-La noche va avanzando sobre ruedas, dentro de lo que cabe. Consuelo, acompañamiento inesperado por parte de un tercero, un par de risas y cachetes para hacerme pensar en otras cosas, peticiones indecentes hacia mi persona, las cuales me llegue incluso a plantear, y finalmente, dirigirnos los tres a casa de mi pequeña amiga, para que llegue sana y salva. Poco podía yo imaginarme cuando empece a caminar de vuelta a [la cueva](http://www.malkevnia.com/2010/11/28/mi-cueva/), lo que sucedería momentos después, y muchísimo menos, mi agregado.
-Subiendo por una calle peatonal, muy larga, y sin callejones , por la tanto, sin escapatoria, me encuentro a la [vampiresa](http://www.malkevnia.com/la-vampiresa/), tan imponente como siempre, luciendo su exuberante cuerpo de mujer, aunque no dejando demasiado margen a la imaginación, cosa que me sigue pareciendo un tanto de mal gusto. Intento hacerme el loco siguiendo con la conversación de mi acompañante, tranquilo, como si la cosa no fuera conmigo, caminando a paso normal, esperando que la decencia se apoderara de ella y me ignorara como haría cualquier persona normal después de como fue evolucionando la historia. Pero no pudo ser, una sonrisilla malevola se había dibujado en su rostro, eso solo significaba una cosa, me había visto, y no solo eso, se dirigía desafiante hacia mi, a paso ligero, dejando atrás a su actual pareja y hermano de [Helena](http://www.malkevnia.com/helena/), Mr. Al Bundy, hasta llegar justo frente a mi, y Dios sabrá porque, intento soltarme un puñetazo con todas sus fuerzas.
+Sábado, dormir durante 12 horas después de lo que parecía el final de otro intento de nueva relación, un despertar verdaderamente amargo y muy pocas ganas de hacer cualquier cosa. Me llamo la [Diva](/personajes/la-diva/), cosa normal teniendo en cuenta que era de noche, gracias a algún Dios que no iba a estar solo en un día como ese.
+La noche va avanzando sobre ruedas, dentro de lo que cabe. Consuelo, acompañamiento inesperado por parte de un tercero, un par de risas y cachetes para hacerme pensar en otras cosas, peticiones indecentes hacia mi persona, las cuales me llegue incluso a plantear, y finalmente, dirigirnos los tres a casa de mi pequeña amiga, para que llegue sana y salva. Poco podía yo imaginarme cuando empece a caminar de vuelta a [la cueva](/blog/2010/11/28/mi-cueva/), lo que sucedería momentos después, y muchísimo menos, mi agregado.
+Subiendo por una calle peatonal, muy larga, y sin callejones , por la tanto, sin escapatoria, me encuentro a la [vampiresa](/personajes/la-vampiresa/), tan imponente como siempre, luciendo su exuberante cuerpo de mujer, aunque no dejando demasiado margen a la imaginación, cosa que me sigue pareciendo un tanto de mal gusto. Intento hacerme el loco siguiendo con la conversación de mi acompañante, tranquilo, como si la cosa no fuera conmigo, caminando a paso normal, esperando que la decencia se apoderara de ella y me ignorara como haría cualquier persona normal después de como fue evolucionando la historia. Pero no pudo ser, una sonrisilla malevola se había dibujado en su rostro, eso solo significaba una cosa, me había visto, y no solo eso, se dirigía desafiante hacia mi, a paso ligero, dejando atrás a su actual pareja y hermano de [Helena](/personajes/helena/), Mr. Al Bundy, hasta llegar justo frente a mi, y Dios sabrá porque, intento soltarme un puñetazo con todas sus fuerzas.
 Desconcertado, lo esquive y me aparte al grito de “wehee, donde vas?” acompañado de una risa porque mi cuerpo no sabia ni que expresión utilizar... Llegados a este punto, es necesario hacer una pausa y  darle al play a esta cancioncilla.
 
 *🎵 benny hill (audio no recuperado)*
@@ -36,6 +36,6 @@ En fin... locuras aparte, me alegro de verla tan enérgica y llena de vida. ^\_^
 
 ---------------------------------------------------------------------------------------------------
 
-Edito: [Z.Z.](http://www.malkevnia.com/z-z/) se encontró esto en el muro de la vampiresa (Pesad...), y me lo hizo saber. Al final sera culpa mía que me persiga a lo largo de media ciudad. No estoy lavándome las manos, aquí no hay buenos ni malos, aquí solo hay latigazos y victimas doloridas(ella y yo).
+Edito: [Z.Z.](/personajes/z-z/) se encontró esto en el muro de la vampiresa (Pesad...), y me lo hizo saber. Al final sera culpa mía que me persiga a lo largo de media ciudad. No estoy lavándome las manos, aquí no hay buenos ni malos, aquí solo hay latigazos y victimas doloridas(ella y yo).
 
 ![](/assets/img/blog/2010/09/Sin-título-22.jpg)

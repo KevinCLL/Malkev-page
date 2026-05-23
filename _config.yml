@@ -9,26 +9,18 @@ markdown: kramdown
 kramdown:
   input: GFM
   syntax_highlighter: rouge
-  # Convierte cada salto de línea simple del .md en un <br>. Permite
-  # escribir los posts como en un editor normal (una frase por línea)
-  # sin tener que poner línea en blanco entre cada párrafo. Igual que
-  # GitHub hace en los comentarios de PRs e issues.
   hard_wrap: true
 
-# Plugins compatibles con GitHub Pages
 plugins:
   - jekyll-feed
   - jekyll-seo-tag
 
-# No procesar estos archivos / carpetas
 exclude:
   - README.md
-  - nul
   - Gemfile
   - Gemfile.lock
   - vendor
 
-# Comentarios (Cusdis)
 cusdis:
   app_id: "c9dcecb8-7b6d-450f-9f1e-33fef2297d27"
   host: https://cusdis.com

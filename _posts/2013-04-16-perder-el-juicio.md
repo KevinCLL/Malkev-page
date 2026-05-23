@@ -4,7 +4,7 @@ title: "Perder el Juicio"
 date: 2013-04-16 21:03:02 +0200
 description: "Dayman: Epic cover - Colgados en Filadelfia El otro día me dijeron que si buscabas \"Malkevnia\" o mi nombre por Bing, te aparecían dos cosas la mar de..."
 tags: [archivo, meta]
-published: true
+published: false
 redirect_from:
   - /?p=4799/
 ---
@@ -15,7 +15,7 @@ redirect_from:
 
  El otro día me dijeron que si buscabas "Malkevnia" o mi nombre por Bing, te aparecían dos cosas la mar de curiosas. Una de ellas es [algo](http://www.malkevnia.com/wp-admin/sawiro-gabdho-somali-ah&page=3) que al parecer se ha colado dios sabrá como en el servidor,  que no se ni que es, ni tampoco me importa demasiado, pero que voy a dejar porque aparte de no ser malicioso, me parece una mezcla entre lo bizarro y lo gracioso (Si alguien me lo puede explicar, sería genial). La otra cosa es un [BOIB](http://boib.caib.es/pdf/2012140/mp232.pdf), donde se explica entre otras cosas, la resolución de un juicio que tuve hace tiempo y se dice que me encuentro en paradero desconocido.
 Me parece acojonante que poniendo mi nombre te aparezca eso de buenas a primeras. Por lo menos en google no sale, pero vamos, me parece denigrante que yo para Bing sea el tipo de las injurias y la vejación injusta, ademas de estar en paradero desconocido, como si me hubiera escapado al Ártico o algo.
-He contado de pasada el tema de la denuncia en [la entrada](http://www.malkevnia.com/2010/07/28/ficcion-total-y-absoluta/) que provocó la creación de la misma, pero lo voy a contar más detalladamente porque me parece impresionante incluso cómico, por no decir algo peor, que después de dos años y medio, se siga con el tema por parte de la justicia.
+He contado de pasada el tema de la denuncia en [la entrada](/blog/2010/07/28/ficcion-total-y-absoluta/) que provocó la creación de la misma, pero lo voy a contar más detalladamente porque me parece impresionante incluso cómico, por no decir algo peor, que después de dos años y medio, se siga con el tema por parte de la justicia.
 Todo empezó después de lo sucedido en la entrada "ficticia" (codazo, codazo) que ya he comentado antes.  Ella se enteró de la entrada y lo denunció, diciendo que me iba a cagar. Yo estaba la mar de tranquilo, no decía su nombre ni enseñaba su cara en ningún momento, así que no consideraba que estuviera haciendo nada maquiavelico, ni que pudiera afectarle a ella socialmente de ningún modo, ademas de que la denuncia ponía que lo había publicado en Facebook. Creía firmemente que ese berrinche no llegaría a ningún lado.
 Pasa un mogollón de tiempo, hablo de más de un año, y me llaman, estando yo ya en Valencia sin apenas un puto duro, a comparecer ante la justicia en la isla, que es donde se puso la denuncia. Pensando que quedaría en una tontería, que la justicia tiene cosas más importantes que hacer que darle la razón a una loca y joder a un pobretón desgraciado, gasto un dinero que no tengo para pillar un avión e ir al juicio, no sea cosa que me declaren culpable por no aparecer y la cosa se ponga peor.
 El juzgado no es para nada como lo pintan en las películas obviamente, no hay testigos, no hay jurado, por no haber, no había ni alguacil ni abogados, estaban la señora juez y una ayudante, ambas con caras de pocos amigos. Mi padre me dijo en voz baja que la había cagado porque eran mujeres, pero bueno, yo quería creer que no era así, que eso no debería afectar para nada.

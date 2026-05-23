@@ -10,7 +10,7 @@ redirect_from:
 
 ![](/assets/img/blog/2013/04/Ape_bezoarStones_mustika_pearls_magickal_stones_magicStones.jpg)
 
- En la [entrada anterior](http://www.malkevnia.com/2013/03/30/creando-un-juego-de-rol-i/) exponía las bases de lo que iba a ser el juego de rol. Esta vez me voy a centrar únicamente en lo que estaba siendo uno de mis dolores de cabeza más grandes, la "no magia", un termino improvisado para limitarme a la hora de meter cosas "ilógicas", pues no quiero que termine siendo esto un duelo de magia al estilo de los hechiceros de toda la vida.
+ En la [entrada anterior](/blog/2013/03/30/creando-un-juego-de-rol-i/) exponía las bases de lo que iba a ser el juego de rol. Esta vez me voy a centrar únicamente en lo que estaba siendo uno de mis dolores de cabeza más grandes, la "no magia", un termino improvisado para limitarme a la hora de meter cosas "ilógicas", pues no quiero que termine siendo esto un duelo de magia al estilo de los hechiceros de toda la vida.
 
  No me voy a andar con rodeos respecto al secretismo de la realidad sobre Panacea, pero se tiene que tener siempre en cuenta, que el habitante medio es desconocedor de la mayoría de esta información, y en casi todos los casos, sencillamente se limitaría a seguir "las instrucciones", al igual que hace muchísima gente con la tecnología actual; ¿Funciona?, pues a darle.
 
@@ -79,7 +79,7 @@ Imaginemos un cristal de energía calorífica. Este cristal tiene la capacidad 
 ---
 
 **Indice de entradas**
-- [Las bases](http://www.malkevnia.com/index.php/?p=4410)
-- [Panacea](http://www.malkevnia.com/index.php/?p=4808)
+- [Las bases](/blog/2013/03/30/creando-un-juego-de-rol-i/)
+- [Panacea](/blog/2013/04/19/creando-un-juego-de-rol-panacea/)
 
 ---

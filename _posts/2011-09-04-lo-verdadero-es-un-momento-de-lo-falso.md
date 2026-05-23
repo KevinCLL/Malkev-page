@@ -4,7 +4,7 @@ title: "Lo verdadero es un momento de lo falso"
 date: 2011-09-04 06:15:56 +0200
 description: "La cita, usada como titulo y sacada de un libro con ese nombre, no es algo que ponga como significado, sino como símbolo del final de mi relación con..."
 tags: [archivo, diario, relaciones]
-published: true
+published: false
 redirect_from:
   - /?p=2544/
 ---

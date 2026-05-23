@@ -4,7 +4,7 @@ title: "Friki, la historia hasta ahora"
 date: 2011-02-05 16:40:13 +0100
 description: "Empezaremos por el presente mas presente, por este mismísimo instante. Friki esta leyendo estas palabras en voz alta a través de su móvil porque le he..."
 tags: [archivo, diario]
-published: true
+published: false
 redirect_from:
   - /?p=1452/
 ---
@@ -13,7 +13,7 @@ redirect_from:
 
 *🎵 Satellites (acoustic live) - September (audio no recuperado)*
 
-Empezaremos por el presente mas presente, por este mismísimo instante. [Friki](http://www.malkevnia.com/friki/) esta leyendo estas palabras en voz alta a través de su móvil porque le he pedido que lo haga. Yo, me encuentro al otro lado, a la espera de que pronuncie la palabra “timbre”.
+Empezaremos por el presente mas presente, por este mismísimo instante. [Friki](/personajes/friki/) esta leyendo estas palabras en voz alta a través de su móvil porque le he pedido que lo haga. Yo, me encuentro al otro lado, a la espera de que pronuncie la palabra “timbre”.
 
 ¿RING?
 
@@ -37,13 +37,13 @@ Friki me echa un poco la bronca porque siempre digo que voy a ir y nunca lo hago
 
 Friki y yo volvemos a estar en contacto regularmente, sobre todo desde que estoy soltero.(Casualidad, no hay nada que leer entre lineas.) Hemos pasado de las llamadas trimestrales a mensuales, cosa que no esta nada mal. La temática, la misma de siempre, yo le cuento mis líos de faldas, mis problemas y le pido consejo, ella me cuenta su vida, sus problemas y lo que me espera. (Como me lleva 2 años de ventaja la tengo como referente a lo que me pasara. Y la verdad es que es bastante preciso.) Sigue siendo tan divertida como el primer día y sus consejos son igual de buenos, aunque sigo haciéndole caso demasiado tarde y termina diciéndome una vez mas "te lo dije". Seguimos diciéndonos “te quiero”. ^\_^
 
-[Helena](http://www.malkevnia.com/helena/) me ha dejado, y necesito apoyo. Mis amigos tienen su vida y como les he ignorado pasan de mi culo, he entrado en el paro y no tengo ningún tipo de motivación por nada. Friki, me coge el teléfono y se convierte en uno de mis mayores apoyos, y el único hasta que aparecen Lix y la Diva o retomo un poco de contacto con “el grupo”. A pesar de haberla ignorado durante la mayor parte de mi ultima relación, me sigue cogiendo el teléfono, dice muchísimo del tipo de persona que es y lo que realmente vale.
+[Helena](/personajes/helena/) me ha dejado, y necesito apoyo. Mis amigos tienen su vida y como les he ignorado pasan de mi culo, he entrado en el paro y no tengo ningún tipo de motivación por nada. Friki, me coge el teléfono y se convierte en uno de mis mayores apoyos, y el único hasta que aparecen Lix y la Diva o retomo un poco de contacto con “el grupo”. A pesar de haberla ignorado durante la mayor parte de mi ultima relación, me sigue cogiendo el teléfono, dice muchísimo del tipo de persona que es y lo que realmente vale.
 
 **19 años**
 
 Empieza mi relación con Helena, y exceptuando los primeros momentos en los que la llamo “la gran mujer”, mi contacto con Friki es nulo o excesivamente difuso. La verdad es que soy un imbécil, lo reconozco.
 
-Termina mi relacion con la [vampiresa](http://www.malkevnia.com/la-vampiresa/), y en el "hueco" de un mes entre Vampiresa y Helena, digamos que la factura de mi móvil se hincha considerablemente.
+Termina mi relacion con la [vampiresa](/personajes/la-vampiresa/), y en el "hueco" de un mes entre Vampiresa y Helena, digamos que la factura de mi móvil se hincha considerablemente.
 
 Recuerdo que imprimí una foto de Friki y la puse en mi Taquilla del vestuario del ejercito. Todo el mundo pensaba que era "mi chica", nunca me atreví a negarlo.
 
@@ -89,9 +89,9 @@ El tiempo sigue, la vampiresa y yo vamos tonteando, Friki me va aconsejando que 
 
 Friki me aconseja que busque en el mundillo gótico de mi zona, que tengo que aprender a socializar. Rebuscando por Internet encuentro a la vampiresa, que parece ser que se encuentra en una situación similar a la mía.
 
-Envio a la mierda para siempre a la [mesacamilla](http://www.malkevnia.com/mesacamilla/), cosa que tendría que haber hecho muchísimo tiempo antes.
+Envio a la mierda para siempre a la [mesacamilla](/personajes/mesacamilla/), cosa que tendría que haber hecho muchísimo tiempo antes.
 
-Friki, que no es tonta, y gracias a una cagada de [Berto](http://www.malkevnia.com/berto/) (que provoca que le mande a la mierda de la peor forma posible) descubre que estoy saliendo con la mesacamilla, de una forma muy comprensiva y madura, me deja. Por supuesto, las excusas y las lagrimas no cuentan como perdón para una traición tan gorda.
+Friki, que no es tonta, y gracias a una cagada de [Berto](/personajes/berto/) (que provoca que le mande a la mierda de la peor forma posible) descubre que estoy saliendo con la mesacamilla, de una forma muy comprensiva y madura, me deja. Por supuesto, las excusas y las lagrimas no cuentan como perdón para una traición tan gorda.
 
 Decidimos intentar mantener la relación a pesar de la distancia y el desconocimiento de si nos veremos de nuevo pronto. Yo, dentro de mi grandisima hijoputez, cabronismo y estupidez supina, empiezo a salir al mismo tiempo con la mesacamilla, la cual me había chantajeado con no volver de su pueblo si no salia con ella. (historia muy larga que contare en otra entrada, pero eso no quita lo capullo del hecho)
 
@@ -133,4 +133,4 @@ Me habla por primera vez por msn. Parece cosa del destino el que esto sucediera,
 
 Me encuentro jugando tranquilamente a mi juego habitual de críos, [Dinoparc](http://sp.dinoparc.com/), y de repente me salta la ventanita de que alguien me ha agregado al msn. Se hace llamar Friki y me ha agregado porque soy de los TOP del ranking, tengo un "Dino" de los que le gustan y necesita consejo. Nunca me he alegrado tanto de mis frikadas infantiloides como ese día.
 
-*EDITO: Y UNA PUTA MIERDA!! No hubo sorpresa ni hubo nada, para mas detalles, pulsa [aquí](http://www.malkevnia.com/2011/02/06/mi-viaje-a-madrid/). xD*
+*EDITO: Y UNA PUTA MIERDA!! No hubo sorpresa ni hubo nada, para mas detalles, pulsa [aquí](/blog/2011/02/06/mi-viaje-a-madrid/). xD*

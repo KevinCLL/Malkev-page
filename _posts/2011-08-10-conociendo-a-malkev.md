@@ -4,7 +4,7 @@ title: "Conociendo a Malkev"
 date: 2011-08-10 05:56:04 +0200
 description: "Entrada escrita por Inma Se que te hubiera gustado que escribiera mi versión de la historia. Y decido hacerlo ahora para que puedas entenderme y..."
 tags: [archivo, diario, relaciones]
-published: true
+published: false
 redirect_from:
   - /?p=2512/
 ---
