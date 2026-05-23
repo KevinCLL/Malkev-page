@@ -4,7 +4,7 @@ title: "Mi corazón en un vídeo"
 date: 2010-03-03 00:44:15 +0100
 description: "No tuve tiempo de comprarle 17 rosas como hacia todos los meses, así que decidí grabarle un vídeo como regalo por nuestros 11 meses... pero todo termino..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=603/
 ---

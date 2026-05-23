@@ -4,7 +4,7 @@ title: "El día que cumplí los 21"
 date: 2010-12-30 06:00:44 +0100
 description: "Seis y media de la tarde, me levanto porque he quedado con mi Diva para que le compre unos zapatos a su chico. F también se apunta, por lo que somos tres..."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=1152/
 ---

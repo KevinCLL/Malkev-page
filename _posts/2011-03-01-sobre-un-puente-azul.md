@@ -4,7 +4,7 @@ title: "Sobre un puente azul"
 date: 2011-03-01 23:27:01 +0100
 description: "No puedo evitar pensar en lo estúpido de mi fe hacia algunas personas, no puedo evitar ser un iluso cuando se trata de alguien importante para mi, no..."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=2063/
 ---

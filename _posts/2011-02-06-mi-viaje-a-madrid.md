@@ -4,7 +4,7 @@ title: "Mi viaje a Madrid"
 date: 2011-02-06 02:33:28 +0100
 description: "Una vez cada seis años, no hace daño. ^^ Espero que repitamos pronto! Un fuerte abrazo, Friki!"
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=1724/
 ---

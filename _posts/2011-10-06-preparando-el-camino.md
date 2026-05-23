@@ -4,7 +4,7 @@ title: "Preparando el camino"
 date: 2011-10-06 15:27:06 +0200
 description: "Bueno, parece que el día se acerca. En menos de un mes, estaré viviendo en Valencia, en un zulo con otros estudiantes guarretes, buscando un trabajito de..."
 tags: [archivo, diario, valencia]
-published: false
+published: true
 redirect_from:
   - /?p=3027/
 ---

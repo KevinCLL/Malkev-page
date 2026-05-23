@@ -4,7 +4,7 @@ title: "Quedada bloguera: Nueva pipol!"
 date: 2011-02-16 09:14:46 +0100
 description: "Lo primero y mas importante, presentar a la gente, para que no os volvais todos locos: - Malkev: Esta es fácil, mi personita. =D Tiene un blog muy chachi..."
 tags: [archivo, diario, meta]
-published: false
+published: true
 redirect_from:
   - /?p=2899/
 ---

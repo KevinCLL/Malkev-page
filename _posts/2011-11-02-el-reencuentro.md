@@ -4,7 +4,7 @@ title: "El reencuentro"
 date: 2011-11-02 15:51:53 +0100
 description: "JUEVES Toco el suelo de Valencia, bueno, antes de eso toco la escalerilla cutre del avión de Ryanair que parece que se vaya a caer en cualquier momento...."
 tags: [archivo, diario, valencia]
-published: false
+published: true
 redirect_from:
   - /?p=3036/
 ---

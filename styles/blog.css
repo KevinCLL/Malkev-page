@@ -85,15 +85,15 @@ body.blog .content-blog .section {
 }
 
 .blog-title {
-  font-size: 1.05rem;
+  font-size: 0.82rem;
   font-weight: 300;
-  letter-spacing: 6px;
+  letter-spacing: 4px;
   margin: 0;
   line-height: 1;
-  padding-left: 6px;        /* compensa letter-spacing del último char */
+  padding-left: 4px;        /* compensa letter-spacing del último char */
   text-transform: uppercase;
   color: var(--color-muted);
-  opacity: 0.85;
+  opacity: 0.7;
 }
 
 .blog-title > span {
@@ -164,10 +164,86 @@ body.blog .content-blog .section {
   appearance: none;
 }
 
+/* Despliegue de etiquetas — por defecto plegado para no ocupar
+   pantalla. Se abre al pulsar "Filtrar por etiqueta" o cuando se
+   llega con ?tag=foo en la URL (el JS abre el panel solo). */
+.tag-cloud-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.tag-cloud-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tag-cloud-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  cursor: none !important;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  padding: 0.3rem 0.85rem;
+  color: var(--color-muted);
+  -webkit-text-fill-color: var(--color-muted);
+  font-family: "Lato", sans-serif;
+  font-size: 0.82rem;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+  transition: all 0.25s ease;
+}
+
+.tag-cloud-toggle:hover {
+  background: rgba(139, 168, 255, 0.1);
+  border-color: rgba(139, 168, 255, 0.3);
+  color: #ffffff;
+  -webkit-text-fill-color: #ffffff;
+}
+
+.tag-cloud-toggle.is-open {
+  background: rgba(139, 168, 255, 0.12);
+  border-color: rgba(139, 168, 255, 0.35);
+  color: var(--color-link-soft);
+  -webkit-text-fill-color: var(--color-link-soft);
+}
+
+.tag-cloud-count {
+  font-size: 0.72rem;
+  background: rgba(139, 168, 255, 0.15);
+  border: 1px solid rgba(139, 168, 255, 0.2);
+  border-radius: 999px;
+  padding: 0.05rem 0.4rem;
+  min-width: 1.4rem;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -webkit-text-fill-color: inherit;
+}
+
+.tag-cloud-chevron {
+  font-size: 0.7rem;
+  transition: transform 0.25s ease;
+  -webkit-text-fill-color: inherit;
+}
+
+.tag-cloud-toggle.is-open .tag-cloud-chevron {
+  transform: rotate(180deg);
+}
+
 .tag-cloud {
   display: flex;
   flex-wrap: wrap;
   gap: 0.45rem;
+  padding-top: 0.4rem;
+  border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+.tag-cloud[hidden] {
+  display: none;
 }
 
 .tag-chip {
@@ -553,8 +629,34 @@ body.blog .content-blog .section {
   line-height: 1.75;
 }
 
+/* Justification "opción A" — CSS puro, sin librerías:
+   - text-align: justify para los párrafos.
+   - hyphens: auto activa la división silábica con el diccionario
+     del idioma (necesita lang="es" en <html>, ya está en default.html).
+   - text-wrap: pretty rebalancea la última línea para evitar huérfanas
+     (soportado en Chromium 117+, Safari 18, Firefox 121+).
+   - hyphenate-limit-chars evita guiones en palabras de 1-2 letras. */
 .post-content p {
   margin: 0 0 1.2rem;
+  text-align: justify;
+  text-wrap: pretty;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+  hyphenate-limit-chars: 6 3 2;
+}
+
+/* Títulos balanceados (no justified — se ven raros con pocas palabras). */
+.post-content h1,
+.post-content h2,
+.post-content h3,
+.post-content h4 {
+  text-wrap: balance;
+}
+
+/* Items de lista también con hyphens, pero NO justified (queda feo en bullets). */
+.post-content li {
+  hyphens: auto;
+  -webkit-hyphens: auto;
 }
 
 .post-content h1,
@@ -1102,8 +1204,8 @@ body.reading-mode .post-content h3 {
   }
 
   .blog-title {
-    font-size: 2.4rem;
-    letter-spacing: 9px;
+    font-size: 0.75rem;
+    letter-spacing: 3px;
   }
 
   .blog-subtitle {

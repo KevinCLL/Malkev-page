@@ -4,7 +4,7 @@ title: "Reencuentro... inesperado"
 date: 2010-03-15 08:20:21 +0100
 description: "Como todo adolescente que pretende hacerse pasar por adulto sabe, cuando se termina una relación, se debe pasar a la fase amigo de nuevo, porque al fin y..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=631/
 ---

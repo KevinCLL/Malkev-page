@@ -4,7 +4,7 @@ title: "Celos vampiricos"
 date: 2011-09-29 05:46:14 +0200
 description: "No, tranquilos, no voy a hablar de Crepúsculo. Son celos de los de verdad, de los de una Vampiresa gótica y demente de las de la vieja escuela, esas que..."
 tags: [archivo, diario, humor]
-published: false
+published: true
 redirect_from:
   - /?p=2956/
 ---

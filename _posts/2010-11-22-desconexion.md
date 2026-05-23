@@ -4,7 +4,7 @@ title: "Salir, beber, el rollo de siempre"
 date: 2010-11-22 23:23:49 +0100
 description: "Me despierta el despertador (redundancia cero, oiga), sonando por vigésimo segunda vez, hoy tampoco me he levantado temprano como tenia pensado. Sin salir..."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=827/
 ---

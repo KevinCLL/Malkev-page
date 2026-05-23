@@ -4,7 +4,7 @@ title: "Perder el Juicio"
 date: 2013-04-16 21:03:02 +0200
 description: "Dayman: Epic cover - Colgados en Filadelfia El otro día me dijeron que si buscabas \"Malkevnia\" o mi nombre por Bing, te aparecían dos cosas la mar de..."
 tags: [archivo, meta]
-published: false
+published: true
 redirect_from:
   - /?p=4799/
 ---

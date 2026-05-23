@@ -4,7 +4,7 @@ title: "Sex, hypocrisy & Latin love"
 date: 2011-01-23 14:46:37 +0100
 description: "Jamas podría haberme imaginado que esta historia sucediera de la forma en la que sucedió, y aun mas que me sucediera a mi. “Amiga con derecho a roce”..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=1331/
 ---

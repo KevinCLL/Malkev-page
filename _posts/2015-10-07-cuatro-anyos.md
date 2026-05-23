@@ -4,7 +4,7 @@ title: "Cuatro años"
 date: 2015-10-07 14:28:09 +0200
 description: "Reabro el blog —el lugar gracias al cual nos conocimos— para dedicarle la primera entrada, en nuestro cuarto aniversario."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=5174/
 ---

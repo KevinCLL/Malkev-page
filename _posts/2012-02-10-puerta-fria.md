@@ -4,7 +4,7 @@ title: "Puerta fría"
 date: 2012-02-10 04:21:14 +0100
 description: "Con mi americana cutre de ante, los pantalones negros más sosos que tenía, una corbata negra con símbolos de poker y una camisa blanca como armadura, con..."
 tags: [archivo, diario, valencia]
-published: false
+published: true
 redirect_from:
   - /?p=3396/
 ---

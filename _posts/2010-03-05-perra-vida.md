@@ -4,7 +4,7 @@ title: "Perra vida"
 date: 2010-03-05 06:25:39 +0100
 description: "De nuevo se avecina la soledad, tan gradual y sosegada como de costumbre, acercándose y abrazándome como suele ocurrir en estos largos días sin sentido......"
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=2817/
 ---

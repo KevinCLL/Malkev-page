@@ -4,7 +4,7 @@ title: "La pelirroja"
 date: 2010-10-14 07:38:52 +0200
 description: "Creo que esta conversación final con la pelirroja da a entender toda nuestra historia. Que cada uno saque su propio mensaje. | | | | --- | --- | | (13:33)..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=1122/
 ---

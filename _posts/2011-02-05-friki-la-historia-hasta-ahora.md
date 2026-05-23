@@ -4,7 +4,7 @@ title: "Friki, la historia hasta ahora"
 date: 2011-02-05 16:40:13 +0100
 description: "Empezaremos por el presente mas presente, por este mismísimo instante. Friki esta leyendo estas palabras en voz alta a través de su móvil porque le he..."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=1452/
 ---

@@ -4,7 +4,7 @@ title: "¿Que ha pasado?"
 date: 2011-05-17 18:19:51 +0200
 description: "Personas mencionadas: -Lix -Diva -Ojoschachis -Rubia (LCMYAGQMEPLN)"
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=2300/
 ---

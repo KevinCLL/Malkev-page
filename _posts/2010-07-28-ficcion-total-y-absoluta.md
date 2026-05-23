@@ -4,7 +4,7 @@ title: "Ficción: Una relación de seis días"
 date: 2010-07-28 10:32:05 +0200
 description: "Ante todo, hay que tomarselo con humor. Personajes involucrados, hechos y cualquier cosa escrita, no tienen nada que ver con la realidad y si se asemeja,..."
 tags: [archivo, relatos, humor]
-published: false
+published: true
 redirect_from:
   - /?p=45/
 ---

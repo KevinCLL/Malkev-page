@@ -4,7 +4,7 @@ title: "Repercusiones de cambiar de móvil"
 date: 2010-10-30 07:10:30 +0200
 description: "Cuando timofonica te ofrece una contraoferta regalándote un Iphone 4, un año de llamadas a mitad de precio y encima, sabes que pagaras menos de lo que..."
 tags: [archivo, diario, humor]
-published: false
+published: true
 redirect_from:
   - /?p=615/
 ---

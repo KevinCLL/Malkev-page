@@ -4,7 +4,7 @@ title: "La venganza de la vampiresa"
 date: 2010-09-19 03:06:57 +0200
 description: "Habia pasado un año y medio desde que termino nuestra relación, y unos ocho meses desde que nos vimos por ultima vez. Lo que paso ese día... aun escapa a..."
 tags: [archivo, diario, humor]
-published: false
+published: true
 redirect_from:
   - /?p=393/
 ---

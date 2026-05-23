@@ -4,7 +4,7 @@ title: "Declarándome a Lix"
 date: 2011-09-05 10:05:28 +0200
 description: "Quedamos en un Bar, le dije, a modo de coña, que quería hablar de economía. Llevaba meses perdidito por ella. Me habia ayudado un montón a superar mi..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=2028/
 ---

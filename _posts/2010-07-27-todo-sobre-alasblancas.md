@@ -4,7 +4,7 @@ title: "Todo sobre Alasblancas"
 date: 2010-07-27 07:43:20 +0200
 description: "Se me dan fatal las fechas, lo he comprobado y efectivamente, no llevaba dos, sino cuatro meses soltero. PD: Si quieres saber mas sobre Helena, pulsa aquí."
 tags: [archivo, meta]
-published: false
+published: true
 redirect_from:
   - /?p=408/
 ---

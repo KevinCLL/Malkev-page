@@ -4,7 +4,7 @@ title: "Conociendo a Inma"
 date: 2011-07-27 08:08:59 +0200
 description: "No voy a extenderme demasiado en lo que respecta a mi vida en la plaza, porque eso lo haré en otra entrada. Como toda historia que se precie, empieza con..."
 tags: [archivo, diario, relaciones]
-published: false
+published: true
 redirect_from:
   - /?p=2392/
 ---

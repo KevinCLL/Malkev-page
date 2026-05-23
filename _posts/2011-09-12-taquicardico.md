@@ -4,7 +4,7 @@ title: "Taquicardico"
 date: 2011-09-12 23:50:16 +0200
 description: "Hoy me había propuesto tener un día tranquilo, porque a pesar no trabajo ni hago demasiado, no me gustan los lunes, y menos los lunes que preceden a malas..."
 tags: [archivo, diario]
-published: false
+published: true
 redirect_from:
   - /?p=2664/
 ---

@@ -4,7 +4,7 @@ title: "Listas de pelis"
 date: 2010-12-22 05:12:47 +0100
 description: "El vídeo ha quedado un poco chungueras por culpa del Iphone, pero bueno. Aparte de la lista, le he pasado a Dormael un link con la lista en limpio , lista..."
 tags: [archivo, cine]
-published: false
+published: true
 redirect_from:
   - /?p=1086/
 ---
