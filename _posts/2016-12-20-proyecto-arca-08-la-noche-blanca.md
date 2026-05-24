@@ -1,0 +1,53 @@
+---
+layout: post
+title: "Proyecto Arca · VIII. La Noche Blanca"
+date: 2016-12-20 12:00:00 +0100
+description: "Proyecto Arca, capítulo VIII. La Navidad de Izaro, sueños tejidos a medida y el cierre de la era de la Academia."
+tags: [proyecto-arca, rol, novela, izaro]
+---
+
+[‹ Capítulo anterior: VII. La silla vacía](/blog/2016/11/15/proyecto-arca-07-la-silla-vacia/)  ·  [Índice](/blog/2026/05/24/proyecto-arca/)
+
+*Academia Arca y Academia Longinus, diciembre de 2016 y enero de 2017*
+
+## La Noche Blanca
+
+Hay en Izaro una noche al año parecida a la Navidad. La llaman la Noche Blanca, y cuentan que esa noche el Éter vibra y la luna llena flota más cerca que nunca, resplandeciendo como una joya que aparta la oscuridad y espanta a los Engendros. Una noche de paz para el justo, para el pobre, para el que sin merecerlo solo ha recibido dolor. Una noche mágica, dicen, en la que los deseos se hacen realidad.
+
+Pero hay un cuento de la Noche Blanca en el que no todo es felicidad. Cuenta que, hace mucho, en las Doce Colinas, un hombre bondadoso decidió compartir su don una de aquellas noches: con sus manos, capaces de fabricar cualquier cosa, hizo juguetes para los niños y herramientas para los pobres, y regaló incluso a los feéricos, a los que nadie miraba. Y por ese gesto de bondad lo mataron unos ladrones, convencidos de que solo un rico podía permitirse tanto derroche. Sus puñales atravesaron sus ropas blancas, y también los tiernos cuellos de los niños feéricos. El grito del hombre desgarró la noche, y el cielo blanco se hizo pedazos y cayó como nieve sobre la sangre. Desde entonces, año tras año, cada Noche Blanca aparecía uno de aquellos asesinos degollado y cubierto de una nieve que no había caído, hasta que solo quedó uno, que huyó a buscar refugio en el único lugar donde creyó estar a salvo: Arca.
+
+En Arca, el Guardián lo acogió, le robó los recuerdos y lo durmió. El hombre despertó sin pasado, estudió, se hizo Agente, se casó, tuvo un hijo. Pero los recuerdos volvieron, y con ellos el hombre de rojo, el del saco, el que reía «jo, jo, jo» y helaba el aire. Vino a por él una Noche Blanca, y el hombre, de rodillas, suplicó y prometió. El hombre de rojo cerró su saco y le dejó un trato escrito sobre la nieve: él, su hijo, el hijo de su hijo, hasta doce generaciones, dedicarían su vida a cambiar Izaro, y cuando uno fallara, el hombre de rojo volvería a por él. Un año de vida por cada niño que murió aquella noche. Así fue como un hombre cruel se convirtió en un hombre bueno, y así se escribieron las primeras páginas de la historia de la familia Creew, una historia maldita que mezcla en su tinta la grandeza y la sangre. La misma sangre que corría por las venas de Amelia.
+
+Esa Noche Blanca, en Arca, cada cual cerró los ojos y soñó, y los sueños no fueron iguales para todos, porque cada uno se tejió con lo que esa persona echaba de menos.
+
+Hastur soñó con un campo nevado, con un árbol que flotaba y una estrella ardiendo en lo alto, y con un portal del que salía un aroma de añoranza. Cruzó el portal, y al otro lado el viento y la nieve lo dejaron en un hogar humilde y cálido junto al mar: una isla tropical, una chimenea encendida, arena y agua cristalina al otro lado de las ventanas. De una habitación salieron Jason, Notarino y Ennie con adornos luminosos cosidos a sus trajes y los brazos cargados de pizzas, disculpándose por no haber podido conseguir más. Era la recreación de una noche que Hastur atesoraba como ninguna: una mesa llena de pizzas caseras y de su comida favorita, la gente que más quería, las risas, los juegos, hasta dormir todos abrazados. La mejor noche. Pero después la chimenea se apagó bajo una cascada de nieve, y Hastur se encontró otra vez en el campo blanco, y hacia él avanzaba el hombre de rojo arrastrando su saco. Volcó el saco, y rodaron cabezas de muñecos perfectamente esculpidas que abrían los ojos y repetían «vacíos, vacíos, vacíos». «Otros han sembrado con sus acciones marcando tu alma, Hastur», dijo el hombre. «Has olvidado lo que aquellos que llevaron el nombre que te da vida hicieron y sintieron.» Le dejó un regalo entre la nieve, y cuando la nieve lo cubrió todo, Hastur despertó, helado y solo en la oscuridad, con un peso extraño en el alma. Era su primera Noche Blanca en Izaro. Y comprendió, sin más, que le quedaba menos de un año de vida.
+
+Kendra soñó lo mismo, el campo, el portal, el aroma, pero ella se dejó arrastrar sin miedo, porque en ese momento no pensaba como una adulta ni como una cazadora ni como un Avatar, sino como una chica normal que busca algo familiar. Al otro lado encontró un salón humilde con una chimenea, fotografías en las estanterías y olor a pollo asado. Se abrió una puerta, y salió su padre, y la abrazó y la sentó a la mesa, y al otro lado se sentó una mujer de piel oscura en la que reconoció a su madre por el olor, y entraron amigos del pasado, y al final apareció una anciana arrugada con una bandeja de pollo y patatas: «Pollos pequeños de Jericó, no los hay más sabrosos.» Y Kendra, sin darse cuenta, volvió a ser una niña. Después llegó también para ella el hombre de rojo, y sus cabezas que repetían «indigna, indigna», y le dijo que había sembrado con sus acciones y cosechado cadáveres, que había luchado por el alma de una tierra que la había escupido a la cara solo por el color de su piel. Y le dejó su regalo. Kendra despertó helada y sola, con la luna blanca llenando el dormitorio. No era su primera Noche Blanca, ni sería la última. Al menos, una vez al año, recuperaba a su familia durante unas horas, aunque ya no recordara sus rostros ni sus voces.
+
+## Las Casas
+
+Antes de aquello, en diciembre, las Casas de Hermandad habían vuelto a abrir sus puertas. Eran las viejas facciones de la Academia, cada una unida por un ideal, y ahora que el grupo de novatos eran Agentes, las Casas los invitaron a unirse. Kendra fue derecha a la Casa de lo Salvaje. Hellraiser, a la Casa de la Ceniza. Hastur, Sein y Alec acabaron en la Casa del Escudo, la que se dedicaba a proteger a los afectados por el Cataclismo y a luchar allí donde el daño era más grave: el escudo que protegía Izaro.
+
+Hastur, que había decidido tiempo atrás hacer carrera militar, descubrió allí que se había equivocado de cálculo. Daba igual hasta dónde ascendiera un soldado, le explicaron: un Agente cualquiera siempre estaría por encima de él, y el mando militar lo formaban Agentes colocados a dedo por la Academia. Hastur se llevó la mano a la barbilla. «Eso lo cambia todo. Creo que debo replantearme algunas cosas.» Lo que no cambió fue su decisión sobre la Casa: sus ideales, dijo, eran como los suyos, y ardía en deseos de ayudar a la mejora de Izaro. Firmó.
+
+## La gran despedida
+
+Después de las Pruebas de Ascensión vinieron semanas de silencio y de revuelo callado. Quién se iba y quién se quedaba era, casi siempre, un secreto, hasta que llegó el día de la despedida. Los AeroDrakars de Longinus, enormes armatostes metálicos, aguardaban en los Páramos a las puertas de Arca, y sus tropas formaban entre ellos, inmóviles, con las lanzas apuntando al cielo y el estandarte del dragón dorado al viento. Casi toda Arca se reunió allí. Karthas no apareció. Sí estaban Amelia, y Ceilvan, y Luxis, y, entre el gentío, hasta Lady Cronos.
+
+La Academia se partía en dos. Unos embarcaban hacia un mundo desconocido en busca de esperanza; otros se quedaban a sostener lo que quedaba de Arca. Entre los que se marchaban había caras conocidas: Eldis y Yenara, y compañeros de clase, y Relojeros, y cuatro Gon, y, del grupo que un día despertó junto en la Sala del Despertar, Varda, Vardomir y Fénix.
+
+Fue el momento de las palabras. Fénix se colgó a la espalda una mochila enorme con todo lo que había podido coger que no estuviera clavado a su cuarto, y prometió comer cinco veces al día, dormir ocho horas y volver tan fuerte que no lo reconocerían. Kendra abrazó a Varda, le costó más que con los demás, y le revolvió el pelo: «Echaré de menos tu madurez por aquí.» Vance le deseó que encontrara lo que estaba buscando, y le dijo que echaría de menos sus llamadas al orden y a la razón. Y Daesh, que no quería que aquello fuera un adiós, creó para cada uno de los que se iban un llamador de ángeles, un colgante con forma de jaula y la palabra Arca grabada, que sonaba como una campana dulce al agitarlo. A Fénix se lo puso él mismo en el cuello.
+
+-Algún día necesitaremos recordar que despertamos juntos en esto -dijo-. Espero que entonces estas campanas nos reúnan de nuevo.
+
+Las plataformas se cerraron y los AeroDrakars se alzaron, y dos días de viaje después los que se marchaban vieron por fin Longinus: Eonia, una ciudad entera encerrada bajo una cúpula de roca colosal, al borde de un acantilado y sobre una cascada, un pueblo de antiguos cazadores de dragones que había sobrevivido al Cataclismo enclaustrado entre sus muros durante siglos. Los recibieron con orquesta, banderas y una multitud, y el viejo Rey Cid hizo materializar una lanza dorada entre un rugido que sacudió el suelo. Después, en privado, Alexander les dijo lo que de verdad pensaba. Que no pensaba seguir los pasos de Karthas ni tirar por el retrete lo que había tardado siglos en construirse. Que Longinus ocuparía el lugar de Arca, y que si Arca quería suicidarse siguiendo la soberbia de Lionis, al menos que su muerte sirviera de algo.
+
+En Arca, mientras tanto, Karthas reunió a los que quedaban. No llegaban a doscientos. La Academia se había quedado vacía de verdad.
+
+-Mirad a vuestro lado -les dijo-. Esos hombres y mujeres que han escogido el camino difícil son ahora vuestros únicos y reales aliados. Esto es Arca. Aquí se inició nuestra guerra, y aquí se le dará fin.
+
+Habló del enemigo que llevaba años creciendo mientras la Academia se limitaba a sobrevivir, de Lilith, de sus hijos, de Abel y Caín. Habló de encontrar a un hombre llamado Adán, la única pista hacia las Reliquias. Ya no se trataba de mitigar los daños del Cataclismo, dijo, sino de ganar la guerra, a cualquier precio, y no le importaban los nombres ni las historias de quienes tenía delante mientras hicieran lo que debían hacer. La muerte, con él, no era una opción.
+
+Y así, repartidos en dos Academias y enviados cada uno a una punta de Izaro con una Brújula de Egos en la muñeca y una guerra por delante, los que habían despertado juntos aquel julio en una sala circular se dispersaron por el mundo. La Academia, la de verdad, la de las clases y la cafetería y los jardines de noche, había terminado. Lo que empezaba ahora era el viaje.
+
+[Índice](/blog/2026/05/24/proyecto-arca/)  ·  [Capítulo siguiente: IX. La hija de Jericó ›](/blog/2017/01/26/proyecto-arca-09-la-hija-de-jerico/)
