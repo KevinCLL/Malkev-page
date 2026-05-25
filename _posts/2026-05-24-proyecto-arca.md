@@ -42,6 +42,8 @@ Más allá de Arca, Izaro está salpicado de naciones con carácter propio: **Ra
 
 Todo lo que tiene poder en Izaro bebe del **Éter**, la energía del mundo, y según cómo se canalice se nace en una u otra Clase: el **Avatar**, alter ego de uno de los seres más poderosos de la historia; el **Maggy** y la **Bruja**, que manejan la magia; el **Relojero**, que toca el tiempo; el **Invocador**, el **Maldito** que carga con un Caído, el **Titán**, el **Señor de la Guerra**.
 
+Esto es solo un resumen. El trasfondo completo —el Cataclismo y el Éter, las diez naciones de Izaro una por una, las Clases, los Engendros y sus niveles, y los Personajes Ilustres de Arca— está recogido aparte en **[El mundo de Izaro](/blog/2026/05/25/proyecto-arca-trasfondo/)**.
+
 ## Los personajes {#personajes}
 
 El elenco lo formaban los jugadores, cada uno con su Agente o su Estudiante, y el narrador, **Guía**.
