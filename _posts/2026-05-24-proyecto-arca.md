@@ -184,4 +184,9 @@ Una arena de combate, un mago intangible y el padre de Kendra tras los barrotes.
 **XXXVI · [El reflejo](/blog/2018/12/28/proyecto-arca-36-el-reflejo/)** · *diciembre 2018 – enero 2019*  
 La gigante despierta, el perdón a Ilidan y la batalla que forja un equipo.
 
+### Apéndice
+
+**[El mundo de Izaro](/blog/2026/05/25/proyecto-arca-trasfondo/)** · *trasfondo*  
+El material de ambientación del rol: el Cataclismo y el Éter, las diez naciones de Izaro una por una, las Clases, los Engendros y sus niveles, y los Personajes Ilustres de Arca.
+
 > *Proyecto Arca* se jugó entre 2016 y 2019 a partir de dos foros, correos y partidas por Skype. La novela conserva los diálogos y las acciones tal como se jugaron; lo añadido es la prosa que los enlaza. Quien quiera el texto original, sin novelar, lo tiene completo en el [archivo íntegro en PDF](/assets/pdf/proyecto-arca-integro.pdf).
