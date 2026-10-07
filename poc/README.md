@@ -69,6 +69,10 @@ poc/
 
 La base de datos es `data/malkevnia.db`; se puede abrir con [DB Browser for SQLite](https://sqlitebrowser.org/) para curiosear.
 
+## Demo sin servidor
+
+`npm run build:demo` genera en `dist-demo/` una versión que funciona sin servidor: copia la base de datos a un JSON dentro de la página (`src/demo/demoApi.js` hace de API) y los cambios se quedan en memoria. Es la que se publicó para enseñarla.
+
 ## Lo que falta para la versión de verdad
 
 - Inicio de sesión para la consola (ahora está abierta porque es local).
