@@ -1,4 +1,4 @@
-import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHashHistory, createWebHistory } from 'vue-router'
 
 const routes = [
   { path: '/', name: 'home', component: () => import('./views/HomeView.vue') },
@@ -22,11 +22,11 @@ const routes = [
 ]
 
 export const router = createRouter({
-  history: createWebHistory(),
+  // La demo publicada vive dentro de un marco, así que allí las rutas van tras la almohadilla.
+  history: import.meta.env.MODE === 'demo' ? createWebHashHistory() : createWebHistory(),
   routes,
   scrollBehavior(to, from, saved) {
     if (saved) return saved
-    if (to.hash) return { el: to.hash, top: 90 }
     if (to.name === from.name && to.name !== 'post') return false
     return { top: 0 }
   },

@@ -11,7 +11,8 @@
     "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
     "dev": "node --disable-warning=ExperimentalWarning server/index.js",
     "build": "vite build",
-    "start": "node --disable-warning=ExperimentalWarning server/index.js --prod"
+    "start": "node --disable-warning=ExperimentalWarning server/index.js --prod",
+    "build:demo": "node scripts/build-demo.js"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.4",
