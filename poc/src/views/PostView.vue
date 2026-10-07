@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import { api } from '../api.js'
-import { formatDate, postUrl } from '../util.js'
+import { formatDate, postUrl, scrollToId } from '../util.js'
 import { toast } from '../toast.js'
 import AppIcon from '../components/AppIcon.vue'
 
@@ -30,6 +30,11 @@ async function load() {
 }
 
 watch(() => route.params.slug, (slug) => slug && load(), { immediate: true })
+
+// Las imágenes antiguas que ya no existen (blogs externos caídos) se ocultan en lugar de verse rotas.
+function hideBrokenImage(e) {
+  if (e.target.tagName === 'IMG') e.target.style.display = 'none'
+}
 
 async function send() {
   if (!form.author.trim() || !form.body.trim()) return
@@ -64,7 +69,7 @@ async function send() {
         <div class="post-meta readout">
           <span>{{ formatDate(post.published_at, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }) }}</span>
           <span><AppIcon name="clock" :size="13" /> {{ post.reading_minutes }} min de lectura</span>
-          <a href="#comentarios"><AppIcon name="comment" :size="13" /> {{ comments.length }}</a>
+          <button type="button" class="link-btn" @click="scrollToId('comentarios')"><AppIcon name="comment" :size="13" /> {{ comments.length }}</button>
         </div>
         <div class="tags">
           <RouterLink v-for="t in post.tags" :key="t" :to="{ path: '/blog', query: { tag: t } }" class="chip">#{{ t }}</RouterLink>
@@ -74,7 +79,7 @@ async function send() {
       <img v-if="showCover" :src="post.cover" alt="" class="hero-cover" />
 
       <div class="panel content-panel">
-        <div class="prose" v-html="post.content_html"></div>
+        <div class="prose" v-html="post.content_html" @error.capture="hideBrokenImage"></div>
       </div>
 
       <nav class="neighbours">
@@ -160,8 +165,16 @@ async function send() {
   text-transform: none;
   letter-spacing: 0.04em;
 }
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  letter-spacing: inherit;
+}
 .post-meta span,
-.post-meta a {
+.post-meta .link-btn {
   display: inline-flex;
   align-items: center;
   gap: 6px;

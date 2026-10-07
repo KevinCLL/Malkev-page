@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api.js'
-import { fallbackColor, KIND_LABELS, STATUS_LABELS } from '../../util.js'
+import { confirmAction, fallbackColor, KIND_LABELS, STATUS_LABELS } from '../../util.js'
 import { toast } from '../../toast.js'
 import GenCover from '../../components/GenCover.vue'
 import AppIcon from '../../components/AppIcon.vue'
@@ -86,7 +86,7 @@ async function save() {
 }
 
 async function remove() {
-  if (!confirm(`¿Sacar "${form.title}" de la colección?`)) return
+  if (!confirmAction(`¿Sacar "${form.title}" de la colección?`)) return
   await api.deleteItem(editing.value)
   toast('Eliminado de la colección')
   editing.value = null
@@ -128,7 +128,7 @@ function pick(r) {
         <h1 class="page-title">{{ kindInfo.label }}</h1>
       </div>
       <div class="head-actions">
-        <RouterLink :to="kindInfo.room" class="btn btn-sm" target="_blank"><AppIcon name="eye" :size="14" /> Ver la sala</RouterLink>
+        <RouterLink :to="kindInfo.room" class="btn btn-sm"><AppIcon name="eye" :size="14" /> Ver la sala</RouterLink>
         <button class="btn btn-primary" @click="open(null)"><AppIcon name="plus" :size="16" /> Añadir</button>
       </div>
     </header>

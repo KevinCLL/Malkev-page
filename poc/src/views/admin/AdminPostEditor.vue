@@ -2,7 +2,7 @@
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api.js'
-import { postUrl, slugify } from '../../util.js'
+import { confirmAction, postUrl, slugify } from '../../util.js'
 import { toast } from '../../toast.js'
 import RichEditor from '../../components/RichEditor.vue'
 import AppIcon from '../../components/AppIcon.vue'
@@ -112,7 +112,7 @@ async function save(status) {
 }
 
 async function remove() {
-  if (!confirm('¿Borrar esta entrada para siempre?')) return
+  if (!confirmAction('¿Borrar esta entrada para siempre?')) return
   await api.deletePost(id.value)
   dirty.value = false
   toast('Entrada borrada')
@@ -150,7 +150,7 @@ onBeforeUnmount(() => {
         </p>
       </div>
       <div class="head-actions">
-        <a v-if="viewUrl" :href="viewUrl" target="_blank" class="btn btn-sm"><AppIcon name="eye" :size="15" /> Ver</a>
+        <RouterLink v-if="viewUrl" :to="viewUrl" class="btn btn-sm"><AppIcon name="eye" :size="15" /> Ver</RouterLink>
         <button class="btn btn-sm" :disabled="saving" @click="save('draft')"><AppIcon name="save" :size="15" /> Guardar borrador</button>
         <button class="btn btn-sm btn-primary" :disabled="saving" @click="save('published')">
           <AppIcon name="sparkle" :size="15" /> {{ post.status === 'published' ? 'Actualizar' : 'Publicar' }}

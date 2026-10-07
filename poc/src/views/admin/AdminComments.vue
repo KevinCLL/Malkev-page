@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../../api.js'
-import { formatDate, postUrl } from '../../util.js'
+import { confirmAction, formatDate, postUrl } from '../../util.js'
 import { toast } from '../../toast.js'
 import AppIcon from '../../components/AppIcon.vue'
 
@@ -23,7 +23,7 @@ async function toggle(c) {
 }
 
 async function remove(c) {
-  if (!confirm(`¿Borrar el comentario de ${c.author}?`)) return
+  if (!confirmAction(`¿Borrar el comentario de ${c.author}?`)) return
   await api.deleteComment(c.id)
   comments.value = comments.value.filter((x) => x.id !== c.id)
   toast('Comentario borrado')
@@ -48,7 +48,7 @@ async function remove(c) {
         <div class="item-head">
           <strong>{{ c.author }}</strong>
           <span class="muted">en</span>
-          <a :href="postUrl({ slug: c.post_slug, published_at: c.post_date })" target="_blank">{{ c.post_title }}</a>
+          <RouterLink :to="postUrl({ slug: c.post_slug, published_at: c.post_date })">{{ c.post_title }}</RouterLink>
           <span class="readout when">{{ formatDate(c.created_at, { day: 'numeric', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) }}</span>
         </div>
         <p class="body">{{ c.body }}</p>

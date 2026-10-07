@@ -104,3 +104,12 @@ export function slugify(text) {
     .replace(/^-+|-+$/g, '')
     .slice(0, 80)
 }
+
+// En la demo publicada los diálogos del navegador no aparecen, así que allí se confirma solo.
+export function confirmAction(message) {
+  return import.meta.env.MODE === 'demo' ? true : window.confirm(message)
+}
+
+export function scrollToId(id) {
+  document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}

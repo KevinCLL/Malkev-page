@@ -1,7 +1,7 @@
 <script setup>
 import { onMounted, ref, watch } from 'vue'
 import { api } from '../../api.js'
-import { debounce, formatDate, postUrl } from '../../util.js'
+import { confirmAction, debounce, formatDate, postUrl } from '../../util.js'
 import { toast } from '../../toast.js'
 import AppIcon from '../../components/AppIcon.vue'
 
@@ -19,7 +19,7 @@ watch([status, page], load)
 onMounted(load)
 
 async function remove(post) {
-  if (!confirm(`¿Borrar "${post.title}" para siempre? Se borrarán también sus comentarios.`)) return
+  if (!confirmAction(`¿Borrar "${post.title}" para siempre? Se borrarán también sus comentarios.`)) return
   await api.deletePost(post.id)
   toast('Entrada borrada')
   load()
@@ -81,7 +81,7 @@ async function toggleStatus(post) {
             <td class="num">{{ p.comment_count }}</td>
             <td class="actions">
               <RouterLink :to="`/consola/entradas/${p.id}`" class="btn btn-ghost btn-icon" title="Editar"><AppIcon name="edit" :size="16" /></RouterLink>
-              <a :href="`${postUrl(p)}${p.status === 'draft' ? '?preview=1' : ''}`" target="_blank" class="btn btn-ghost btn-icon" title="Ver"><AppIcon name="eye" :size="16" /></a>
+              <RouterLink :to="`${postUrl(p)}${p.status === 'draft' ? '?preview=1' : ''}`" class="btn btn-ghost btn-icon" title="Ver"><AppIcon name="eye" :size="16" /></RouterLink>
               <button class="btn btn-ghost btn-icon btn-danger" title="Borrar" @click="remove(p)"><AppIcon name="trash" :size="16" /></button>
             </td>
           </tr>

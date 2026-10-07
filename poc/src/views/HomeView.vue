@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../api.js'
-import { formatDate, postUrl, stardate } from '../util.js'
+import { formatDate, postUrl, scrollToId, stardate } from '../util.js'
 import AppIcon from '../components/AppIcon.vue'
 
 const stats = ref(null)
@@ -71,7 +71,7 @@ const signals = [
             <RouterLink to="/blog" class="btn btn-primary">
               <AppIcon name="log" :size="16" /> Abrir la bitácora
             </RouterLink>
-            <a href="#estancias" class="btn">Recorrer la nave</a>
+            <button type="button" class="btn" @click="scrollToId('estancias')">Recorrer la nave</button>
           </div>
         </div>
       </div>
