@@ -1,0 +1,32 @@
+{
+  "name": "malkevnia-poc",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Prueba de concepto de Malkevnia: blog con base de datos y hobbies como una casa, en Vue + SQLite local.",
+  "engines": {
+    "node": ">=22.13"
+  },
+  "scripts": {
+    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
+    "dev": "node --disable-warning=ExperimentalWarning server/index.js",
+    "build": "vite build",
+    "start": "node --disable-warning=ExperimentalWarning server/index.js --prod"
+  },
+  "dependencies": {
+    "@tiptap/core": "^3.31.4",
+    "@tiptap/extension-image": "^3.31.4",
+    "@tiptap/extension-table": "^3.31.4",
+    "@tiptap/pm": "^3.31.4",
+    "@tiptap/starter-kit": "^3.31.4",
+    "@tiptap/vue-3": "^3.31.4",
+    "express": "^5.2.1",
+    "marked": "^18.1.0",
+    "vue": "^3.5.43",
+    "vue-router": "^5.4.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^8.3.3"
+  }
+}

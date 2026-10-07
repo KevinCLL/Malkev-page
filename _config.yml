@@ -20,6 +20,7 @@ exclude:
   - Gemfile
   - Gemfile.lock
   - vendor
+  - poc
 
 cusdis:
   app_id: "c9dcecb8-7b6d-450f-9f1e-33fef2297d27"
