@@ -427,13 +427,15 @@ function resize() {
   // El planeta, cortado por el borde derecho. En vertical el texto va abajo, así que el planeta sube
   // a la mitad de arriba y el morro baja para dejarle sitio. La órbita de la luna se queda a la
   // derecha, sin pasar por delante del texto; en vertical da la vuelta al revés.
+  // La órbita es más ancha que el planeta más la luna: así, cuando la luna pasa de delante a detrás
+  // (en los extremos de la órbita), ya está fuera del disco y no se nota el cambio de orden.
   if (narrow) {
     gl.uniform3f(view.u.uPlanet, ratio / 2 + 0.02, 0.22, 0.4)
-    gl.uniform3f(view.u.uOrbit, 0.42, -0.12, 0.05)
+    gl.uniform3f(view.u.uOrbit, 0.52, -0.12, 0.05)
     gl.uniform1f(view.u.uView, 0.18)
   } else {
     gl.uniform3f(view.u.uPlanet, ratio / 2 - 0.3, -0.04, 0.47)
-    gl.uniform3f(view.u.uOrbit, 0.5, 0.2, 0.08)
+    gl.uniform3f(view.u.uOrbit, 0.64, 0.2, 0.07)
     gl.uniform1f(view.u.uView, 0.0)
   }
   if (reduced) frame(started)

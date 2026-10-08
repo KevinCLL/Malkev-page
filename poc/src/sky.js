@@ -72,7 +72,9 @@ uniform vec4 uBand;     // Vía Láctea: centro (x, y), ángulo y anchura, en un
 uniform vec3 uGain;     // intensidad de la Vía Láctea, de las nebulosas y de las estrellas
 uniform vec3 uStars;    // cuántas estrellas hay en cada capa (finas, medianas, grandes), 1 = cielo lleno
 uniform float uSat;     // saturación del color del gas (1 = foto de Hubble, 0 = gris)
-uniform vec4 uNeb[3];   // nebulosas: centro (x, y), radio y tipo (0 violeta, 1 magenta, 2 turquesa)
+uniform vec4 uNeb[5];   // nebulosas: centro (x, y), radio (0 = no hay) y tipo (0 violeta, 1 magenta, 2 turquesa)
+uniform vec4 uGalaxy;   // una galaxia lejana: centro (x, y), radio (0 = no hay) y ángulo
+uniform vec3 uCluster;  // un cúmulo de estrellas: centro (x, y) y radio (0 = no hay)
 ${STARS_GLSL}
 
 float noise2(vec2 x) {
@@ -127,6 +129,7 @@ vec3 desat(vec3 c, float sat) {
 
 // Una nebulosa: una masa de gas con sus hilos, más densa en el centro, y polvo oscuro por delante.
 vec3 nebula(vec2 uv, vec4 n, float seed) {
+  if (n.z <= 0.0) return vec3(0.0);
   vec2 d = (uv - n.xy) / n.z;
   float mask = exp(-dot(d, d) * 1.5);
   if (mask < 0.01) return vec3(0.0);
@@ -143,6 +146,23 @@ vec3 nebula(vec2 uv, vec4 n, float seed) {
   vec3 col = mix(a, b, smoothstep(0.25, 0.75, wisp)) * (gas * 0.5 + threads * 0.45) + b * glowCore;
   col *= 1.0 - 0.6 * smoothstep(0.52, 0.72, dust) * mask;
   return col;
+}
+
+// Una galaxia espiral lejana, inclinada: núcleo brillante, disco con dos brazos y vetas de polvo.
+vec3 galaxy(vec2 uv, vec4 g, float seed) {
+  if (g.z <= 0.0) return vec3(0.0);
+  vec2 d = rot(uv - g.xy, -g.w) / g.z;
+  d.y *= 2.6;
+  float r = length(d);
+  if (r > 3.0) return vec3(0.0);
+  float a = atan(d.y, d.x);
+  float arms = 0.5 + 0.5 * sin(2.0 * a - 3.5 * log(r + 0.2));
+  float disc = exp(-r * r * 0.9) * (0.5 + 0.5 * arms * smoothstep(0.25, 1.0, r));
+  float core = exp(-r * r * 9.0);
+  float dust = smoothstep(0.55, 0.75, noise2(d * 6.0 + seed)) * smoothstep(0.3, 0.9, r) * (1.0 - smoothstep(0.9, 1.8, r));
+  vec3 col = vec3(0.95, 0.9, 0.85) * core * 1.1;
+  col += mix(vec3(0.75, 0.8, 1.0), vec3(1.0, 0.92, 0.85), 1.0 - smoothstep(0.0, 1.2, r)) * disc * 0.55;
+  return col * (1.0 - 0.6 * dust);
 }
 
 void main() {
@@ -170,11 +190,20 @@ void main() {
 
   // Nebulosas.
   vec3 neb = vec3(0.0);
-  for (int i = 0; i < 3; i++) neb += nebula(uv, uNeb[i], uSeed + float(i) * 13.0);
+  for (int i = 0; i < 5; i++) neb += nebula(uv, uNeb[i], uSeed + float(i) * 13.0);
   col += desat(neb, uSat) * uGain.y;
 
-  // Estrellas: polvo fino, medianas y alguna más grande; más dentro de la Vía Láctea.
-  float dens = 1.0 + 2.2 * band + 0.5 * wide;
+  // Una galaxia lejana y un cúmulo de estrellas, si los hay.
+  col += galaxy(uv, uGalaxy, uSeed) * uGain.z * 0.5;
+  float cluster = 0.0;
+  if (uCluster.z > 0.0) {
+    vec2 cd = (uv - uCluster.xy) / uCluster.z;
+    cluster = exp(-dot(cd, cd) * 1.2);
+    col += vec3(0.85, 0.85, 1.0) * cluster * cluster * 0.07 * uGain.z;
+  }
+
+  // Estrellas: polvo fino, medianas y alguna más grande; más dentro de la Vía Láctea y en el cúmulo.
+  float dens = 1.0 + 2.2 * band + 0.5 * wide + 7.0 * cluster;
   vec3 stars = starLayer(px, 7.0, min(0.16 * dens * uStars.x, 0.85), 0.62, uSeed);
   stars += starLayer(px, 15.0, min(0.24 * (1.0 + 1.1 * band) * uStars.y, 0.8), 0.85, uSeed + 3.0);
   stars += starLayer(px, 38.0, 0.4 * uStars.z, 1.15, uSeed + 7.0);
@@ -229,11 +258,12 @@ const skyPrograms = new WeakMap()
 
 // Dibuja el cielo en una textura de w×h píxeles (ya multiplicados por la escala) y la devuelve.
 // opts: { scale, seed, band: [x, y, ángulo, anchura], gain: [vía láctea, nebulosas, estrellas],
-//         stars: [finas, medianas, grandes], sat, nebulae: [[x, y, r, tipo] ×3] }
+//         stars: [finas, medianas, grandes], sat, nebulae: [[x, y, r, tipo] hasta 5],
+//         galaxy: [x, y, r, ángulo] (opcional), cluster: [x, y, r] (opcional) }
 export function bakeSky(gl, w, h, opts, previous) {
   let sky = skyPrograms.get(gl)
   if (!sky) {
-    sky = buildProgram(gl, SKY_FRAG, ['uRes', 'uScale', 'uSeed', 'uBand', 'uGain', 'uStars', 'uSat', 'uNeb[0]'])
+    sky = buildProgram(gl, SKY_FRAG, ['uRes', 'uScale', 'uSeed', 'uBand', 'uGain', 'uStars', 'uSat', 'uNeb[0]', 'uGalaxy', 'uCluster'])
     skyPrograms.set(gl, sky)
   }
   const tex = previous || gl.createTexture()
@@ -255,7 +285,11 @@ export function bakeSky(gl, w, h, opts, previous) {
   gl.uniform3f(sky.u.uGain, ...opts.gain)
   gl.uniform3f(sky.u.uStars, ...opts.stars)
   gl.uniform1f(sky.u.uSat, opts.sat)
-  gl.uniform4fv(sky.u['uNeb[0]'], new Float32Array(opts.nebulae.flat()))
+  const nebulae = [...opts.nebulae]
+  while (nebulae.length < 5) nebulae.push([0, 0, 0, 0])
+  gl.uniform4fv(sky.u['uNeb[0]'], new Float32Array(nebulae.slice(0, 5).flat()))
+  gl.uniform4f(sky.u.uGalaxy, ...(opts.galaxy || [0, 0, 0, 0]))
+  gl.uniform3f(sky.u.uCluster, ...(opts.cluster || [0, 0, 0]))
   gl.drawArrays(gl.TRIANGLES, 0, 3)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null)
   gl.deleteFramebuffer(fb)

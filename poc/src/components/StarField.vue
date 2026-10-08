@@ -76,20 +76,24 @@ function bake() {
   const aspect = texW / texH
   const fx = (f) => f * aspect * 0.5
   // La Vía Láctea cruza en diagonal, subiendo hacia la derecha; las nebulosas, repartidas por el cielo.
-  // Negro profundo, estrellas nítidas y la Vía Láctea y las nebulosas apenas insinuadas, como en una
-  // foto de larga exposición: el gas está, pero no manda.
+  // Negro profundo, estrellas nítidas y la Vía Láctea insinuada, como en una foto de larga exposición;
+  // las nebulosas se ven, pero sin mandar, y hay una galaxia lejana y un cúmulo de estrellas.
   sky = bakeSky(gl, texW, texH, {
     scale,
     seed: 4.2,
     band: [fx(0.15), -0.02, 0.5, 0.22],
-    gain: [0.11, 0.16, 0.7],
+    gain: [0.14, 0.34, 0.7],
     stars: [0.55, 0.6, 0.7],
-    sat: 0.55,
+    sat: 0.65,
     nebulae: [
       [fx(-0.6), 0.22, 0.42, 0],
       [fx(0.55), -0.3, 0.38, 1],
       [fx(0.12), 0.44, 0.28, 2],
+      [fx(-0.25), -0.38, 0.3, 1],
+      [fx(0.8), 0.35, 0.26, 2],
     ],
+    galaxy: [fx(0.35), 0.18, 0.07, 0.6],
+    cluster: [fx(-0.42), -0.12, 0.05],
   }, sky)
   gl.viewport(0, 0, glCanvas.value.width, glCanvas.value.height)
   gl.useProgram(view.program)
