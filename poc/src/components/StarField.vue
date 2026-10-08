@@ -1,6 +1,6 @@
 <script setup>
-// El espacio al otro lado del casco: un cielo de verdad, con la Vía Láctea, nebulosas y miles de
-// estrellas de distintos colores, dibujado en un shader. Deriva muy despacio, como si la nave avanzara
+// El espacio al otro lado del casco: negro profundo con estrellas nítidas de distintos colores, la Vía
+// Láctea y alguna nebulosa apenas insinuadas, dibujado en un shader. Deriva muy despacio, como si la nave avanzara
 // a velocidad de crucero, se desplaza un poco al hacer scroll y con el ratón, las estrellas brillantes
 // titilan y de vez en cuando cruza una estrella fugaz. Sin WebGL quedan los puntos de siempre.
 import { nextTick, onBeforeUnmount, onMounted, ref } from 'vue'
@@ -42,7 +42,7 @@ vec3 meteor(vec2 px) {
 void main() {
   vec3 col = texture2D(uSky, (gl_FragCoord.xy + uOff) / uTex).rgb;
   vec2 px = gl_FragCoord.xy / uScale + uOff2;
-  col += brightStars(px, 170.0, 0.4, uSeed + 31.0, uTime);
+  col += brightStars(px, 210.0, 0.32, uSeed + 31.0, uTime, 0.08, 0.35);
   col += meteor(px);
   gl_FragColor = vec4(col, 1.0);
 }
@@ -76,11 +76,15 @@ function bake() {
   const aspect = texW / texH
   const fx = (f) => f * aspect * 0.5
   // La Vía Láctea cruza en diagonal, subiendo hacia la derecha; las nebulosas, repartidas por el cielo.
+  // Negro profundo, estrellas nítidas y la Vía Láctea y las nebulosas apenas insinuadas, como en una
+  // foto de larga exposición: el gas está, pero no manda.
   sky = bakeSky(gl, texW, texH, {
     scale,
     seed: 4.2,
-    band: [fx(0.15), -0.02, 0.5, 0.24],
-    gain: [0.2, 0.42, 0.8],
+    band: [fx(0.15), -0.02, 0.5, 0.22],
+    gain: [0.11, 0.16, 0.7],
+    stars: [0.55, 0.6, 0.7],
+    sat: 0.55,
     nebulae: [
       [fx(-0.6), 0.22, 0.42, 0],
       [fx(0.55), -0.3, 0.38, 1],

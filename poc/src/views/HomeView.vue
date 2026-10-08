@@ -7,7 +7,7 @@ import SpaceScene from '../components/SpaceScene.vue'
 import ShipProw from '../components/ShipProw.vue'
 
 const stats = ref(null)
-// Si el navegador no tiene WebGL, el ventanal vuelve al planeta plano de CSS.
+// Si el navegador no tiene WebGL, el ventanal vuelve al planeta plano de CSS y a la proa en SVG.
 const flat = ref(false)
 const now = ref(new Date())
 let timer
@@ -68,7 +68,7 @@ const signals = [
           </div>
           <div class="moon" aria-hidden="true"></div>
         </template>
-        <ShipProw />
+        <ShipProw v-if="flat" />
         <div class="window-glare" aria-hidden="true"></div>
 
         <div class="hero">
@@ -166,9 +166,8 @@ const signals = [
   inset: 0;
   pointer-events: none;
   background:
-    linear-gradient(115deg, rgba(255, 255, 255, 0.06) 0%, transparent 28%, transparent 72%, rgba(255, 255, 255, 0.03) 100%),
-    radial-gradient(55% 75% at 22% 55%, rgba(4, 2, 10, 0.45), transparent 70%),
-    radial-gradient(120% 90% at 50% 120%, rgba(4, 2, 10, 0.55), transparent 60%);
+    radial-gradient(55% 75% at 22% 55%, rgba(4, 2, 10, 0.4), transparent 70%),
+    radial-gradient(120% 90% at 50% 120%, rgba(4, 2, 10, 0.5), transparent 60%);
   box-shadow: inset 0 0 90px rgba(4, 2, 10, 0.85);
 }
 .hero {
