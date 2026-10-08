@@ -2,21 +2,48 @@
 //  - Data/Platforms/*.xml: un fichero por plataforma con todos sus juegos,
 //  - Images/<Plataforma>/Box - Front: las carátulas, que se copian a data/uploads/videojuegos/.
 // Uso: npm run import:launchbox -- "C:\Users\usuario\LaunchBox" [--sin-caratulas] [--plataforma="Sega Genesis"]
+// Vale la carpeta de LaunchBox entera, su carpeta Data (o una copia de ella) o directamente la
+// carpeta Platforms. Si las imágenes están en otro sitio (otro disco), se indica con
+// --imagenes="D:\LaunchBox\Images"; si no se encuentran, se importa sin carátulas y se avisa.
 // Se puede repetir: lo que ya estaba se actualiza (por su id de LaunchBox) sin duplicarse ni perder
 // las notas escritas en la consola.
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs'
-import { basename, extname, join } from 'node:path'
+import { basename, dirname, extname, join } from 'node:path'
 import { UPLOADS_DIR } from '../server/db.js'
 import { upsertAll, report, VIDEOGAME_KEY } from './lib/import.js'
 
 const args = process.argv.slice(2)
-const root = args.find((a) => !a.startsWith('--'))
-const withImages = !args.includes('--sin-caratulas')
+const given = args.find((a) => !a.startsWith('--'))
 const onlyPlatform = args.find((a) => a.startsWith('--plataforma='))?.slice('--plataforma='.length)
+const imagesArg = args.find((a) => a.startsWith('--imagenes='))?.slice('--imagenes='.length)
 
-if (!root || !existsSync(join(root, 'Data', 'Platforms'))) {
-  console.error('Indica la carpeta de LaunchBox (la que tiene dentro Data/ e Images/). Por ejemplo:\n  npm run import:launchbox -- "C:\\Users\\usuario\\LaunchBox"')
+// Dónde están los XML de las plataformas, se dé la carpeta que se dé.
+function findPlatforms(dir) {
+  if (!dir || !existsSync(dir)) return null
+  for (const candidate of [join(dir, 'Data', 'Platforms'), join(dir, 'Platforms'), dir]) {
+    if (existsSync(candidate) && readdirSync(candidate).some((f) => f.toLowerCase().endsWith('.xml'))) return candidate
+  }
+  return null
+}
+const platformsDir = findPlatforms(given)
+if (!platformsDir) {
+  console.error('Indica la carpeta de LaunchBox (la que tiene dentro Data/ e Images/), su carpeta Data o la carpeta Platforms. Por ejemplo:\n  npm run import:launchbox -- "C:\\Users\\usuario\\LaunchBox"')
   process.exit(1)
+}
+
+// Dónde están las imágenes: lo que se indique, o Images/ junto a Data/.
+function findImages() {
+  const candidates = imagesArg
+    ? [imagesArg, join(imagesArg, 'Images')]
+    : [join(dirname(dirname(platformsDir)), 'Images'), join(given, 'Images')]
+  return candidates.find((c) => existsSync(c) && statSync(c).isDirectory()) || null
+}
+const imagesDir = args.includes('--sin-caratulas') ? null : findImages()
+const withImages = Boolean(imagesDir)
+if (!args.includes('--sin-caratulas') && !withImages) {
+  console.warn(imagesArg
+    ? `No se encuentra la carpeta de imágenes ${imagesArg}: se importa sin carátulas.`
+    : 'No hay carpeta Images/ junto a los datos: se importa sin carátulas (indícala con --imagenes="D:\\LaunchBox\\Images" si está en otro disco).')
 }
 
 /* ---------- XML ---------- */
@@ -65,10 +92,9 @@ function walk(dir, visit) {
 // LaunchBox nombra las imágenes con el título del juego, cambiando los caracteres que Windows no
 // admite por "_": al comparar se ignoran todos los signos.
 function coverIndex(platform) {
-  const imagesDir = join(root, 'Images')
-  if (!existsSync(imagesDir)) return new Map()
-  const dir = readdirSync(imagesDir, { withFileTypes: true }).find((d) => d.isDirectory() && key(d.name) === key(platform))
   const map = new Map()
+  if (!imagesDir) return map
+  const dir = readdirSync(imagesDir, { withFileTypes: true }).find((d) => d.isDirectory() && key(d.name) === key(platform))
   if (!dir) return map
   for (const sub of ['Box - Front', 'Box - Front - Reconstructed', 'Box - 3D', 'Fanart - Box - Front', 'Screenshot - Game Title']) {
     const base = join(imagesDir, dir.name, sub)
@@ -92,7 +118,8 @@ function copyCover(file, id) {
 
 /* ---------- Importación ---------- */
 
-const files = readdirSync(join(root, 'Data', 'Platforms')).filter((f) => f.toLowerCase().endsWith('.xml')).sort()
+const files = readdirSync(platformsDir).filter((f) => f.toLowerCase().endsWith('.xml')).sort()
+console.log(`Plataformas en ${platformsDir}${withImages ? `, carátulas en ${imagesDir}` : ''}`)
 const games = []
 let covers = 0
 let skipped = 0
@@ -100,7 +127,7 @@ let skipped = 0
 for (const file of files) {
   const platformName = file.replace(/\.xml$/i, '')
   if (onlyPlatform && key(onlyPlatform) !== key(platformName)) continue
-  const parsed = parseGames(readFileSync(join(root, 'Data', 'Platforms', file), 'utf8'))
+  const parsed = parseGames(readFileSync(join(platformsDir, file), 'utf8'))
   const index = withImages ? coverIndex(platformName) : new Map()
   let found = 0
   for (const g of parsed) {
@@ -144,8 +171,8 @@ for (const file of files) {
 }
 
 if (!games.length) {
-  console.error('No se ha encontrado ningún juego. ¿Es esa la carpeta de LaunchBox?')
+  console.error('No se ha encontrado ningún juego en esos XML. ¿Es esa la carpeta de LaunchBox (o su Data/Platforms)?')
   process.exit(1)
 }
 const counts = upsertAll('videogame', games, { key: VIDEOGAME_KEY })
-report(`LaunchBox (${files.length} plataformas${withImages ? `, ${covers} carátulas copiadas a data/uploads/videojuegos/` : ''}${skipped ? `, ${skipped} entradas sin título saltadas` : ''})`, counts, games.slice(0, 5))
+report(`LaunchBox (${files.length} plataformas${withImages ? `, ${covers} carátulas copiadas a data/uploads/videojuegos/` : ', sin carátulas'}${skipped ? `, ${skipped} entradas sin título saltadas` : ''})`, counts, games.slice(0, 5))
