@@ -46,7 +46,10 @@ const items = db.prepare('SELECT * FROM items ORDER BY id').all().map((i) => ({
   meta: JSON.parse(i.meta || '{}'),
 }))
 
+const furniture = db.prepare('SELECT * FROM furniture ORDER BY position, id').all()
+  .map((f) => ({ ...f, layout: JSON.parse(f.layout || '{}') }))
+
 const missing = [...assets].filter((a) => !existsSync(join(REPO, 'assets', decodeURI(a))))
-writeFileSync(join(here, '..', 'src', 'demo', 'snapshot.json'), JSON.stringify({ posts, comments, items }))
+writeFileSync(join(here, '..', 'src', 'demo', 'snapshot.json'), JSON.stringify({ posts, comments, items, furniture }))
 writeFileSync(join(here, '..', 'src', 'demo', 'assets.json'), JSON.stringify([...assets].filter((a) => !missing.includes(a)), null, 1))
 console.log(`✦ Demo: ${posts.length} entradas, ${items.length} objetos, ${assets.size - missing.length} ficheros de assets${missing.length ? ` (${missing.length} no encontrados)` : ''}.`)

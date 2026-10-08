@@ -1,13 +1,16 @@
 // Rellena la base de datos local:
 //  - importa las entradas del blog actual (../_posts/*.md) convirtiendo el Markdown a HTML,
-//  - añade una colección de ejemplo para la Kallax, la estantería y la librería.
+//  - carga las dos Kallax reales de Malkev (juegos y libros de rol, colocados como en las fotos),
+//  - añade una colección de ejemplo para la estantería de pelis y la biblioteca.
 // Se puede ejecutar las veces que haga falta: borra y vuelve a crear todo.
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { marked } from 'marked'
 import { db, setPostTags, indexPost, uniqueSlug, transaction } from '../server/db.js'
-import { boardgames, films, series, books, manga } from './sample-collection.js'
+import { films, series, books, manga } from './sample-collection.js'
+import { furniture as kallaxes } from './kallax-real.js'
+import { eachPlaced } from '../src/kallax.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const POSTS_DIR = join(here, '..', '..', '_posts')
@@ -110,31 +113,70 @@ function addSampleComments() {
   add.run(latest.id, 'Malkev', 'Gracias por pasarte. Esto es solo el principio.', '2026-05-22 11:02:00')
 }
 
+const insertItem = () => db.prepare(`
+  INSERT INTO items (kind, title, creator, year, color, rating, status, notes, shelf, position, featured, meta)
+  VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+`)
+
 function importCollection() {
-  const insert = db.prepare(`
-    INSERT INTO items (kind, title, creator, year, color, rating, status, notes, shelf, position, featured, meta)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `)
+  const insert = insertItem()
   const add = (kind, list) => list.forEach((it, i) => insert.run(
     kind, it.title, it.creator || '', it.year ?? null, it.color || null, it.rating ?? null,
     it.status || 'owned', it.notes || '', it.shelf ?? null, it.position ?? i, it.featured ? 1 : 0,
     JSON.stringify(it.meta || {}),
   ))
-  add('boardgame', boardgames)
   add('film', films)
   add('series', series)
   add('book', books)
   add('manga', manga)
-  return boardgames.length + films.length + series.length + books.length + manga.length
+  return films.length + series.length + books.length + manga.length
+}
+
+// Cada caja o libro de las Kallax pasa a ser un objeto de la colección; en el mueble se queda
+// solo su id con lo que ocupa (ancho y alto) y cómo está puesto.
+function importKallax() {
+  const insert = insertItem()
+  const addFurniture = db.prepare('INSERT INTO furniture (key, name, rows, cols, layout, position) VALUES (?, ?, ?, ?, ?, ?)')
+  let count = 0
+  kallaxes.forEach((f, index) => {
+    const furnitureId = Number(addFurniture.run(f.key, f.name, f.rows, f.cols, '{}', index).lastInsertRowid)
+    const ids = new Map()
+    eachPlaced(f, (it, location) => {
+      const meta = { location, dot: it.dot, postit: it.note, doubt: it.doubt }
+      ids.set(it, Number(insert.run(
+        it.kind, it.title, '', null, it.color || null, null, 'owned', '', furnitureId, count++, 0, JSON.stringify(meta),
+      ).lastInsertRowid))
+    })
+    const ref = (it) => {
+      if (it.deco) return it
+      const out = { id: ids.get(it), w: it.w, h: it.h }
+      for (const flag of ['face', 'upright', 'tilt']) if (it[flag]) out[flag] = true
+      return out
+    }
+    const group = (g) => ({
+      ...g,
+      items: g.items?.map(ref),
+      on: g.on?.map(ref),
+      above: g.above?.map(group),
+      groups: g.groups?.map(group),
+    })
+    const layout = {
+      top: f.top.map(group),
+      cubes: f.cubes.map((c) => ({ ...c, tiers: c.tiers.map((t) => t.map(group)), aside: c.aside && group(c.aside) })),
+    }
+    db.prepare('UPDATE furniture SET layout = ? WHERE id = ?').run(JSON.stringify(layout), furnitureId)
+  })
+  return count
 }
 
 const result = transaction(() => {
-  db.exec('DELETE FROM comments; DELETE FROM post_tags; DELETE FROM tags; DELETE FROM posts; DELETE FROM posts_fts; DELETE FROM items;')
-  db.exec("DELETE FROM sqlite_sequence WHERE name IN ('posts', 'tags', 'comments', 'items')")
+  db.exec('DELETE FROM comments; DELETE FROM post_tags; DELETE FROM tags; DELETE FROM posts; DELETE FROM posts_fts; DELETE FROM items; DELETE FROM furniture;')
+  db.exec("DELETE FROM sqlite_sequence WHERE name IN ('posts', 'tags', 'comments', 'items', 'furniture')")
   const posts = importPosts()
   addSampleComments()
+  const kallax = importKallax()
   const items = importCollection()
-  return { posts, items }
+  return { posts, kallax, items }
 })
 
-console.log(`✦ Importadas ${result.posts} entradas del blog y ${result.items} objetos de ejemplo de la colección.`)
+console.log(`✦ Importadas ${result.posts} entradas del blog, ${result.kallax} juegos y libros de rol de las dos Kallax y ${result.items} objetos de ejemplo para pelis y libros.`)

@@ -23,7 +23,7 @@ const api = express.Router()
 app.use('/api', api)
 
 const PAGE_SIZE = 12
-const ITEM_KINDS = ['boardgame', 'film', 'series', 'book', 'manga']
+const ITEM_KINDS = ['boardgame', 'rpg', 'film', 'series', 'book', 'manga']
 
 function tagsFor(postId) {
   return db.prepare(
@@ -295,6 +295,12 @@ function saveItem(body, id = null) {
 }
 
 api.post('/items', (req, res) => res.status(201).json(saveItem(req.body)))
+/* Muebles de la sala de juegos, con la colocación de cada caja. */
+api.get('/furniture', (req, res) => {
+  res.json(db.prepare('SELECT * FROM furniture ORDER BY position, id').all()
+    .map((f) => ({ ...f, layout: JSON.parse(f.layout || '{}') })))
+})
+
 api.put('/items/:id', (req, res) => res.json(saveItem(req.body, Number(req.params.id))))
 api.delete('/items/:id', (req, res) => {
   db.prepare('DELETE FROM items WHERE id = ?').run(Number(req.params.id))

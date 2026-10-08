@@ -1,41 +1,7 @@
-// Colección de EJEMPLO para ver la POC con contenido. No es la colección real de Malkev:
-// se sustituye desde el panel de administración (o con una importación de BGG, Goodreads, etc.).
-// box: tamaño de la caja en la Kallax (xl, l, m, s). format: formato del disco en la estantería.
-
-export const boardgames = [
-  { title: 'Gloomhaven', creator: 'Isaac Childres', year: 2017, color: '#5b3a29', rating: 9, featured: true, meta: { players: '1-4', minutes: 120, box: 'xl' } },
-  { title: 'Dune: Imperium', creator: 'Paul Dennen', year: 2020, color: '#c97a2b', rating: 9, featured: true, meta: { players: '1-4', minutes: 120, box: 'l' } },
-  { title: 'Spirit Island', creator: 'R. Eric Reuss', year: 2017, color: '#2f6b4f', rating: 10, featured: true, meta: { players: '1-4', minutes: 120, box: 'l' } },
-  { title: 'Twilight Imperium IV', creator: 'Dane Beltrami', year: 2017, color: '#1d1f4a', rating: 9, featured: true, meta: { players: '3-6', minutes: 480, box: 'xl' } },
-  { title: 'Arkham Horror: El juego de cartas', creator: 'Nate French', year: 2016, color: '#2c4a3a', rating: 9, featured: true, meta: { players: '1-2', minutes: 120, box: 'm' } },
-  { title: 'Nemesis', creator: 'Adam Kwapiński', year: 2018, color: '#7a1f2b', rating: 8, featured: true, meta: { players: '1-5', minutes: 180, box: 'xl' } },
-  { title: 'Terraforming Mars', creator: 'Jacob Fryxelius', year: 2016, color: '#b4472a', rating: 8, meta: { players: '1-5', minutes: 120, box: 'l' } },
-  { title: 'Wingspan', creator: 'Elizabeth Hargrave', year: 2019, color: '#3d8ca8', rating: 8, meta: { players: '1-5', minutes: 70, box: 'l' } },
-  { title: 'Root', creator: 'Cole Wehrle', year: 2018, color: '#d39b3a', rating: 8, meta: { players: '2-4', minutes: 90, box: 'l' } },
-  { title: 'Brass: Birmingham', creator: 'Martin Wallace', year: 2018, color: '#3b2b4f', rating: 9, meta: { players: '2-4', minutes: 120, box: 'l' } },
-  { title: 'Scythe', creator: 'Jamey Stegmaier', year: 2016, color: '#8a6d3b', rating: 8, meta: { players: '1-5', minutes: 115, box: 'l' } },
-  { title: 'Ark Nova', creator: 'Mathias Wigge', year: 2021, color: '#2d6a6a', rating: 9, meta: { players: '1-4', minutes: 150, box: 'l' } },
-  { title: 'Star Wars: Rebellion', creator: 'Corey Konieczka', year: 2016, color: '#1f2f5a', rating: 9, meta: { players: '2-4', minutes: 240, box: 'xl' } },
-  { title: 'Las mansiones de la locura', creator: 'Nikki Valens', year: 2016, color: '#4a2d55', rating: 8, meta: { players: '1-5', minutes: 180, box: 'xl' } },
-  { title: 'Eldritch Horror', creator: 'Corey Konieczka', year: 2013, color: '#25443f', rating: 8, meta: { players: '1-8', minutes: 240, box: 'l' } },
-  { title: 'Cthulhu: Death May Die', creator: 'Rob Daviau', year: 2019, color: '#3b5b2f', rating: 7, meta: { players: '1-5', minutes: 120, box: 'xl' } },
-  { title: 'Blood Rage', creator: 'Eric M. Lang', year: 2015, color: '#8f1d1d', rating: 8, meta: { players: '2-4', minutes: 90, box: 'l' } },
-  { title: 'Everdell', creator: 'James A. Wilson', year: 2018, color: '#5f8f3e', rating: 7, meta: { players: '1-4', minutes: 80, box: 'l' } },
-  { title: 'Las ruinas perdidas de Arnak', creator: 'Mín y Elwen', year: 2020, color: '#a8752f', rating: 8, meta: { players: '1-4', minutes: 120, box: 'l' } },
-  { title: 'Catan', creator: 'Klaus Teuber', year: 1995, color: '#c8372d', rating: 6, meta: { players: '3-4', minutes: 90, box: 'm' } },
-  { title: 'Carcassonne', creator: 'Klaus-Jürgen Wrede', year: 2000, color: '#3f6fa8', rating: 7, meta: { players: '2-5', minutes: 45, box: 'm' } },
-  { title: 'Aventureros al tren', creator: 'Alan R. Moon', year: 2004, color: '#2b5e9c', rating: 7, meta: { players: '2-5', minutes: 60, box: 'm' } },
-  { title: 'Pandemic', creator: 'Matt Leacock', year: 2008, color: '#2d7a8f', rating: 7, meta: { players: '2-4', minutes: 45, box: 'm' } },
-  { title: '7 Wonders', creator: 'Antoine Bauza', year: 2010, color: '#9c6b2f', rating: 7, meta: { players: '2-7', minutes: 30, box: 'm' } },
-  { title: 'Azul', creator: 'Michael Kiesling', year: 2017, color: '#2a62b8', rating: 8, meta: { players: '2-4', minutes: 45, box: 'm' } },
-  { title: 'Cascadia', creator: 'Randy Flynn', year: 2021, color: '#3d7d5a', rating: 8, meta: { players: '1-4', minutes: 45, box: 'm' } },
-  { title: 'King of Tokyo', creator: 'Richard Garfield', year: 2011, color: '#6a2ea8', rating: 7, meta: { players: '2-6', minutes: 30, box: 'm' } },
-  { title: 'Dixit', creator: 'Jean-Louis Roubira', year: 2008, color: '#d16a8a', rating: 7, meta: { players: '3-6', minutes: 30, box: 'm' } },
-  { title: 'Código Secreto', creator: 'Vlaada Chvátil', year: 2015, color: '#b33a3a', rating: 7, meta: { players: '2-8', minutes: 15, box: 's' } },
-  { title: 'La tripulación', creator: 'Thomas Sing', year: 2019, color: '#2c3e7a', rating: 8, meta: { players: '2-5', minutes: 20, box: 's' } },
-  { title: 'Sushi Go!', creator: 'Phil Walker-Harding', year: 2013, color: '#e0703a', rating: 6, meta: { players: '2-5', minutes: 15, box: 's' } },
-  { title: 'The Mind', creator: 'Wolfgang Warsch', year: 2018, color: '#4a3a8f', rating: 6, meta: { players: '2-4', minutes: 20, box: 's' } },
-]
+// Colección de EJEMPLO para la estantería de pelis y la biblioteca. No es la colección real de Malkev:
+// se sustituye desde el panel de administración (o con una importación de Goodreads, Filmaffinity, etc.).
+// Los juegos de mesa y los libros de rol ya son los de verdad: están en kallax-real.js.
+// format: formato del disco en la estantería.
 
 export const films = [
   { title: 'Blade Runner', creator: 'Ridley Scott', year: 1982, color: '#1d2a4d', rating: 10, meta: { format: 'bluray' } },

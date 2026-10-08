@@ -112,7 +112,8 @@ async function boardgames(q) {
 
 export async function lookup(kind, q) {
   switch (kind) {
-    case 'book': return books(q)
+    case 'book':
+    case 'rpg': return books(q)
     case 'manga': return manga(q)
     case 'film':
     case 'series': return tmdb(kind, q)

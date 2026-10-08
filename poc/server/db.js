@@ -44,10 +44,10 @@ CREATE TABLE IF NOT EXISTS comments (
   status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible', 'hidden')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
--- Colección de hobbies: juegos de mesa, pelis, series, libros y manga en una sola tabla.
+-- Colección de hobbies: juegos de mesa, libros de rol, pelis, series, libros y manga en una sola tabla.
 CREATE TABLE IF NOT EXISTS items (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  kind       TEXT NOT NULL CHECK (kind IN ('boardgame', 'film', 'series', 'book', 'manga')),
+  kind       TEXT NOT NULL CHECK (kind IN ('boardgame', 'rpg', 'film', 'series', 'book', 'manga')),
   title      TEXT NOT NULL,
   creator    TEXT NOT NULL DEFAULT '',
   year       INTEGER,
@@ -65,9 +65,34 @@ CREATE TABLE IF NOT EXISTS items (
   updated_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
 CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind, shelf, position);
+-- Muebles de la sala de juegos: cada Kallax guarda cómo está colocado todo (layout en JSON,
+-- con las cajas referenciadas por el id de items y la decoración descrita dentro).
+CREATE TABLE IF NOT EXISTS furniture (
+  id       INTEGER PRIMARY KEY AUTOINCREMENT,
+  key      TEXT NOT NULL UNIQUE,
+  name     TEXT NOT NULL,
+  rows     INTEGER NOT NULL,
+  cols     INTEGER NOT NULL,
+  layout   TEXT NOT NULL DEFAULT '{}',
+  position INTEGER NOT NULL DEFAULT 0
+);
 CREATE INDEX IF NOT EXISTS idx_posts_pub ON posts(status, published_at);
 CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(title, excerpt, body, tokenize = 'unicode61 remove_diacritics 2');
 `)
+
+// Las bases de datos creadas antes de que existieran los libros de rol no admiten kind = 'rpg':
+// se rehace la tabla con la restricción nueva conservando los datos.
+const itemsSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'items'").get()?.sql || ''
+if (!itemsSql.includes("'rpg'")) {
+  db.exec('BEGIN; ALTER TABLE items RENAME TO items_old;')
+  db.exec(itemsSql.replace("'boardgame', 'film'", "'boardgame', 'rpg', 'film'"))
+  db.exec(`
+    INSERT INTO items SELECT * FROM items_old;
+    DROP TABLE items_old;
+    CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind, shelf, position);
+    COMMIT;
+  `)
+}
 
 export function stripHtml(html) {
   return String(html || '')
