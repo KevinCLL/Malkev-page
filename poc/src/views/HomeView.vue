@@ -3,8 +3,12 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { api } from '../api.js'
 import { formatDate, postUrl, scrollToId, stardate } from '../util.js'
 import AppIcon from '../components/AppIcon.vue'
+import SpaceScene from '../components/SpaceScene.vue'
+import ShipProw from '../components/ShipProw.vue'
 
 const stats = ref(null)
+// Si el navegador no tiene WebGL, el ventanal vuelve al planeta plano de CSS.
+const flat = ref(false)
 const now = ref(new Date())
 let timer
 
@@ -55,17 +59,21 @@ const signals = [
 <template>
   <main class="page home">
     <section class="viewport" aria-label="Ventanal del puente">
-      <div class="window">
-        <div class="planet" aria-hidden="true">
-          <div class="planet-surface"></div>
-          <div class="planet-shadow"></div>
-        </div>
-        <div class="moon" aria-hidden="true"></div>
+      <div class="window" :class="{ flat }">
+        <SpaceScene v-if="!flat" @unsupported="flat = true" />
+        <template v-else>
+          <div class="planet" aria-hidden="true">
+            <div class="planet-surface"></div>
+            <div class="planet-shadow"></div>
+          </div>
+          <div class="moon" aria-hidden="true"></div>
+        </template>
+        <ShipProw />
         <div class="window-glare" aria-hidden="true"></div>
 
         <div class="hero">
-          <p class="eyebrow"><span class="dot-live"></span>Navegando en silencio</p>
-          <h1 class="hero-title">MALKEVNIA</h1>
+          <p class="eyebrow"><span class="dot-live"></span>A bordo · navegando en silencio</p>
+          <h1 class="hero-title">LA MALKEVNIA</h1>
           <p class="hero-lead">Una nave pequeña, un solo tripulante y muchas cosas que contar. Ponte cómodo, que aquí no hay prisa.</p>
           <div class="hero-actions">
             <RouterLink to="/blog" class="btn btn-primary">
@@ -77,6 +85,7 @@ const signals = [
       </div>
 
       <div class="hud">
+        <div class="readout">Nave <strong>La Malkevnia</strong></div>
         <div class="readout">Rumbo <strong>ninguno en particular</strong></div>
         <div class="readout">Velocidad <strong>de crucero</strong></div>
         <div class="readout">Tripulación <strong>1</strong></div>
@@ -156,7 +165,13 @@ const signals = [
   position: absolute;
   inset: 0;
   pointer-events: none;
-  background: linear-gradient(115deg, rgba(255, 255, 255, 0.05) 0%, transparent 30%, transparent 70%, rgba(255, 255, 255, 0.02) 100%);
+  background:
+    linear-gradient(115deg, rgba(255, 255, 255, 0.06) 0%, transparent 28%, transparent 72%, rgba(255, 255, 255, 0.03) 100%),
+    radial-gradient(120% 90% at 50% 120%, rgba(4, 2, 10, 0.55), transparent 60%);
+  box-shadow: inset 0 0 90px rgba(4, 2, 10, 0.85);
+}
+.hero {
+  z-index: 1;
 }
 .planet {
   position: absolute;
@@ -222,6 +237,7 @@ const signals = [
   background-clip: text;
   color: transparent;
   text-shadow: 0 0 60px rgba(161, 132, 255, 0.35);
+  filter: drop-shadow(0 4px 18px rgba(4, 2, 10, 0.9));
 }
 .hero-lead {
   font-size: clamp(17px, 2vw, 20px);
@@ -376,8 +392,18 @@ const signals = [
 @media (max-width: 720px) {
   .window {
     border-radius: 32px;
-    min-height: 560px;
+    min-height: 600px;
     align-items: flex-end;
+  }
+  .hero {
+    padding-bottom: 76px;
+  }
+  .hero-lead {
+    text-shadow: 0 2px 12px rgba(4, 2, 10, 0.9);
+  }
+  .window-glare {
+    background:
+      linear-gradient(0deg, rgba(4, 2, 10, 0.85) 0%, rgba(4, 2, 10, 0.45) 40%, transparent 65%);
   }
   .planet {
     width: 110vw;
