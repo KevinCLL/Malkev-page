@@ -79,7 +79,10 @@ Filmaffinity no tiene API ni exportación y cambia su HTML de vez en cuando: el 
 npm run import:launchbox -- "C:\Users\usuario\LaunchBox"
 npm run import:launchbox -- "C:\Users\usuario\LaunchBox" --plataforma="Super Nintendo Entertainment System"
 npm run import:launchbox -- "C:\Users\usuario\LaunchBox" --sin-caratulas
+npm run import:launchbox -- "C:\Users\usuario\Downloads\Launchbox Data" --imagenes="D:\LaunchBox\Images"
 ```
+
+Vale la carpeta de LaunchBox entera, su carpeta `Data` (o una copia) o directamente `Platforms`. Si las imágenes están en otro disco, se indican con `--imagenes`; si no se encuentran, importa sin carátulas y lo dice.
 
 Lee los XML de `Data/Platforms/` (título, plataforma, año, desarrollador, editor, género, región, jugadores, nota, veces jugado, tiempo de juego, última partida, favorito, completado, oculto) y copia la carátula frontal de `Images/<plataforma>/Box - Front/` (o la reconstruida, la 3D, el fanart o la pantalla de título si no hay) a `data/uploads/videojuegos/`. Se puede repetir: cada juego se reconoce por su ID de LaunchBox, así que actualiza en vez de duplicar. Los favoritos salen como destacados y los ocultos no se enseñan.
 
