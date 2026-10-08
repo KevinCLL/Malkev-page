@@ -118,7 +118,8 @@ function copyCover(file, id) {
 
 /* ---------- Importación ---------- */
 
-const files = readdirSync(platformsDir).filter((f) => f.toLowerCase().endsWith('.xml')).sort()
+// LaunchBox (y las herramientas que lo retocan) dejan copias como "MS-DOS.bak-20260410-184551.xml": fuera.
+const files = readdirSync(platformsDir).filter((f) => f.toLowerCase().endsWith('.xml') && !/\.bak\b/i.test(f)).sort()
 console.log(`Plataformas en ${platformsDir}${withImages ? `, carátulas en ${imagesDir}` : ''}`)
 const games = []
 let covers = 0
