@@ -18,7 +18,8 @@
     "import:anilist": "node --disable-warning=ExperimentalWarning scripts/import-anilist.js",
     "import:filmaffinity": "node --disable-warning=ExperimentalWarning scripts/import-filmaffinity.js",
     "coleccion:export": "node --disable-warning=ExperimentalWarning scripts/coleccion-export.js",
-    "coleccion:import": "node --disable-warning=ExperimentalWarning scripts/coleccion-import.js"
+    "coleccion:import": "node --disable-warning=ExperimentalWarning scripts/coleccion-import.js",
+    "import:goodreads-web": "node --disable-warning=ExperimentalWarning scripts/import-goodreads-web.js"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.4",

@@ -47,9 +47,10 @@ Estos scripts se ejecutan en tu ordenador, con tu propia conexión, y se pueden 
 | Qué | Cómo | De dónde |
 |---|---|---|
 | Libros | `npm run import:goodreads -- goodreads_library_export.csv` | Goodreads: *My Books* → *Import and export* → *Export library* |
+| Libros (sin el CSV) | `npm run import:goodreads-web -- 36779615` | El RSS público de las estanterías de Goodreads |
 | Manga, manhwa, manhua | `npm run import:anilist -- Malkev` | La API pública de AniList (lista de manga) |
 | Pelis y series | `npm run import:filmaffinity -- 700344` | Filmaffinity, descargando las páginas de valoraciones del usuario |
-| Pelis y series (si lo anterior falla) | `npm run import:filmaffinity -- carpeta/` | Las mismas páginas guardadas con Ctrl+S en una carpeta |
+| Pelis y series (si lo anterior falla) | `npm run import:filmaffinity -- carpeta/` | Las mismas páginas guardadas en una carpeta (Filmaffinity responde 403 al `fetch` de Node pero no a `curl` con un User-Agent de navegador, añadiendo `&chv=list` a la URL) |
 
 Filmaffinity no tiene API ni exportación y cambia su HTML de vez en cuando: el script enseña una muestra de lo que ha leído para comprobar que tiene sentido.
 

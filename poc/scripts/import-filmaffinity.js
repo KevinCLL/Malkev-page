@@ -14,59 +14,69 @@ if (!arg) {
   process.exit(1)
 }
 
-const pages = []
+// Cada ficha es un bloque <div class="row movie-card …" data-movie-id="NNN">; la nota del usuario
+// va en .fa-user-rat-box, a continuación de la tarjeta, así que el bloque llega hasta la ficha siguiente.
+function parsePage(html) {
+  const starts = [...html.matchAll(/<div class="row movie-card[^"]*" data-movie-id="(\d+)"/g)]
+  return starts.map((m, i) => {
+    const chunk = html.slice(m.index, starts[i + 1]?.index ?? html.length)
+    const title = decode(chunk.match(/class="fs-6 mc-title">\s*<a[^>]*>([\s\S]*?)<\/a>/)?.[1] || '')
+    const type = decode(chunk.match(/<span class="type">([^<]+)<\/span>/)?.[1] || '')
+    const alt = chunk.match(/<img[^>]+data-srcset="[^"]*"[^>]*alt="([^"]*)"/)?.[1] || ''
+    const srcset = chunk.match(/data-srcset="([^"]+)"/)?.[1] || ''
+    const poster = srcset.match(/(\S+-large\.jpg)/)?.[1] || srcset.match(/(https:\S+\.jpg)/)?.[1] || null
+    // Directores; en las series, solo los creadores (marcados con «(Creador)») si los hay.
+    const credits = chunk.match(/class="mt-2 mc-director">([\s\S]*?)<\/div>\s*<\/div>/)?.[1] || ''
+    const names = [...credits.matchAll(/<span class="nb">([\s\S]*?)<\/span>/g)].map((n) => n[1])
+    const creators = names.filter((n) => /\(Creador\)/.test(n))
+    const director = (creators.length ? creators : names.slice(0, 2)).map((n) => decode(n.replace(/<i>[\s\S]*?<\/i>/g, '')).replace(/,$/, '').trim()).join(', ')
+    const rating = Number(chunk.match(/class="fa-user-rat-box[^"]*">\s*(\d{1,2})\s*</)?.[1]) || null
+    const series = /serie/i.test(type) || /\((?:Mini)?serie de TV\)/i.test(alt)
+    return {
+      id: m[1],
+      kind: series ? 'series' : 'film',
+      title: title.replace(/\s*\((?:Mini)?serie de TV\)|\s*\(C\)|\s*\(TV\)/gi, '').trim(),
+      creator: director,
+      year: Number(chunk.match(/class="mc-year[^"]*">\s*(\d{4})/)?.[1]) || null,
+      rating,
+      status: 'done',
+      cover_url: poster,
+      meta: { filmaffinity_id: Number(m[1]), type: type || null, seen: true, source: 'filmaffinity' },
+    }
+  }).filter((f) => f.title)
+}
+
+const films = new Map()
+const add = (list) => {
+  let fresh = 0
+  for (const f of list) if (!films.has(f.id)) { films.set(f.id, f); fresh++ }
+  return fresh
+}
+let pageCount = 0
 if (/^\d+$/.test(arg)) {
-  for (let p = 1; p <= 200; p++) {
-    const url = `https://www.filmaffinity.com/es/userratings.php?user_id=${arg}&p=${p}&orderby=4`
-    const res = await fetch(url, { headers: { 'User-Agent': 'Mozilla/5.0 (Malkevnia POC; importación personal)', 'Accept-Language': 'es' } })
+  const headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0 Safari/537.36',
+    'Accept-Language': 'es-ES,es;q=0.9',
+    Accept: 'text/html,application/xhtml+xml',
+  }
+  for (let p = 1; p <= 500; p++) {
+    // chv=list: la vista de lista trae director y tipo; sin ella Filmaffinity redirige a la cuadrícula.
+    const url = `https://www.filmaffinity.com/es/userratings.php?user_id=${arg}&p=${p}&orderby=4&chv=list`
+    const res = await fetch(url, { headers })
     if (res.status === 404) break
     if (!res.ok) {
       console.error(`Filmaffinity ha respondido ${res.status} en la página ${p}. Guarda las páginas con Ctrl+S y pásame la carpeta.`)
       break
     }
-    const html = await res.text()
-    if (!/film\d+\.html/.test(html)) break
-    pages.push(html)
-    process.stdout.write(`  página ${p}\r`)
-    await new Promise((r) => setTimeout(r, 1500))
+    // Pasada la última página, devuelve una vacía o repite la última: en ambos casos no hay nada nuevo.
+    if (!add(parsePage(await res.text()))) break
+    pageCount++
+    process.stdout.write(`  página ${p} (${films.size})\r`)
+    await new Promise((r) => setTimeout(r, 2000))
   }
 } else {
   const files = statSync(arg).isDirectory() ? readdirSync(arg).filter((f) => /\.html?$/i.test(f)).map((f) => join(arg, f)) : [arg]
-  for (const f of files) pages.push(readFileSync(f, 'utf8'))
-}
-
-// Cada ficha empieza en el enlace a la película (…/es/filmNNNNNN.html) y acaba en el siguiente.
-const films = new Map()
-for (const html of pages) {
-  const anchors = [...html.matchAll(/<a[^>]+href="(?:https?:\/\/www\.filmaffinity\.com)?\/es\/film(\d+)\.html"[^>]*>([\s\S]*?)<\/a>/g)]
-  // El cartel va en un enlace sin texto justo antes del título: la ficha empieza en el primero de los dos.
-  const firstAnchor = new Map()
-  for (let i = 0; i < anchors.length; i++) {
-    const [, id, inner] = anchors[i]
-    if (!firstAnchor.has(id)) firstAnchor.set(id, anchors[i].index)
-    const title = decode(inner)
-    if (!title || films.has(id)) continue
-    const start = firstAnchor.get(id)
-    const end = anchors[i + 1]?.index ?? html.length
-    const chunk = html.slice(start, end)
-    // Nota del usuario: la clase lleva "rat" (ur-mr-rat, user-rat…); si no, un número solo de 1 a 10.
-    const rating = Number(chunk.match(/class="[^"]*(?:user-?rat|ur-mr-rat)[^"]*"[^>]*>\s*(\d{1,2})\s*</)?.[1])
-      || Number(chunk.match(/>\s*(10|[1-9])\s*<\/(?:div|span)>/)?.[1]) || null
-    const year = Number(chunk.match(/class="[^"]*year[^"]*"[^>]*>\s*\(?(\d{4})\)?/)?.[1] || chunk.match(/\((\d{4})\)/)?.[1]) || null
-    const director = decode(chunk.match(/class="[^"]*director[^"]*"[^>]*>([\s\S]*?)<\/(?:div|span)>/)?.[1] || '')
-    const poster = chunk.match(/<img[^>]+src="([^"]+\.(?:jpg|jpeg|webp))"/)?.[1] || null
-    const kind = /\((?:Mini)?serie de TV\)/i.test(title) ? 'series' : 'film'
-    films.set(id, {
-      kind,
-      title: title.replace(/\s*\((?:Mini)?serie de TV\)|\s*\(C\)|\s*\(TV\)/gi, '').trim(),
-      creator: director,
-      year,
-      rating,
-      status: 'done',
-      cover_url: poster,
-      meta: { filmaffinity_id: Number(id), seen: true, source: 'filmaffinity' },
-    })
-  }
+  for (const f of files) { add(parsePage(readFileSync(f, 'utf8'))); pageCount++ }
 }
 
 const list = [...films.values()]
@@ -80,4 +90,4 @@ for (const kind of ['film', 'series']) {
   counts.added += c.added
   counts.updated += c.updated
 }
-report(`Filmaffinity (${pages.length} páginas)`, counts, list.slice(0, 6))
+report(`Filmaffinity (${pageCount} páginas: ${list.filter((f) => f.kind === 'film').length} pelis, ${list.filter((f) => f.kind === 'series').length} series)`, counts, list.slice(0, 6))
