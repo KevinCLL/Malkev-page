@@ -27,8 +27,8 @@ const rooms = computed(() => {
     },
     {
       to: '/sala-de-juegos', icon: 'dice', name: 'Sala de juegos',
-      text: 'La Kallax de los juegos de mesa, con las cajas a la vista y los favoritos de frente.',
-      count: s ? `${n('boardgame')} juegos` : '', accent: '#e39be0',
+      text: 'Las dos Kallax de los juegos de mesa y los libros de rol, colocadas caja a caja como en casa.',
+      count: s ? `${n('boardgame')} cajas · ${n('rpg')} libros de rol` : '', accent: '#e39be0',
     },
     {
       to: '/sala-de-proyeccion', icon: 'film', name: 'Sala de proyección',

@@ -12,6 +12,7 @@ const router = useRouter()
 
 const KINDS = [
   { id: 'boardgame', label: 'Juegos de mesa', room: '/sala-de-juegos', source: 'BoardGameGeek' },
+  { id: 'rpg', label: 'Libros de rol', room: '/sala-de-juegos', source: 'Open Library' },
   { id: 'film', label: 'Películas', room: '/sala-de-proyeccion', source: 'TMDB' },
   { id: 'series', label: 'Series', room: '/sala-de-proyeccion', source: 'TMDB' },
   { id: 'book', label: 'Libros', room: '/biblioteca', source: 'Open Library' },
@@ -19,6 +20,7 @@ const KINDS = [
 ]
 const STATUS_BY_KIND = {
   boardgame: ['owned', 'playing', 'wishlist', 'lent'],
+  rpg: ['owned', 'playing', 'reading', 'wishlist', 'lent'],
   film: ['owned', 'watching', 'done', 'wishlist', 'lent'],
   series: ['owned', 'watching', 'done', 'wishlist', 'lent'],
   book: ['owned', 'reading', 'done', 'wishlist', 'lent'],
@@ -27,6 +29,8 @@ const STATUS_BY_KIND = {
 
 const kind = computed(() => (KINDS.some((k) => k.id === route.params.kind) ? route.params.kind : 'boardgame'))
 const kindInfo = computed(() => KINDS.find((k) => k.id === kind.value))
+// Los juegos y los libros de rol viven en las Kallax: su sitio sale de cómo están colocados.
+const inKallax = computed(() => kind.value === 'boardgame' || kind.value === 'rpg')
 const items = ref([])
 const q = ref('')
 const editing = ref(null)
@@ -62,7 +66,7 @@ function open(item) {
     year: base.year ?? '',
     cover_url: base.cover_url ?? '',
     rating: base.rating ?? '',
-    shelf: base.shelf === null || base.shelf === undefined || base.shelf === '' ? '' : kind.value === 'boardgame' ? base.shelf + 1 : base.shelf,
+    shelf: base.shelf ?? '',
   })
   lookupQuery.value = base.title
   lookupResults.value = []
@@ -73,7 +77,6 @@ async function save() {
   saving.value = true
   try {
     const payload = { ...form, kind: kind.value }
-    if (payload.shelf !== '' && kind.value === 'boardgame') payload.shelf = Number(payload.shelf) - 1
     const saved = editing.value === 'new' ? await api.createItem(payload) : await api.updateItem(editing.value, payload)
     toast(`"${saved.title}" guardado`)
     editing.value = null
@@ -151,6 +154,8 @@ function pick(r) {
             <span v-if="it.rating !== null" class="readout">★ {{ it.rating }}</span>
             <span v-if="it.featured" class="pill">Favorito</span>
             <span v-if="it.hidden" class="pill pill-warn">Oculto</span>
+            <span v-if="it.meta?.doubt" class="pill pill-warn">Duda</span>
+            <span v-if="it.meta?.postit" class="pill pill-postit">Pósit</span>
             <span v-if="it.status !== 'owned'" class="pill">{{ STATUS_LABELS[it.status] }}</span>
           </span>
         </span>
@@ -205,19 +210,23 @@ function pick(r) {
                   <option v-for="s in STATUS_BY_KIND[kind]" :key="s" :value="s">{{ STATUS_LABELS[s] }}</option>
                 </select>
               </label>
-              <label class="field">
-                <span>{{ kind === 'boardgame' ? 'Cubo de la Kallax (1–16)' : 'Balda' }}</span>
+              <label v-if="!inKallax" class="field">
+                <span>Balda</span>
                 <input v-model="form.shelf" class="input" type="number" min="0" placeholder="Automático" />
               </label>
+              <div v-else class="field">
+                <span>Dónde está</span>
+                <p class="where">{{ form.meta.location || 'Sin colocar todavía: aparece en la mesa de la sala de juegos.' }}</p>
+              </div>
 
               <template v-if="kind === 'boardgame'">
                 <label class="field"><span>Jugadores</span><input v-model="form.meta.players" class="input" placeholder="2-4" /></label>
                 <label class="field"><span>Duración (min)</span><input v-model.number="form.meta.minutes" class="input" type="number" min="0" /></label>
-                <label class="field"><span>Tamaño de la caja</span>
-                  <select v-model="form.meta.box" class="select">
-                    <option value="xl">Enorme</option><option value="l">Grande</option><option value="m">Normal</option><option value="s">Pequeña</option>
-                  </select>
-                </label>
+              </template>
+              <template v-if="inKallax">
+                <label class="field"><span>Pósit (lo que le falta)</span><input v-model="form.meta.postit" class="input" placeholder="inserto · expansiones" /></label>
+                <label class="field"><span>Pegatina de color</span><input v-model="form.meta.dot" class="input" placeholder="2, 3-4…" /></label>
+                <label v-if="form.meta.doubt" class="field span-2"><span>Duda al leer la foto</span><textarea v-model="form.meta.doubt" class="textarea" rows="2"></textarea></label>
               </template>
               <template v-if="kind === 'film' || kind === 'series'">
                 <label class="field"><span>Formato</span>
@@ -235,7 +244,7 @@ function pick(r) {
 
               <label class="field span-2"><span>Notas</span><textarea v-model="form.notes" class="textarea" rows="4" placeholder="Qué te pareció, con quién lo jugaste, dónde lo compraste…"></textarea></label>
 
-              <label class="check"><input v-model="form.featured" type="checkbox" /> Favorito{{ kind === 'boardgame' ? ' (de frente en la Kallax)' : '' }}</label>
+              <label class="check"><input v-model="form.featured" type="checkbox" /> Favorito</label>
               <label class="check"><input v-model="form.hidden" type="checkbox" /> Ocultar en la web</label>
             </div>
 
@@ -414,6 +423,18 @@ function pick(r) {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 14px;
+}
+.where {
+  margin: 0;
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  border: 1px dashed var(--line-strong);
+  font-size: 14px;
+  color: var(--text-soft);
+}
+.pill-postit {
+  border-color: rgba(255, 230, 120, 0.5);
+  color: #ffe678;
 }
 .span-2 {
   grid-column: span 2;

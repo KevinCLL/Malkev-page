@@ -24,6 +24,8 @@ const facts = computed(() => {
   if (m.seasons) out.push(['Temporadas', m.seasons])
   if (m.pages) out.push(['Páginas', m.pages])
   if (m.volumes_owned) out.push(['Tomos', m.volumes_total ? `${m.volumes_owned} de ${m.volumes_total}` : m.volumes_owned])
+  if (m.location) out.push(['Dónde está', m.location])
+  if (m.dot) out.push(['Pegatina', m.dot])
   out.push(['Estado', STATUS_LABELS[it.status] || it.status])
   return out
 })
@@ -77,6 +79,8 @@ onBeforeUnmount(() => {
             <div v-if="item.meta?.volumes_total" class="volumes" aria-hidden="true">
               <span v-for="i in item.meta.volumes_total" :key="i" :class="{ on: i <= item.meta.volumes_owned }"></span>
             </div>
+            <p v-if="item.meta?.postit" class="postit"><span class="readout">Pósit</span>{{ item.meta.postit }}</p>
+            <p v-if="item.meta?.doubt" class="doubt"><span class="readout">Duda al leer la foto</span>{{ item.meta.doubt }}</p>
             <p v-if="item.notes" class="notes">{{ item.notes }}</p>
             <p v-else class="notes muted">Todavía no hay notas sobre este. Se pueden añadir desde la consola.</p>
           </div>
@@ -161,6 +165,34 @@ dd {
 }
 .volumes span.on {
   background: var(--violet);
+}
+.postit,
+.doubt {
+  display: grid;
+  gap: 4px;
+  margin: 0 0 16px;
+  padding: 12px 14px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+.postit {
+  width: fit-content;
+  max-width: 100%;
+  background: #ffe678;
+  color: #2a2008;
+  rotate: -1deg;
+  box-shadow: 0 8px 14px -8px rgba(0, 0, 0, 0.8);
+}
+.postit .readout {
+  color: rgba(42, 32, 8, 0.7);
+}
+.doubt {
+  border: 1px dashed rgba(255, 207, 138, 0.5);
+  border-radius: var(--radius-sm);
+  color: var(--text-soft);
+}
+.doubt .readout {
+  color: var(--amber);
 }
 .notes {
   font-size: 15px;

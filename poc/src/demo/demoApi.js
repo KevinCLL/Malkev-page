@@ -231,6 +231,7 @@ export const api = {
     state.items = state.items.filter((i) => i.id !== Number(id))
     return wait(null)
   },
+  furniture: () => wait(state.furniture || []),
   lookup: () => fail('En esta demo no hay salida a internet. En la versión local este botón rellena los datos desde Open Library, AniList, TMDB o BoardGameGeek.'),
   upload: (file) => wait({ url: URL.createObjectURL(file) }),
 }

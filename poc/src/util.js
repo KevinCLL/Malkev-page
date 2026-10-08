@@ -58,9 +58,9 @@ function toRgb(color) {
   return [60, 40, 110]
 }
 
-export function isLight(color) {
+export function isLight(color, threshold = 0.62) {
   const [r, g, b] = toRgb(color)
-  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > 0.62
+  return (0.299 * r + 0.587 * g + 0.114 * b) / 255 > threshold
 }
 
 export function shade(color, amount) {
@@ -71,6 +71,7 @@ export function shade(color, amount) {
 
 export const KIND_LABELS = {
   boardgame: 'Juego de mesa',
+  rpg: 'Libro de rol',
   film: 'Película',
   series: 'Serie',
   book: 'Libro',

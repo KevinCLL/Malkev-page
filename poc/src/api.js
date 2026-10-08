@@ -40,6 +40,7 @@ export const api = {
   createItem: (data) => request('POST', '/api/items', data),
   updateItem: (id, data) => request('PUT', `/api/items/${id}`, data),
   deleteItem: (id) => request('DELETE', `/api/items/${id}`),
+  furniture: () => request('GET', '/api/furniture'),
   lookup: (kind, q) => request('GET', `/api/lookup${qs({ kind, q })}`),
   upload: (file) => request('POST', '/api/uploads', file),
 }
