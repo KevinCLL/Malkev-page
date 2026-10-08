@@ -6,12 +6,12 @@ Todo funciona en local, con una base de datos SQLite que vive en un fichero dent
 - **Puente**: la portada, con el ventanal, el planeta y los indicadores de a bordo.
 - **Bitácora**: el blog de verdad, con búsqueda de texto completo, secciones, años, etiquetas y comentarios.
   Trae importadas las 135 entradas de `_posts/` (las 35 con `published: false` entran como borradores).
-- **Sala de juegos**: la Kallax 4×4. Los favoritos van de frente y el resto en pilas; toca una caja para ver su ficha.
+- **Sala de juegos**: las dos Kallax 5×5 de casa, colocadas caja a caja como en las fotos: pilas, filas de pie, organizadores, huecos unidos con su barra y los libros de rol abajo. Toca un cubo para verlo de cerca y una caja para ver su ficha.
 - **Sala de proyección**: la estantería de pelis y series, con vista de lomos o de carátulas.
 - **Biblioteca**: libros con lomos de distinto grosor según sus páginas y mangas tomo a tomo.
 - **Consola** (`/consola`): editor de entradas con texto enriquecido, moderación de comentarios y gestión de la colección.
 
-> La colección (juegos, pelis, libros y manga) es de **ejemplo**. Se cambia desde la consola.
+> Los **juegos de mesa y los libros de rol son los de verdad**, leídos de las fotos de las Kallax. Las pelis, los libros y el manga todavía son de **ejemplo**; se cambian desde la consola.
 
 ## Requisitos
 
@@ -32,6 +32,14 @@ npm run dev      # http://localhost:5173
 
 Para probarla como iría en producción: `npm run build` y después `npm start`.
 
+## Las Kallax
+
+Todo lo que hay en las dos Kallax está descrito en `scripts/kallax-real.js`: cada cubo con sus pilas (de abajo arriba), lo que está de pie (de izquierda a derecha), los organizadores, las barras de apoyo, los pósits y las pegatinas. Las medidas de cada caja son fracciones del hueco de un cubo, estimadas en las fotos.
+
+- `npm run kallax:lista` escribe `kallax-inventario.md` con la lista cubo a cubo y las dudas numeradas.
+- Para corregir algo (una duda, una caja que se ha movido), se edita ese fichero y se vuelve a lanzar `npm run seed`.
+- En la sala de juegos, los botones **Con pósit**, **Con pegatina** y **Dudas** iluminan esas cajas en las Kallax.
+
 ## Autocompletar la colección
 
 Al añadir algo desde la consola, el botón **Buscar** rellena título, autoría, año y portada:
@@ -42,6 +50,7 @@ Al añadir algo desde la consola, el botón **Buscar** rellena título, autoría
 | Manga | AniList | No hace falta |
 | Pelis y series | TMDB | `TMDB_API_KEY` (gratis en themoviedb.org) |
 | Juegos de mesa | BoardGameGeek | `BGG_TOKEN` si BGG la pide |
+| Libros de rol | Open Library | No hace falta |
 
 Las claves se pasan como variables de entorno al arrancar. En PowerShell:
 
@@ -77,5 +86,7 @@ La base de datos es `data/malkevnia.db`; se puede abrir con [DB Browser for SQLi
 
 - Inicio de sesión para la consola (ahora está abierta porque es local).
 - Pasar de SQLite a PostgreSQL y desplegarlo con Docker en el servidor de Hetzner.
-- Importar la colección real (BGG, CSV de Goodreads, votos de Filmaffinity).
+- Mover cajas de sitio desde la consola (ahora se cambia en `scripts/kallax-real.js`).
+- Sacar las medidas exactas de las cajas de las versiones de BGG (ahora están estimadas a ojo).
+- Importar el resto de la colección real (CSV de Goodreads, votos de Filmaffinity).
 - Moderación de comentarios con antispam de verdad (ahora solo hay un campo trampa).
