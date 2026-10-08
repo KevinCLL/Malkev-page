@@ -1,9 +1,9 @@
 # Malkevnia · POC
 
-Prueba de concepto de la nueva Malkevnia: una nave pequeña surcando el espacio, sola y en calma.
+Prueba de concepto de la nueva Malkevnia: *La Malkevnia* es la nave, pequeña, surcando el espacio sola y en calma.
 Todo funciona en local, con una base de datos SQLite que vive en un fichero dentro de `poc/data/`.
 
-- **Puente**: la portada, con el ventanal, el planeta y los indicadores de a bordo.
+- **Puente**: la portada. Por el ventanal se ve un gigante gaseoso con su luna orbitando, dibujados en un shader (WebGL, sin texturas ni librerías), y la proa de la Malkevnia con sus luces de posición. Si el navegador no tiene WebGL, queda el planeta plano de CSS.
 - **Bitácora**: el blog de verdad, con búsqueda de texto completo, secciones, años, etiquetas y comentarios.
   Trae importadas las 135 entradas de `_posts/` (las 35 con `published: false` entran como borradores).
 - **Sala de juegos**: las dos Kallax 5×5 de casa, colocadas caja a caja como en las fotos: pilas, filas de pie, organizadores, huecos unidos con su barra y los libros de rol abajo. Toca un cubo para verlo de cerca y una caja para ver su ficha.
@@ -11,7 +11,7 @@ Todo funciona en local, con una base de datos SQLite que vive en un fichero dent
 - **Biblioteca**: libros con lomos de distinto grosor según sus páginas y mangas tomo a tomo.
 - **Consola** (`/consola`): editor de entradas con texto enriquecido, moderación de comentarios y gestión de la colección.
 
-> Los **juegos de mesa y los libros de rol son los de verdad**, leídos de las fotos de las Kallax. Las pelis, los libros y el manga todavía son de **ejemplo**; se cambian desde la consola.
+> Los **juegos de mesa y los libros de rol son los de verdad**, leídos de las fotos de las Kallax. Las pelis, los libros y el manga todavía son de **ejemplo**: se cargan los de verdad con los scripts de importación de abajo.
 
 ## Requisitos
 
@@ -39,6 +39,19 @@ Todo lo que hay en las dos Kallax está descrito en `scripts/kallax-real.js`: ca
 - `npm run kallax:lista` escribe `kallax-inventario.md` con la lista cubo a cubo y las dudas numeradas.
 - Para corregir algo (una duda, una caja que se ha movido), se edita ese fichero y se vuelve a lanzar `npm run seed`.
 - En la sala de juegos, los botones **Con pósit**, **Con pegatina** y **Dudas** iluminan esas cajas en las Kallax.
+
+## Importar pelis, libros y manga
+
+Estos scripts se ejecutan en tu ordenador, con tu propia conexión, y se pueden repetir: lo que ya estaba se actualiza en vez de duplicarse (conservando las notas que hayas escrito en la consola).
+
+| Qué | Cómo | De dónde |
+|---|---|---|
+| Libros | `npm run import:goodreads -- goodreads_library_export.csv` | Goodreads: *My Books* → *Import and export* → *Export library* |
+| Manga, manhwa, manhua | `npm run import:anilist -- Malkev` | La API pública de AniList (lista de manga) |
+| Pelis y series | `npm run import:filmaffinity -- 700344` | Filmaffinity, descargando las páginas de valoraciones del usuario |
+| Pelis y series (si lo anterior falla) | `npm run import:filmaffinity -- carpeta/` | Las mismas páginas guardadas con Ctrl+S en una carpeta |
+
+Filmaffinity no tiene API ni exportación y cambia su HTML de vez en cuando: el script enseña una muestra de lo que ha leído para comprobar que tiene sentido.
 
 ## Autocompletar la colección
 
