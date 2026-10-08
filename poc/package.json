@@ -16,7 +16,9 @@
     "kallax:lista": "node scripts/kallax-lista.js kallax-inventario.md",
     "import:goodreads": "node --disable-warning=ExperimentalWarning scripts/import-goodreads.js",
     "import:anilist": "node --disable-warning=ExperimentalWarning scripts/import-anilist.js",
-    "import:filmaffinity": "node --disable-warning=ExperimentalWarning scripts/import-filmaffinity.js"
+    "import:filmaffinity": "node --disable-warning=ExperimentalWarning scripts/import-filmaffinity.js",
+    "coleccion:export": "node --disable-warning=ExperimentalWarning scripts/coleccion-export.js",
+    "coleccion:import": "node --disable-warning=ExperimentalWarning scripts/coleccion-import.js"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.4",

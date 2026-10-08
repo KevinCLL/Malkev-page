@@ -9,6 +9,7 @@ import { fileURLToPath } from 'node:url'
 import { marked } from 'marked'
 import { db, setPostTags, indexPost, uniqueSlug, transaction } from '../server/db.js'
 import { films, series, books, manga } from './sample-collection.js'
+import { importColeccion } from './lib/coleccion.js'
 import { furniture as kallaxes } from './kallax-real.js'
 import { eachPlaced } from '../src/kallax.js'
 
@@ -176,7 +177,10 @@ const result = transaction(() => {
   addSampleComments()
   const kallax = importKallax()
   const items = importCollection()
-  return { posts, kallax, items }
+  // Si hay colección real exportada (coleccion.json), sustituye a los ejemplos de esos tipos.
+  const real = importColeccion()
+  return { posts, kallax, items, real }
 })
 
 console.log(`✦ Importadas ${result.posts} entradas del blog, ${result.kallax} juegos y libros de rol de las dos Kallax y ${result.items} objetos de ejemplo para pelis y libros.`)
+if (result.real) console.log(`✦ Colección real cargada de coleccion.json: ${Object.entries(result.real).map(([k, c]) => `${c.added + c.updated} ${k}`).join(', ')} (los ejemplos de esos tipos, fuera).`)

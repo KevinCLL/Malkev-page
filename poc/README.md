@@ -53,6 +53,8 @@ Estos scripts se ejecutan en tu ordenador, con tu propia conexión, y se pueden 
 
 Filmaffinity no tiene API ni exportación y cambia su HTML de vez en cuando: el script enseña una muestra de lo que ha leído para comprobar que tiene sentido.
 
+La colección importada viaja entre ordenadores en `coleccion.json` (está en git): después de importar, `npm run coleccion:export` lo escribe; en otro sitio, `npm run coleccion:import` lo carga, y `npm run seed` también lo carga si existe, sustituyendo a los ejemplos de esos tipos.
+
 ## Autocompletar la colección
 
 Al añadir algo desde la consola, el botón **Buscar** rellena título, autoría, año y portada:
