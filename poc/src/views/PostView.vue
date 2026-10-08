@@ -10,7 +10,7 @@ const route = useRoute()
 const post = ref(null)
 const comments = ref([])
 const error = ref('')
-const form = reactive({ author: '', body: '', website: '' })
+const form = reactive({ author: '', body: '', website: '', token: '' })
 const sending = ref(false)
 
 try { form.author = localStorage.getItem('malkevnia-author') || '' } catch {}
@@ -24,6 +24,8 @@ async function load() {
     post.value = await api.post(route.params.slug, route.query.preview)
     document.title = `${post.value.title} · Malkevnia`
     comments.value = await api.comments(route.params.slug)
+    // El token del formulario: demuestra que el comentario viene de esta página y no de un bot.
+    form.token = (await api.commentToken(route.params.slug)).token
   } catch (e) {
     error.value = e.message
   }
@@ -41,10 +43,13 @@ async function send() {
   sending.value = true
   try {
     const c = await api.addComment(route.params.slug, form)
-    comments.value.push(c)
+    if (c.pending) toast('Transmisión recibida: como lleva enlaces, el capitán la revisará antes de publicarla.')
+    else {
+      comments.value.push(c)
+      toast('Mensaje recibido a bordo. ¡Gracias!')
+    }
     form.body = ''
     try { localStorage.setItem('malkevnia-author', form.author) } catch {}
-    toast('Mensaje recibido a bordo. ¡Gracias!')
   } catch (e) {
     toast(e.message, 'error')
   } finally {

@@ -5,6 +5,11 @@ import { formatDate, postUrl, scrollToId, stardate } from '../util.js'
 import AppIcon from '../components/AppIcon.vue'
 import SpaceScene from '../components/SpaceScene.vue'
 import ShipProw from '../components/ShipProw.vue'
+import ShipMap from '../components/ShipMap.vue'
+import GenCover from '../components/GenCover.vue'
+import { coverRatio } from '../util.js'
+import { itemLink, ROOM_OF } from '../useItemLink.js'
+import { formatDistance, formatHours, voyage } from '../travesia.js'
 
 const stats = ref(null)
 // Si el navegador no tiene WebGL, el ventanal vuelve al planeta plano de CSS y a la proa en SVG.
@@ -19,6 +24,20 @@ onMounted(async () => {
 onBeforeUnmount(() => clearInterval(timer))
 
 const shipTime = computed(() => new Intl.DateTimeFormat('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' }).format(now.value))
+
+// La travesía: a qué mundo va la nave ahora mismo y cuánto le falta. Sale de la hora, así que cambia
+// sola con los días (y el ventanal va con ella).
+const trip = computed(() => voyage(now.value))
+const arrival = computed(() => {
+  const t = trip.value
+  if (t.orbit) return `en órbita · zarpamos en ${formatHours(t.hoursToDepart)}`
+  return `en ${formatHours(t.hoursToArrive)}`
+})
+// Para el ventanal sin WebGL: el planeta de CSS se tiñe con la paleta del destino.
+const planetStyle = computed(() => {
+  const [p0, p1, p2, p3] = trip.value.destination.palette
+  return { '--p0': p0, '--p1': p1, '--p2': p2, '--p3': p3 }
+})
 
 const rooms = computed(() => {
   const s = stats.value
@@ -44,6 +63,11 @@ const rooms = computed(() => {
       text: 'Libros y mangas ordenados por baldas, con sus lomos y sus tomos.',
       count: s ? `${n('book')} libros · ${s.manga_volumes} tomos` : '', accent: '#ffcf8a',
     },
+    {
+      to: '/sala-recreativa', icon: 'gamepad', name: 'Sala recreativa',
+      text: 'Las máquinas de siempre, con la colección de videojuegos retro ordenada por plataformas.',
+      count: s ? `${n('videogame')} juegos · ${s.platforms} plataformas` : '', accent: '#9fe3b4',
+    },
   ]
 })
 
@@ -62,7 +86,7 @@ const signals = [
       <div class="window" :class="{ flat }">
         <SpaceScene v-if="!flat" @unsupported="flat = true" />
         <template v-else>
-          <div class="planet" aria-hidden="true">
+          <div class="planet" :style="planetStyle" aria-hidden="true">
             <div class="planet-surface"></div>
             <div class="planet-shadow"></div>
           </div>
@@ -72,7 +96,7 @@ const signals = [
         <div class="window-glare" aria-hidden="true"></div>
 
         <div class="hero">
-          <p class="eyebrow"><span class="dot-live"></span>A bordo · navegando en silencio</p>
+          <p class="eyebrow"><span class="dot-live"></span>A bordo · {{ trip.orbit ? 'en órbita de' : 'rumbo a' }} {{ trip.destination.name }}</p>
           <h1 class="hero-title">LA MALKEVNIA</h1>
           <p class="hero-lead">Una nave pequeña, un solo tripulante y muchas cosas que contar. Ponte cómodo, que aquí no hay prisa.</p>
           <div class="hero-actions">
@@ -85,17 +109,31 @@ const signals = [
       </div>
 
       <div class="hud">
-        <div class="readout">Nave <strong>La Malkevnia</strong></div>
-        <div class="readout">Rumbo <strong>ninguno en particular</strong></div>
-        <div class="readout">Velocidad <strong>de crucero</strong></div>
+        <div class="readout" :title="trip.destination.note">Rumbo <strong>{{ trip.destination.name }}</strong> <span class="readout-sub">{{ trip.destination.cls }}</span></div>
+        <div class="readout">Distancia <strong>{{ formatDistance(trip.distanceKm) }}</strong></div>
+        <div class="readout">Llegada <strong>{{ arrival }}</strong></div>
+        <div class="readout" :title="trip.next.note">Siguiente escala <strong>{{ trip.next.name }}</strong></div>
         <div class="readout">Tripulación <strong>1</strong></div>
         <div class="readout">Fecha estelar <strong>{{ stardate(now) }}</strong></div>
         <div class="readout">Hora de a bordo <strong>{{ shipTime }}</strong></div>
       </div>
     </section>
 
+    <section id="plano" class="map-section">
+      <div class="map-head">
+        <div>
+          <p class="eyebrow">Plano de la nave</p>
+          <h2 class="section-title">Cubierta principal</h2>
+        </div>
+        <p class="muted map-help">Toca una estancia para entrar.</p>
+      </div>
+      <div class="map-panel panel">
+        <ShipMap :stats="stats" />
+      </div>
+    </section>
+
     <section id="estancias" class="rooms-section">
-      <p class="eyebrow">Plano de la nave</p>
+      <p class="eyebrow">Las estancias, una a una</p>
       <h2 class="section-title">Estancias</h2>
       <div class="rooms">
         <RouterLink v-for="room in rooms" :key="room.to" :to="room.to" class="room panel" :style="{ '--accent': room.accent }">
@@ -107,6 +145,27 @@ const signals = [
             <AppIcon name="arrow-right" :size="18" class="room-arrow" />
           </span>
         </RouterLink>
+      </div>
+    </section>
+
+    <section v-if="stats?.now?.length" class="now">
+      <div class="latest-head">
+        <div>
+          <p class="eyebrow">Ahora mismo a bordo</p>
+          <h2 class="section-title">En qué anda el capitán</h2>
+        </div>
+      </div>
+      <div class="now-groups">
+        <div v-for="g in stats.now" :key="g.key" class="now-group panel">
+          <p class="readout now-label">{{ g.label }} <span v-if="g.total > g.items.length">· {{ g.total }}</span></p>
+          <div class="now-row">
+            <RouterLink v-for="it in g.items" :key="it.id" :to="itemLink(it)" class="now-item" :title="it.title">
+              <span class="now-cover"><GenCover :item="it" :ratio="coverRatio(it)" :show-text="false" /></span>
+              <span class="now-title">{{ it.title }}</span>
+            </RouterLink>
+            <RouterLink v-if="g.total > g.items.length" :to="ROOM_OF[g.items[0].kind]" class="now-more">+{{ g.total - g.items.length }}</RouterLink>
+          </div>
+        </div>
       </div>
     </section>
 
@@ -192,7 +251,7 @@ const signals = [
   width: 200%;
   background:
     repeating-linear-gradient(172deg, transparent 0 18px, rgba(255, 255, 255, 0.04) 18px 30px),
-    linear-gradient(176deg, #5b3fb0 0%, #7b5bd6 18%, #3a2582 32%, #9b7ae8 44%, #4c2f99 58%, #6c4fc8 72%, #2f1d6b 86%, #5a3dad 100%);
+    linear-gradient(176deg, var(--p1, #70619a) 0%, var(--p2, #ccc5d6) 18%, var(--p0, #302645) 32%, var(--p3, #87698a) 44%, var(--p0, #302645) 58%, var(--p1, #70619a) 72%, var(--p0, #302645) 86%, var(--p1, #70619a) 100%);
   animation: spin 160s linear infinite;
 }
 .planet-shadow {
@@ -259,12 +318,97 @@ const signals = [
   margin-top: 28px;
   padding: 0 12px;
 }
+.readout-sub {
+  color: var(--muted);
+  text-transform: none;
+  letter-spacing: 0.04em;
+}
 .section-title {
   font-family: var(--font-display);
   font-weight: 600;
   letter-spacing: 0.06em;
   font-size: 26px;
   margin: 0 0 24px;
+}
+.map-section {
+  margin-bottom: 72px;
+}
+.map-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+}
+.map-help {
+  margin: 0 0 24px;
+  font-size: 14px;
+}
+.map-panel {
+  padding: 18px 18px 10px;
+  background:
+    radial-gradient(60% 50% at 50% 0%, rgba(161, 132, 255, 0.08), transparent 70%),
+    rgba(10, 6, 24, 0.7);
+}
+.now {
+  margin-top: 72px;
+}
+.now-groups {
+  display: grid;
+  gap: 14px;
+}
+.now-group {
+  padding: 16px 20px 14px;
+}
+.now-label {
+  margin: 0 0 12px;
+}
+.now-row {
+  display: flex;
+  gap: 14px;
+  overflow-x: auto;
+  padding-bottom: 6px;
+  scrollbar-width: thin;
+}
+.now-item {
+  flex: none;
+  width: 92px;
+  display: grid;
+  gap: 6px;
+  text-decoration: none;
+  color: var(--text);
+}
+.now-cover {
+  display: block;
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 14px 24px -14px rgba(0, 0, 0, 0.9), 0 0 0 1px var(--line);
+  transition: transform 0.35s var(--ease);
+}
+.now-item:hover .now-cover {
+  transform: translateY(-4px);
+}
+.now-title {
+  font-size: 12px;
+  line-height: 1.3;
+  color: var(--text-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.now-more {
+  flex: none;
+  align-self: start;
+  display: grid;
+  place-items: center;
+  width: 60px;
+  aspect-ratio: 2 / 3;
+  border-radius: 6px;
+  border: 1px dashed var(--line-strong);
+  color: var(--lavender);
+  text-decoration: none;
+  font-family: var(--font-mono);
+  font-size: 14px;
 }
 .rooms {
   display: grid;

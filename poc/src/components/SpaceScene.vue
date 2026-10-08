@@ -1,10 +1,13 @@
 <script setup>
 // Lo que se ve por el ventanal del puente, como una foto tomada desde órbita: espacio negro con pocas
-// estrellas, un gigante gaseoso con luz dura y una atmósfera fina en el limbo, su luna, el destello del
-// sol en la lente y, abajo, el morro de la Malkevnia en 3D (chapas, lomo, mástil y luces de posición)
-// iluminado por el mismo sol. Todo se dibuja en un shader (WebGL), sin texturas ni imágenes.
+// estrellas, el mundo al que va la nave (gigante gaseoso, roca o hielo, con o sin anillos) con luz dura
+// y una atmósfera fina en el limbo, su luna, el destello del sol en la lente y, abajo, el morro de la
+// Malkevnia en 3D (chapas, lomo, mástil y luces de posición) iluminado por el mismo sol. Todo se dibuja
+// en un shader (WebGL), sin texturas ni imágenes. Qué mundo se ve y a qué distancia lo dice la
+// travesía (travesia.js): el planeta crece según se acerca la nave y cambia al llegar a la escala.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import { PRECISION, STARS_GLSL, bakeSky, buildProgram, initGL, maxTexture } from '../sky.js'
+import { KINDS, voyage } from '../travesia.js'
 
 const emit = defineEmits(['unsupported'])
 const canvas = ref(null)
@@ -25,12 +28,16 @@ uniform vec2 uTex;      // tamaño de la textura del cielo
 uniform float uScale;   // píxeles del lienzo por píxel CSS
 uniform float uSeed;
 uniform float uView;    // cuánto baja el morro en pantalla (en vertical, para dejar sitio al texto)
+uniform vec3 uCol[4];   // la paleta del mundo: oscuro, medio, claro y acento
+uniform vec3 uAtmo;     // color de su atmósfera (negro = no tiene)
+uniform float uKind;    // 0 gigante gaseoso, 1 roca, 2 hielo
+uniform vec3 uRings;    // anillos: radio interior y exterior (en radios del planeta) e inclinación; 0 = no hay
 ${STARS_GLSL}
 
 const vec3 LIGHT = normalize(vec3(-0.72, 0.42, 0.5));
-const vec3 ATMO = vec3(0.62, 0.60, 1.00);
 const vec3 SUN = vec3(1.0, 0.96, 0.9);
 const float FOCAL = 1.1;
+const float TILT = -0.32; // inclinación del eje del planeta en pantalla
 
 float hash(vec3 p) {
   p = fract(p * 0.3183099 + vec3(0.1, 0.2, 0.3));
@@ -69,8 +76,60 @@ vec3 rotZ(vec3 v, float a) {
   return vec3(c * v.x - s * v.y, s * v.x + c * v.y, v.z);
 }
 
-// El gigante gaseoso: bandas de nubes con remolinos, tormentas, luz dura del sol con el lado de noche
-// casi negro, el limbo oscurecido y una atmósfera fina y azulada donde da el sol.
+vec3 rotX(vec3 v, float a) {
+  float c = cos(a), s = sin(a);
+  return vec3(v.x, c * v.y + s * v.z, -s * v.y + c * v.z);
+}
+
+// Gigante gaseoso: bandas de nubes con remolinos y tormentas.
+vec3 surfaceGas(vec3 p) {
+  float w1 = fbm(p * 2.1) - 0.5;
+  float w2 = fbm(p * 4.3 + vec3(w1 * 1.6, 0.0, 3.0)) - 0.5;
+  float band = p.y * 8.0 + w1 * 1.7 + w2 * 0.9;
+  float s = sin(band * 3.1416);
+  float s2 = sin(band * 6.2832 + 1.3);
+  vec3 col = mix(uCol[0], uCol[1], smoothstep(-0.7, 0.7, s));
+  col = mix(col, uCol[2], pow(smoothstep(0.2, 0.95, s2), 1.4) * 0.5);
+  col = mix(col, uCol[3], smoothstep(0.3, 0.9, fbm(p * 3.7 + vec3(w2, 0.0, 7.0))) * 0.45);
+  col = mix(col, uCol[0] * 0.8, smoothstep(0.55, 0.9, fbm(p * 2.9 + 11.0)) * 0.5);
+  float storm = fbm(p * 7.0 + vec3(w2 * 2.0, 0.0, uTime * 0.01));
+  col = mix(col, uCol[2] * 1.12, smoothstep(0.62, 0.78, storm) * 0.5);
+  col *= 0.86 + 0.28 * fbm(p * 14.0 + w2 * 2.0);
+  return col;
+}
+
+// Mundo rocoso: mares del color oscuro, tierra del acento y del medio, cumbres y casquetes claros,
+// cráteres donde no hay mar y nubes por encima si tiene atmósfera.
+vec3 surfaceRock(vec3 p) {
+  float h = fbm(p * 2.6 + 4.0);
+  float land = smoothstep(0.46, 0.5, h);
+  vec3 col = mix(uCol[0], uCol[3], land);
+  col = mix(col, uCol[1], land * smoothstep(0.5, 0.62, h));
+  col = mix(col, uCol[2], land * smoothstep(0.64, 0.78, h));
+  col *= 0.85 + 0.3 * fbm(p * 9.0 + 2.0);
+  col = mix(col, uCol[2], smoothstep(0.7, 0.88, abs(p.y)) * 0.85);
+  float air = step(0.05, dot(uAtmo, vec3(1.0)));
+  float cr = noise(p * 11.0 + 7.0);
+  col *= 1.0 - (0.35 - 0.25 * air) * land * smoothstep(0.6, 0.68, cr) * (1.0 - smoothstep(0.68, 0.76, cr));
+  float cloud = fbm(p * 4.5 + vec3(uTime * 0.012, 0.0, 9.0));
+  col = mix(col, vec3(0.95), smoothstep(0.55, 0.72, cloud) * 0.75 * air);
+  return col;
+}
+
+// Mundo helado: casi todo claro, con vetas, grietas oscuras y alguna mancha de mineral.
+vec3 surfaceIce(vec3 p) {
+  float v = fbm(p * 3.0 + 1.0);
+  vec3 col = mix(uCol[2], uCol[3], smoothstep(0.35, 0.65, v));
+  float crack = abs(sin((fbm(p * 5.0 + 3.0) - 0.5) * 18.0 + p.x * 3.0));
+  col = mix(col, uCol[1], (1.0 - smoothstep(0.0, 0.16, crack)) * 0.7);
+  col = mix(col, uCol[0], smoothstep(0.6, 0.8, fbm(p * 6.5 + 13.0)) * 0.5);
+  col *= 0.9 + 0.2 * fbm(p * 12.0);
+  return col;
+}
+
+// El planeta: la superficie que toque, luz dura del sol con el lado de noche casi negro, el limbo
+// oscurecido y una atmósfera fina donde da el sol. Si lleva anillos, el eje se inclina un poco
+// hacia la cámara para que el ecuador siga la elipse de los anillos.
 vec4 planet(vec2 d, float r, float aa) {
   float l = length(d);
   if (l > r + aa) return vec4(0.0);
@@ -78,25 +137,13 @@ vec4 planet(vec2 d, float r, float aa) {
   l = min(l, r - 0.0005);
   float z = sqrt(r * r - l * l);
   vec3 n = vec3(d, z) / r;
-  vec3 p = rotY(rotZ(n, -0.32), uTime * 0.018);
+  vec3 p = rotY(rotX(rotZ(n, TILT), uRings.z), uTime * 0.018);
 
-  float w1 = fbm(p * 2.1) - 0.5;
-  float w2 = fbm(p * 4.3 + vec3(w1 * 1.6, 0.0, 3.0)) - 0.5;
-  float band = p.y * 8.0 + w1 * 1.7 + w2 * 0.9;
-  float s = sin(band * 3.1416);
-  float s2 = sin(band * 6.2832 + 1.3);
-  vec3 deep = vec3(0.19, 0.15, 0.27);
-  vec3 violet = vec3(0.44, 0.38, 0.58);
-  vec3 cream = vec3(0.80, 0.77, 0.84);
-  vec3 mauve = vec3(0.53, 0.41, 0.54);
-  vec3 col = mix(deep, violet, smoothstep(-0.7, 0.7, s));
-  col = mix(col, cream, pow(smoothstep(0.2, 0.95, s2), 1.4) * 0.5);
-  col = mix(col, mauve, smoothstep(0.3, 0.9, fbm(p * 3.7 + vec3(w2, 0.0, 7.0))) * 0.45);
-  col = mix(col, deep * 0.8, smoothstep(0.55, 0.9, fbm(p * 2.9 + 11.0)) * 0.5);
-  float storm = fbm(p * 7.0 + vec3(w2 * 2.0, 0.0, uTime * 0.01));
-  col = mix(col, vec3(0.92, 0.90, 0.93), smoothstep(0.62, 0.78, storm) * 0.5);
-  col *= 0.86 + 0.28 * fbm(p * 14.0 + w2 * 2.0);
-  col = mix(vec3(dot(col, vec3(0.3, 0.5, 0.2))), col, 0.8);
+  vec3 col;
+  if (uKind < 0.5) col = surfaceGas(p);
+  else if (uKind < 1.5) col = surfaceRock(p);
+  else col = surfaceIce(p);
+  col = mix(vec3(dot(col, vec3(0.3, 0.5, 0.2))), col, 0.85);
 
   float ndl = dot(n, LIGHT);
   float lit = smoothstep(-0.06, 0.34, ndl);
@@ -104,16 +151,39 @@ vec4 planet(vec2 d, float r, float aa) {
 
   float rim = pow(1.0 - n.z, 4.0);
   float day = smoothstep(-0.25, 0.35, ndl);
-  col += ATMO * rim * 0.35 * day;
-  col += ATMO * pow(1.0 - n.z, 14.0) * 1.2 * day;
-  col += vec3(0.4, 0.22, 0.5) * smoothstep(-0.22, 0.0, ndl) * (1.0 - smoothstep(0.0, 0.25, ndl)) * 0.14;
+  col += uAtmo * rim * 0.35 * day;
+  col += uAtmo * pow(1.0 - n.z, 14.0) * 1.2 * day;
+  col += uAtmo * 0.6 * smoothstep(-0.22, 0.0, ndl) * (1.0 - smoothstep(0.0, 0.25, ndl)) * 0.14;
   return vec4(col, edge);
+}
+
+// Los anillos: un disco plano inclinado como el eje del planeta, con bandas de distinta densidad, una
+// división oscura y la sombra que el planeta echa sobre ellos. Se dibujan en dos mitades: la de
+// detrás, antes del planeta, y la de delante, encima.
+vec4 rings(vec2 d, float r) {
+  if (uRings.y <= 0.0) return vec4(0.0);
+  float c = cos(TILT), s = sin(TILT);
+  vec2 q = vec2(c * d.x - s * d.y, s * d.x + c * d.y);
+  float rr = length(vec2(q.x, q.y / sin(uRings.z))) / r;
+  float band = smoothstep(uRings.x, uRings.x + 0.03, rr) * (1.0 - smoothstep(uRings.y - 0.04, uRings.y, rr));
+  if (band <= 0.001) return vec4(0.0);
+  float k = (rr - uRings.x) / (uRings.y - uRings.x);
+  float dens = 0.45 + 0.55 * noise(vec3(rr * 26.0, uSeed, 0.0));
+  dens *= 1.0 - 0.8 * smoothstep(0.58, 0.62, k) * (1.0 - smoothstep(0.62, 0.68, k));
+  dens *= 1.0 - 0.5 * smoothstep(0.86, 0.9, k) * (1.0 - smoothstep(0.9, 0.93, k));
+  // La sombra del planeta cae sobre la mitad de atrás de los anillos, en dirección contraria al sol.
+  vec2 ld = normalize(LIGHT.xy);
+  float along = dot(d, ld);
+  float across = abs(dot(d, vec2(-ld.y, ld.x)));
+  float shadow = along < 0.0 && q.y > 0.0 ? smoothstep(r * 0.94, r * 1.06, across) : 1.0;
+  vec3 col = mix(uCol[3], uCol[2], dens) * (0.02 + 0.95 * shadow);
+  return vec4(col, band * dens * 0.9);
 }
 
 // La luna: roca gris con cráteres y relieve, luz dura del sol y un poco de luz que rebota del planeta.
 vec4 moon(vec2 d, float r, float spin, float aa) {
   float l = length(d);
-  if (l > r + aa) return vec4(0.0);
+  if (r <= 0.0 || l > r + aa) return vec4(0.0);
   float edge = 1.0 - smoothstep(r - aa, r + aa, l);
   l = min(l, r - 0.0005);
   float z = sqrt(r * r - l * l);
@@ -136,7 +206,7 @@ vec4 moon(vec2 d, float r, float spin, float aa) {
 
   float ndl = dot(bump, LIGHT);
   float lit = smoothstep(-0.03, 0.42, ndl);
-  col = col * (0.01 + 1.2 * lit) + ATMO * 0.06 * max(dot(n, vec3(0.6, -0.2, 0.2)), 0.0);
+  col = col * (0.01 + 1.2 * lit) + uAtmo * 0.06 * max(dot(n, vec3(0.6, -0.2, 0.2)), 0.0);
   return vec4(col, edge);
 }
 
@@ -273,10 +343,10 @@ vec3 shadeHull(vec3 pos, vec3 n, vec3 rd, float id, float strobe) {
   col += SUN * spec * sh * (0.3 + 0.7 * ndl);
   // Luz que rebota del planeta, a la derecha, y su reflejo en la chapa.
   vec3 planetDir = normalize(vec3(0.75, 0.12, -1.0));
-  col += base * vec3(0.42, 0.34, 0.62) * max(dot(n, planetDir), 0.0) * 0.35;
+  col += base * uCol[1] * max(dot(n, planetDir), 0.0) * 0.4;
   vec3 refl = reflect(rd, n);
   float fres = pow(1.0 - max(dot(n, -rd), 0.0), 5.0);
-  col += vec3(0.42, 0.35, 0.62) * smoothstep(0.7, 0.95, dot(refl, planetDir)) * (0.08 + 0.35 * fres);
+  col += uCol[1] * smoothstep(0.7, 0.95, dot(refl, planetDir)) * (0.08 + 0.35 * fres);
   // Las luces de posición tiñen el casco a su alrededor.
   col += vec3(1.0, 0.2, 0.15) * pointLight(pos, n, PORT) * base.x * 3.0;
   col += vec3(0.2, 1.0, 0.45) * pointLight(pos, n, STARBOARD) * base.x * 3.0;
@@ -310,20 +380,27 @@ void main() {
 
   vec4 pl = planet(p - pc, r, aa);
   vec4 mo = moon(p - mc, mr, uTime * 0.05 + th, aa);
+  vec4 rg = rings(p - pc, r);
+  // La mitad de los anillos que queda por delante del planeta es la de abajo (el eje se inclina hacia
+  // la cámara); la de arriba pasa por detrás.
+  float front = step(sin(TILT) * (p.x - pc.x) + cos(TILT) * (p.y - pc.y), 0.0);
+  col = mix(col, vec4(rg.rgb, 1.0), rg.a * (1.0 - front));
 
   // La atmósfera fuera del disco: una franja fina y brillante, con un halo muy tenue, solo de día.
   float dist = length(p - pc) - r;
   if (dist > 0.0) {
     float side = smoothstep(-0.45, 0.6, dot(normalize(vec3((p - pc) / r, 0.0)), LIGHT));
     float halo = exp(-dist / r * 48.0) * 0.9 + exp(-dist / r * 10.0) * 0.08;
-    col.rgb += ATMO * halo * side;
+    col.rgb += uAtmo * halo * side;
   }
 
   if (depth < 0.0) {
     col = mix(col, mo, mo.a);
     col = mix(col, pl, pl.a);
+    col = mix(col, vec4(rg.rgb, 1.0), rg.a * front);
   } else {
     col = mix(col, pl, pl.a);
+    col = mix(col, vec4(rg.rgb, 1.0), rg.a * front);
     col = mix(col, mo, mo.a);
   }
 
@@ -373,14 +450,45 @@ let lastFrame = 0
 let w = 0
 let h = 0
 let started = 0
+let trip = voyage()  // la escala actual: a qué mundo va la nave y cuánto le falta
+let lastTrip = 0
 const target = { x: 0, y: 0 }
 const shift = { x: 0, y: 0 }
 
 function setup() {
   gl = initGL(canvas.value)
   if (!gl) return false
-  view = buildProgram(gl, FRAG, ['uRes', 'uTime', 'uPlanet', 'uOrbit', 'uShift', 'uDetail', 'uSky', 'uTex', 'uScale', 'uSeed', 'uView'])
+  view = buildProgram(gl, FRAG, ['uRes', 'uTime', 'uPlanet', 'uOrbit', 'uShift', 'uDetail', 'uSky', 'uTex', 'uScale', 'uSeed', 'uView', 'uCol[0]', 'uAtmo', 'uKind', 'uRings'])
+  gl.useProgram(view.program)
+  setDestination(trip.destination)
   return true
+}
+
+// El mundo que se ve: su paleta, su tipo, sus anillos y su atmósfera.
+function setDestination(d) {
+  gl.uniform3fv(view.u['uCol[0]'], new Float32Array(d.colors.flat()))
+  gl.uniform3f(view.u.uAtmo, ...d.atmoRgb)
+  gl.uniform1f(view.u.uKind, KINDS[d.kind])
+  gl.uniform3f(view.u.uRings, ...(d.rings || [0, 0, 0]))
+  gl.uniform1f(view.u.uSeed, d.seed)
+}
+
+// Dónde y de qué tamaño se ve el planeta: crece según se acerca la nave y, en vertical, entra en el
+// encuadre desde el borde derecho. La órbita de la luna crece con él.
+// La órbita es más ancha que el planeta más la luna: así, cuando la luna pasa de delante a detrás
+// (en los extremos de la órbita), ya está fuera del disco y no se nota el cambio de orden.
+function place(v) {
+  if (!w || !h) return
+  const ratio = w / h
+  const k = 0.45 + 0.55 * v.approach
+  const moon = v.destination.moon
+  if (w < 720) {
+    gl.uniform3f(view.u.uPlanet, ratio / 2 + 0.02 - 0.3 * (1 - v.approach), 0.22 + 0.05 * (1 - v.approach), 0.4 * k)
+    gl.uniform3f(view.u.uOrbit, 0.52 * k, -0.12 * k, 0.05 * k * moon)
+  } else {
+    gl.uniform3f(view.u.uPlanet, ratio / 2 - 0.3, -0.04, 0.47 * k)
+    gl.uniform3f(view.u.uOrbit, 0.64 * k, 0.2 * k, 0.07 * k * moon)
+  }
 }
 
 function resize() {
@@ -402,7 +510,7 @@ function resize() {
   // negro, con pocas estrellas y sin nebulosas; la Vía Láctea queda solo como una sombra de luz.
   sky = bakeSky(gl, texW, texH, {
     scale,
-    seed: 9.7,
+    seed: trip.destination.seed,
     band: [fx(0.2), narrow ? 0.38 : 0.26, -0.3, narrow ? 0.16 : 0.2],
     gain: [0.035, 0.03, 0.75],
     stars: [0.22, 0.28, 0.45],
@@ -420,29 +528,33 @@ function resize() {
   gl.uniform1i(view.u.uSky, 0)
   gl.uniform2f(view.u.uTex, texW, texH)
   gl.uniform1f(view.u.uScale, scale)
-  gl.uniform1f(view.u.uSeed, 9.7)
+  gl.uniform1f(view.u.uSeed, trip.destination.seed)
   gl.uniform2f(view.u.uRes, canvas.value.width, canvas.value.height)
   gl.uniform1f(view.u.uDetail, narrow ? 0.5 : 1)
-  const ratio = w / h
-  // El planeta, cortado por el borde derecho. En vertical el texto va abajo, así que el planeta sube
-  // a la mitad de arriba y el morro baja para dejarle sitio. La órbita de la luna se queda a la
-  // derecha, sin pasar por delante del texto; en vertical da la vuelta al revés.
-  // La órbita es más ancha que el planeta más la luna: así, cuando la luna pasa de delante a detrás
-  // (en los extremos de la órbita), ya está fuera del disco y no se nota el cambio de orden.
-  if (narrow) {
-    gl.uniform3f(view.u.uPlanet, ratio / 2 + 0.02, 0.22, 0.4)
-    gl.uniform3f(view.u.uOrbit, 0.52, -0.12, 0.05)
-    gl.uniform1f(view.u.uView, 0.18)
-  } else {
-    gl.uniform3f(view.u.uPlanet, ratio / 2 - 0.3, -0.04, 0.47)
-    gl.uniform3f(view.u.uOrbit, 0.64, 0.2, 0.07)
-    gl.uniform1f(view.u.uView, 0.0)
-  }
+  // El planeta, cortado por el borde derecho cuando ya está cerca. En vertical el texto va abajo, así
+  // que el planeta sube a la mitad de arriba y el morro baja para dejarle sitio. La órbita de la luna
+  // se queda a la derecha, sin pasar por delante del texto; en vertical da la vuelta al revés.
+  gl.uniform1f(view.u.uView, narrow ? 0.18 : 0.0)
+  place(trip)
   if (reduced) frame(started)
 }
 
 function frame(now) {
   if (!gl) return
+  // Una vez por segundo se mira dónde va la nave: el planeta crece y, al cambiar de escala, cambia
+  // el mundo entero (y el cielo de detrás).
+  if (now - lastTrip > 1000) {
+    lastTrip = now
+    const v = voyage()
+    const changed = v.index !== trip.index
+    trip = v
+    if (changed) {
+      setDestination(v.destination)
+      resize()
+    } else {
+      place(v)
+    }
+  }
   shift.x += (target.x - shift.x) * 0.04
   shift.y += (target.y - shift.y) * 0.04
   gl.uniform2f(view.u.uShift, shift.x, shift.y)

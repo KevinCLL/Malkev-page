@@ -8,10 +8,12 @@ import KallaxCell from '../components/kallax/KallaxCell.vue'
 import KallaxGroup from '../components/kallax/KallaxGroup.vue'
 import ItemModal from '../components/ItemModal.vue'
 import AppIcon from '../components/AppIcon.vue'
+import { useItemLink } from '../useItemLink.js'
 
 const furniture = ref([])
 const list = ref([])
 const selected = ref(null)
+useItemLink(list, selected)
 const zoom = ref(null)
 const query = ref('')
 const filter = ref('all')
@@ -44,7 +46,7 @@ const FILTERS = [
 ]
 const counts = computed(() => Object.fromEntries(FILTERS.map((f) => [f.id, f.test ? list.value.filter(f.test).length : list.value.length])))
 
-const normalized = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const normalized = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const active = computed(() => !!query.value.trim() || filter.value !== 'all')
 function matches(item) {
   const f = FILTERS.find((x) => x.id === filter.value)

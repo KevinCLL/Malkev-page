@@ -1,4 +1,5 @@
-// Servidor de la POC: API REST sobre SQLite + la app Vue (Vite en desarrollo, dist/ en producción).
+// Servidor de Malkevnia: API REST sobre SQLite + la app Vue (Vite en desarrollo, dist/ en producción).
+// La consola va detrás de un inicio de sesión (server/auth.js); el resto de la web es público.
 import express from 'express'
 import { randomBytes } from 'node:crypto'
 import { writeFileSync, existsSync } from 'node:fs'
@@ -6,13 +7,26 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { db, UPLOADS_DIR, slugify, uniqueSlug, setPostTags, indexPost, stripHtml, transaction } from './db.js'
 import { lookup } from './lookup.js'
+import {
+  attachAuth, requireAdmin, httpError, isConfigured, setPassword, checkPassword,
+  createSession, destroySession, destroyAllSessions, cookieHeader,
+} from './auth.js'
+import { securityHeaders, sameOrigin, tooMany, loginGate, loginFailed, loginOk, commentToken, checkCommentToken, looksSpammy } from './guard.js'
+import { backup } from './backup.js'
+import { search, ftsQuery } from './search.js'
 
 const here = dirname(fileURLToPath(import.meta.url))
 const ROOT = join(here, '..')
 const PROD = process.argv.includes('--prod')
 const PORT = Number(process.env.PORT) || 5173
 
+// La primera vez, la contraseña de la consola puede venir de .env (ADMIN_PASSWORD); después se cambia
+// desde la propia consola o con `npm run consola:clave`.
+if (!isConfigured() && process.env.ADMIN_PASSWORD) setPassword(process.env.ADMIN_PASSWORD)
+
 const app = express()
+app.disable('x-powered-by')
+app.use(securityHeaders)
 app.use(express.json({ limit: '5mb' }))
 
 // Imágenes del blog actual (../assets) y las que se suben desde el editor.
@@ -21,9 +35,11 @@ app.use('/uploads', express.static(UPLOADS_DIR, { maxAge: '1h' }))
 
 const api = express.Router()
 app.use('/api', api)
+api.use(attachAuth)
+api.use(sameOrigin)
 
 const PAGE_SIZE = 12
-const ITEM_KINDS = ['boardgame', 'rpg', 'film', 'series', 'book', 'manga']
+const ITEM_KINDS = ['boardgame', 'rpg', 'film', 'series', 'book', 'manga', 'videogame']
 
 function tagsFor(postId) {
   return db.prepare(
@@ -52,23 +68,72 @@ function summary(row) {
   }
 }
 
-function httpError(status, message) {
-  const err = new Error(message)
-  err.status = status
-  return err
+function itemOut(row) {
+  return { ...row, featured: !!row.featured, hidden: !!row.hidden, meta: JSON.parse(row.meta || '{}') }
 }
 
-// FTS5: cada palabra se busca como prefijo, para que "drag" encuentre "dragón".
-function ftsQuery(q) {
-  return q
-    .split(/\s+/)
-    .map((w) => w.replace(/["*^:()]/g, ''))
-    .filter(Boolean)
-    .map((w) => `"${w}"*`)
-    .join(' ')
+/* ---------- Sesión de la consola ---------- */
+
+const authState = (req) => ({ configured: isConfigured(), authenticated: !!req.admin })
+
+function startSession(req, res) {
+  const token = createSession(req.headers['user-agent'])
+  res.setHeader('Set-Cookie', cookieHeader(token, req))
+  res.json({ configured: true, authenticated: true })
 }
 
-/* ---------- Portada ---------- */
+api.get('/auth', (req, res) => res.json(authState(req)))
+
+// La primera vez no hay contraseña: la crea quien llegue primero a la consola (que, en local, eres tú).
+api.post('/auth/setup', (req, res) => {
+  if (isConfigured()) throw httpError(409, 'La consola ya tiene contraseña.')
+  setPassword(req.body.password)
+  startSession(req, res)
+})
+
+api.post('/auth/login', (req, res) => {
+  loginGate(req.ip)
+  if (!isConfigured()) throw httpError(409, 'Todavía no hay contraseña: hay que crearla primero.')
+  if (!checkPassword(req.body.password)) {
+    loginFailed(req.ip)
+    throw httpError(401, 'Contraseña incorrecta.')
+  }
+  loginOk(req.ip)
+  startSession(req, res)
+})
+
+api.post('/auth/logout', (req, res) => {
+  destroySession(req)
+  res.setHeader('Set-Cookie', cookieHeader('', req))
+  res.json({ configured: isConfigured(), authenticated: false })
+})
+
+// Cambiar la contraseña cierra todas las sesiones y abre una nueva en este navegador.
+api.post('/auth/password', requireAdmin, (req, res) => {
+  if (!checkPassword(req.body.current)) throw httpError(400, 'La contraseña actual no es correcta.')
+  setPassword(req.body.password)
+  destroyAllSessions()
+  startSession(req, res)
+})
+
+api.use('/admin', requireAdmin)
+
+/* ---------- Portada y ordenador de a bordo ---------- */
+
+const NOW_GROUPS = [
+  { key: 'reading', label: 'Leyendo', where: "kind IN ('book', 'manga', 'rpg') AND status = 'reading'", order: 'updated_at DESC' },
+  { key: 'watching', label: 'Viendo', where: "kind IN ('film', 'series') AND status = 'watching'", order: 'updated_at DESC' },
+  { key: 'playing', label: 'Jugando', where: "kind IN ('videogame', 'boardgame', 'rpg') AND status = 'playing'", order: 'updated_at DESC' },
+  { key: 'played', label: 'Última partida', where: "kind = 'videogame' AND json_extract(meta, '$.last_played') IS NOT NULL", order: "json_extract(meta, '$.last_played') DESC" },
+]
+
+function nowOnBoard() {
+  return NOW_GROUPS.map((g) => {
+    const total = db.prepare(`SELECT COUNT(*) AS n FROM items WHERE hidden = 0 AND ${g.where}`).get().n
+    const items = total ? db.prepare(`SELECT * FROM items WHERE hidden = 0 AND ${g.where} ORDER BY ${g.order}, title LIMIT 6`).all().map(itemOut) : []
+    return { key: g.key, label: g.label, total, items }
+  }).filter((g) => g.total)
+}
 
 api.get('/stats', (req, res) => {
   const counts = Object.fromEntries(
@@ -81,16 +146,25 @@ api.get('/stats', (req, res) => {
     comments: db.prepare("SELECT COUNT(*) AS n FROM comments WHERE status = 'visible'").get().n,
     items: counts,
     manga_volumes: volumes,
+    platforms: db.prepare("SELECT COUNT(DISTINCT json_extract(meta, '$.platform')) AS n FROM items WHERE kind = 'videogame' AND hidden = 0").get().n,
     latest: db.prepare(
       "SELECT * FROM posts WHERE status = 'published' ORDER BY published_at DESC LIMIT 3"
     ).all().map(summary),
+    now: nowOnBoard(),
   })
+})
+
+api.get('/search', (req, res) => {
+  const q = String(req.query.q || '').trim().slice(0, 80)
+  res.json(search(q, { admin: !!req.admin }))
 })
 
 /* ---------- Blog ---------- */
 
 api.get('/posts', (req, res) => {
-  const { q = '', tag = '', category = '', year = '', all = '', status = '' } = req.query
+  const { q = '', tag = '', category = '', year = '', status = '' } = req.query
+  // Los borradores solo se listan desde la consola.
+  const all = req.query.all && req.admin
   const page = Math.max(1, Number(req.query.page) || 1)
   const where = []
   const params = []
@@ -136,7 +210,8 @@ api.get('/taxonomy', (req, res) => {
 
 api.get('/posts/:slug', (req, res) => {
   const row = db.prepare('SELECT * FROM posts WHERE slug = ?').get(req.params.slug)
-  if (!row || (row.status !== 'published' && !req.query.preview)) throw httpError(404, 'Esta entrada no existe.')
+  const preview = req.query.preview && req.admin
+  if (!row || (row.status !== 'published' && !preview)) throw httpError(404, 'Esta entrada no existe.')
   const neighbours = (op, dir) => db.prepare(`
     SELECT slug, title, published_at FROM posts
     WHERE status = 'published' AND published_at ${op} ? ORDER BY published_at ${dir} LIMIT 1
@@ -188,9 +263,9 @@ function savePost(body, id = null) {
   })
 }
 
-api.post('/posts', (req, res) => res.status(201).json(savePost(req.body)))
-api.put('/posts/:id', (req, res) => res.json(savePost(req.body, Number(req.params.id))))
-api.delete('/posts/:id', (req, res) => {
+api.post('/posts', requireAdmin, (req, res) => res.status(201).json(savePost(req.body)))
+api.put('/posts/:id', requireAdmin, (req, res) => res.json(savePost(req.body, Number(req.params.id))))
+api.delete('/posts/:id', requireAdmin, (req, res) => {
   transaction(() => {
     db.prepare('DELETE FROM posts WHERE id = ?').run(Number(req.params.id))
     db.prepare('DELETE FROM posts_fts WHERE rowid = ?').run(Number(req.params.id))
@@ -208,47 +283,54 @@ api.get('/posts/:slug/comments', (req, res) => {
   `).all(req.params.slug))
 })
 
+// El formulario pide este token al cargar la entrada y lo devuelve con el comentario.
+api.get('/posts/:slug/comments/token', (req, res) => res.json({ token: commentToken(req.params.slug) }))
+
 api.post('/posts/:slug/comments', (req, res) => {
-  // "website" es un campo trampa invisible: si viene relleno, es un bot.
+  // "website" es un campo trampa invisible: si viene relleno, es un bot (y se le dice que todo bien).
   if (req.body.website) return res.status(201).json({ ok: true })
   const post = db.prepare("SELECT id FROM posts WHERE slug = ? AND status = 'published'").get(req.params.slug)
   if (!post) throw httpError(404, 'Esta entrada no existe.')
+  checkCommentToken(req.params.slug, req.body.token)
   const author = String(req.body.author || '').trim().slice(0, 60)
   const body = String(req.body.body || '').trim().slice(0, 4000)
   if (!author || !body) throw httpError(400, 'Pon tu nombre y un comentario.')
-  const id = db.prepare('INSERT INTO comments (post_id, author, body) VALUES (?, ?, ?)').run(post.id, author, body).lastInsertRowid
-  res.status(201).json(db.prepare('SELECT id, author, body, created_at FROM comments WHERE id = ?').get(id))
+  if (tooMany(`comment:${req.ip}`, 3, 10 * 60 * 1000) || tooMany('comment:all', 60, 60 * 60 * 1000)) {
+    throw httpError(429, 'Demasiados comentarios seguidos. Espera un rato y vuelve a intentarlo.')
+  }
+  // El capitán comenta sin pasar por la cola; cualquier otro, si pone enlaces, espera a que lo apruebe.
+  const status = !req.admin && looksSpammy(body) ? 'pending' : 'visible'
+  const id = db.prepare('INSERT INTO comments (post_id, author, body, status) VALUES (?, ?, ?, ?)').run(post.id, author, body, status).lastInsertRowid
+  res.status(201).json({ ...db.prepare('SELECT id, author, body, created_at FROM comments WHERE id = ?').get(id), pending: status === 'pending' })
 })
 
 api.get('/admin/comments', (req, res) => {
   res.json(db.prepare(`
     SELECT c.*, p.title AS post_title, p.slug AS post_slug, p.published_at AS post_date
-    FROM comments c JOIN posts p ON p.id = c.post_id ORDER BY c.created_at DESC LIMIT 200
+    FROM comments c JOIN posts p ON p.id = c.post_id
+    ORDER BY CASE c.status WHEN 'pending' THEN 0 ELSE 1 END, c.created_at DESC LIMIT 300
   `).all())
 })
 
-api.patch('/comments/:id', (req, res) => {
+api.patch('/comments/:id', requireAdmin, (req, res) => {
   const status = req.body.status === 'hidden' ? 'hidden' : 'visible'
   db.prepare('UPDATE comments SET status = ? WHERE id = ?').run(status, Number(req.params.id))
   res.json({ ok: true })
 })
 
-api.delete('/comments/:id', (req, res) => {
+api.delete('/comments/:id', requireAdmin, (req, res) => {
   db.prepare('DELETE FROM comments WHERE id = ?').run(Number(req.params.id))
   res.status(204).end()
 })
 
 /* ---------- Colección ---------- */
 
-function itemOut(row) {
-  return { ...row, featured: !!row.featured, hidden: !!row.hidden, meta: JSON.parse(row.meta || '{}') }
-}
-
 api.get('/items', (req, res) => {
   const kinds = String(req.query.kind || '').split(',').filter((k) => ITEM_KINDS.includes(k))
   const where = []
   if (kinds.length) where.push(`kind IN (${kinds.map(() => '?').join(',')})`)
-  if (!req.query.all) where.push('hidden = 0')
+  // Lo oculto solo se ve desde la consola.
+  if (!(req.query.all && req.admin)) where.push('hidden = 0')
   const clause = where.length ? `WHERE ${where.join(' AND ')}` : ''
   res.json(db.prepare(`
     SELECT * FROM items ${clause}
@@ -294,20 +376,20 @@ function saveItem(body, id = null) {
   return itemOut(db.prepare('SELECT * FROM items WHERE id = ?').get(id))
 }
 
-api.post('/items', (req, res) => res.status(201).json(saveItem(req.body)))
+api.post('/items', requireAdmin, (req, res) => res.status(201).json(saveItem(req.body)))
+api.put('/items/:id', requireAdmin, (req, res) => res.json(saveItem(req.body, Number(req.params.id))))
+api.delete('/items/:id', requireAdmin, (req, res) => {
+  db.prepare('DELETE FROM items WHERE id = ?').run(Number(req.params.id))
+  res.status(204).end()
+})
+
 /* Muebles de la sala de juegos, con la colocación de cada caja. */
 api.get('/furniture', (req, res) => {
   res.json(db.prepare('SELECT * FROM furniture ORDER BY position, id').all()
     .map((f) => ({ ...f, layout: JSON.parse(f.layout || '{}') })))
 })
 
-api.put('/items/:id', (req, res) => res.json(saveItem(req.body, Number(req.params.id))))
-api.delete('/items/:id', (req, res) => {
-  db.prepare('DELETE FROM items WHERE id = ?').run(Number(req.params.id))
-  res.status(204).end()
-})
-
-api.get('/lookup', async (req, res) => {
+api.get('/lookup', requireAdmin, async (req, res) => {
   const q = String(req.query.q || '').trim()
   if (q.length < 2) return res.json([])
   try {
@@ -320,7 +402,7 @@ api.get('/lookup', async (req, res) => {
 /* ---------- Subida de imágenes ---------- */
 
 const IMAGE_TYPES = { 'image/png': 'png', 'image/jpeg': 'jpg', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif' }
-api.post('/uploads', express.raw({ type: Object.keys(IMAGE_TYPES), limit: '15mb' }), (req, res) => {
+api.post('/uploads', requireAdmin, express.raw({ type: Object.keys(IMAGE_TYPES), limit: '15mb' }), (req, res) => {
   const ext = IMAGE_TYPES[req.headers['content-type']]
   if (!ext || !req.body?.length) throw httpError(400, 'Sube una imagen PNG, JPG, WebP, GIF o AVIF.')
   const name = `${Date.now()}-${randomBytes(4).toString('hex')}.${ext}`
@@ -328,8 +410,17 @@ api.post('/uploads', express.raw({ type: Object.keys(IMAGE_TYPES), limit: '15mb'
   res.status(201).json({ url: `/uploads/${name}` })
 })
 
+/* ---------- Copia de seguridad ---------- */
+
+api.get('/admin/backup', (req, res) => {
+  const file = backup()
+  res.download(file)
+})
+
 api.use((req, res) => res.status(404).json({ error: 'Ruta de la API desconocida.' }))
 api.use((err, req, res, next) => {
+  if (err.type === 'entity.parse.failed') return res.status(400).json({ error: 'El cuerpo de la petición no es JSON válido.' })
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'Demasiado grande.' })
   if (!err.status) console.error(err)
   res.status(err.status || 500).json({ error: err.status ? err.message : 'Algo ha fallado en el servidor.' })
 })
@@ -342,7 +433,12 @@ if (PROD) {
     console.error('No existe dist/. Ejecuta primero: npm run build')
     process.exit(1)
   }
-  app.use(express.static(dist))
+  // Los ficheros con hash en el nombre no cambian nunca: se pueden guardar en caché un año.
+  app.use(express.static(dist, {
+    setHeaders(res, path) {
+      if (/-[\w-]{8,}\.(js|css|woff2?)$/.test(path)) res.setHeader('Cache-Control', 'public, max-age=31536000, immutable')
+    },
+  }))
   app.get('/{*splat}', (req, res) => res.sendFile(join(dist, 'index.html')))
 } else {
   const { createServer } = await import('vite')
@@ -352,6 +448,8 @@ if (PROD) {
 
 const count = db.prepare('SELECT COUNT(*) AS n FROM posts').get().n
 app.listen(PORT, () => {
-  console.log(`\n  ✦ Malkevnia POC en http://localhost:${PORT}`)
-  if (!count) console.log('  ⚠ La base de datos está vacía: ejecuta "npm run seed" para importar el blog y la colección.\n')
+  console.log(`\n  ✦ Malkevnia en http://localhost:${PORT}${PROD ? '' : ' (desarrollo)'}`)
+  if (!count) console.log('  ⚠ La base de datos está vacía: ejecuta "npm run seed" para importar el blog y la colección.')
+  if (!isConfigured()) console.log('  ✦ La consola todavía no tiene contraseña: se crea la primera vez que entres en /consola.')
+  console.log('')
 })

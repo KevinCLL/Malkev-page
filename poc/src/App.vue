@@ -3,8 +3,10 @@ import { ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
 import StarField from './components/StarField.vue'
 import AppIcon from './components/AppIcon.vue'
+import CommandPalette from './components/CommandPalette.vue'
 import { toasts } from './toast.js'
 import { setAmbient } from './ambient.js'
+import { openPalette } from './palette.js'
 
 const route = useRoute()
 const menuOpen = ref(false)
@@ -16,6 +18,7 @@ const rooms = [
   { to: '/sala-de-juegos', label: 'Sala de juegos', icon: 'dice' },
   { to: '/sala-de-proyeccion', label: 'Proyección', icon: 'film' },
   { to: '/biblioteca', label: 'Biblioteca', icon: 'book' },
+  { to: '/sala-recreativa', label: 'Recreativa', icon: 'gamepad' },
 ]
 
 function toggleSound() {
@@ -55,6 +58,11 @@ watch(() => route.fullPath, () => { menuOpen.value = false })
       </nav>
 
       <div class="ship-tools">
+        <button class="btn btn-ghost btn-icon search-btn" title="Buscar en toda la nave (Ctrl+K)" @click="openPalette">
+          <AppIcon name="search" />
+          <span class="sr-only">Buscar</span>
+          <kbd class="kbd-hint" aria-hidden="true">Ctrl K</kbd>
+        </button>
         <button class="btn btn-ghost btn-icon" :title="sound ? 'Apagar el zumbido de la nave' : 'Escuchar el zumbido de la nave'" @click="toggleSound">
           <AppIcon :name="sound ? 'sound' : 'mute'" />
           <span class="sr-only">Sonido ambiente</span>
@@ -72,6 +80,8 @@ watch(() => route.fullPath, () => { menuOpen.value = false })
       <component :is="Component" :key="route.matched[0]?.path === '/consola' ? 'consola' : route.path" />
     </Transition>
   </RouterView>
+
+  <CommandPalette />
 
   <div class="toasts" role="status" aria-live="polite">
     <TransitionGroup name="toast">
@@ -155,6 +165,18 @@ watch(() => route.fullPath, () => { menuOpen.value = false })
   align-items: center;
   gap: 6px;
 }
+.search-btn {
+  gap: 8px;
+}
+.kbd-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.04em;
+  padding: 1px 6px;
+  border-radius: 5px;
+  border: 1px solid var(--line);
+  color: var(--muted);
+}
 .menu-toggle {
   display: none;
 }
@@ -211,6 +233,11 @@ watch(() => route.fullPath, () => { menuOpen.value = false })
   .nav-link {
     padding: 12px 14px;
     font-size: 16px;
+  }
+}
+@media (max-width: 1020px) {
+  .kbd-hint {
+    display: none;
   }
 }
 @media (max-width: 520px) {

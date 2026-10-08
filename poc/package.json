@@ -1,25 +1,28 @@
 {
   "name": "malkevnia-poc",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "type": "module",
-  "description": "Prueba de concepto de Malkevnia: blog con base de datos y hobbies como una casa, en Vue + SQLite local.",
+  "description": "Malkevnia: la bitácora con base de datos y los hobbies como estancias de una nave, en Vue + SQLite local.",
   "engines": {
     "node": ">=22.13"
   },
   "scripts": {
-    "seed": "node --disable-warning=ExperimentalWarning scripts/seed.js",
-    "dev": "node --disable-warning=ExperimentalWarning server/index.js",
+    "seed": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/seed.js",
+    "dev": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server/index.js",
     "build": "vite build",
-    "start": "node --disable-warning=ExperimentalWarning server/index.js --prod",
+    "start": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning server/index.js --prod",
+    "copia": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/copia.js",
+    "consola:clave": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/consola-clave.js",
     "build:demo": "node scripts/build-demo.js",
     "kallax:lista": "node scripts/kallax-lista.js kallax-inventario.md",
-    "import:goodreads": "node --disable-warning=ExperimentalWarning scripts/import-goodreads.js",
-    "import:anilist": "node --disable-warning=ExperimentalWarning scripts/import-anilist.js",
-    "import:filmaffinity": "node --disable-warning=ExperimentalWarning scripts/import-filmaffinity.js",
-    "coleccion:export": "node --disable-warning=ExperimentalWarning scripts/coleccion-export.js",
-    "coleccion:import": "node --disable-warning=ExperimentalWarning scripts/coleccion-import.js",
-    "import:goodreads-web": "node --disable-warning=ExperimentalWarning scripts/import-goodreads-web.js"
+    "import:goodreads": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/import-goodreads.js",
+    "import:goodreads-web": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/import-goodreads-web.js",
+    "import:anilist": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/import-anilist.js",
+    "import:filmaffinity": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/import-filmaffinity.js",
+    "import:launchbox": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/import-launchbox.js",
+    "coleccion:export": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/coleccion-export.js",
+    "coleccion:import": "node --env-file-if-exists=.env --disable-warning=ExperimentalWarning scripts/coleccion-import.js"
   },
   "dependencies": {
     "@tiptap/core": "^3.31.4",

@@ -1,14 +1,14 @@
 // Rellena la base de datos local:
 //  - importa las entradas del blog actual (../_posts/*.md) convirtiendo el Markdown a HTML,
 //  - carga las dos Kallax reales de Malkev (juegos y libros de rol, colocados como en las fotos),
-//  - añade una colección de ejemplo para la estantería de pelis y la biblioteca.
+//  - añade una colección de ejemplo para la estantería de pelis, la biblioteca y la sala recreativa.
 // Se puede ejecutar las veces que haga falta: borra y vuelve a crear todo.
 import { readdirSync, readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { marked } from 'marked'
 import { db, setPostTags, indexPost, uniqueSlug, transaction } from '../server/db.js'
-import { films, series, books, manga } from './sample-collection.js'
+import { films, series, books, manga, videogames } from './sample-collection.js'
 import { importColeccion } from './lib/coleccion.js'
 import { furniture as kallaxes } from './kallax-real.js'
 import { eachPlaced } from '../src/kallax.js'
@@ -130,7 +130,8 @@ function importCollection() {
   add('series', series)
   add('book', books)
   add('manga', manga)
-  return films.length + series.length + books.length + manga.length
+  add('videogame', videogames)
+  return films.length + series.length + books.length + manga.length + videogames.length
 }
 
 // Cada caja o libro de las Kallax pasa a ser un objeto de la colección; en el mueble se queda
@@ -182,5 +183,5 @@ const result = transaction(() => {
   return { posts, kallax, items, real }
 })
 
-console.log(`✦ Importadas ${result.posts} entradas del blog, ${result.kallax} juegos y libros de rol de las dos Kallax y ${result.items} objetos de ejemplo para pelis y libros.`)
+console.log(`✦ Importadas ${result.posts} entradas del blog, ${result.kallax} juegos y libros de rol de las dos Kallax y ${result.items} objetos de ejemplo para pelis, libros y videojuegos.`)
 if (result.real) console.log(`✦ Colección real cargada de coleccion.json: ${Object.entries(result.real).map(([k, c]) => `${c.added + c.updated} ${k}`).join(', ')} (los ejemplos de esos tipos, fuera).`)

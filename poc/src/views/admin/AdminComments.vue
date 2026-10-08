@@ -15,12 +15,14 @@ onMounted(load)
 
 const visible = computed(() => (filter.value === 'all' ? comments.value : comments.value.filter((c) => c.status === filter.value)))
 
-async function toggle(c) {
-  const next = c.status === 'visible' ? 'hidden' : 'visible'
+const pending = computed(() => comments.value.filter((c) => c.status === 'pending').length)
+
+async function setStatus(c, next) {
   await api.setCommentStatus(c.id, next)
   c.status = next
-  toast(next === 'hidden' ? 'Comentario ocultado' : 'Comentario visible de nuevo')
+  toast(next === 'hidden' ? 'Comentario ocultado' : c.status === 'visible' && next === 'visible' ? 'Comentario publicado' : 'Comentario visible de nuevo')
 }
+const toggle = (c) => setStatus(c, c.status === 'visible' ? 'hidden' : 'visible')
 
 async function remove(c) {
   if (!confirmAction(`¿Borrar el comentario de ${c.author}?`)) return
@@ -35,16 +37,18 @@ async function remove(c) {
     <header class="head">
       <p class="eyebrow">Transmisiones recibidas</p>
       <h1 class="page-title">Comentarios</h1>
+      <p class="page-lead">Los comentarios con enlaces esperan aquí hasta que los apruebes; el resto se publica al momento y se puede ocultar después.</p>
     </header>
 
     <div class="chips">
       <button class="chip" :class="{ active: filter === 'all' }" @click="filter = 'all'">Todos <span class="n">{{ comments.length }}</span></button>
+      <button class="chip" :class="{ active: filter === 'pending' }" @click="filter = 'pending'">Pendientes <span class="n">{{ pending }}</span></button>
       <button class="chip" :class="{ active: filter === 'visible' }" @click="filter = 'visible'">Visibles</button>
       <button class="chip" :class="{ active: filter === 'hidden' }" @click="filter = 'hidden'">Ocultos</button>
     </div>
 
     <ul class="list">
-      <li v-for="c in visible" :key="c.id" class="panel item" :class="{ hidden: c.status === 'hidden' }">
+      <li v-for="c in visible" :key="c.id" class="panel item" :class="{ hidden: c.status === 'hidden', pending: c.status === 'pending' }">
         <div class="item-head">
           <strong>{{ c.author }}</strong>
           <span class="muted">en</span>
@@ -54,7 +58,11 @@ async function remove(c) {
         <p class="body">{{ c.body }}</p>
         <div class="actions">
           <span v-if="c.status === 'hidden'" class="pill pill-warn">Oculto</span>
-          <button class="btn btn-sm" @click="toggle(c)">
+          <span v-else-if="c.status === 'pending'" class="pill pill-warn">Pendiente de aprobar</span>
+          <button v-if="c.status === 'pending'" class="btn btn-sm btn-primary" @click="setStatus(c, 'visible')">
+            <AppIcon name="check" :size="14" /> Aprobar
+          </button>
+          <button v-else class="btn btn-sm" @click="toggle(c)">
             <AppIcon :name="c.status === 'visible' ? 'eye-off' : 'eye'" :size="14" />
             {{ c.status === 'visible' ? 'Ocultar' : 'Mostrar' }}
           </button>
@@ -87,6 +95,12 @@ async function remove(c) {
 }
 .item.hidden {
   opacity: 0.6;
+}
+.item.pending {
+  border-color: rgba(255, 207, 138, 0.5);
+}
+.page-lead {
+  font-size: 15px;
 }
 .item-head {
   display: flex;

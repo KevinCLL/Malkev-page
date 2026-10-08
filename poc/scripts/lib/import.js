@@ -1,40 +1,52 @@
 // Utilidades comunes de los scripts de importación: guardar sin duplicar y leer CSV.
 import { db, transaction } from '../../server/db.js'
 
-const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
 
-// Inserta o actualiza cada objeto buscándolo por tipo y título (y año, si lo tiene).
+// Inserta o actualiza cada objeto. Por defecto se busca por tipo y título (y año, si lo tiene); con
+// opts.key se usa otra clave (los videojuegos, por ejemplo, van por su id de LaunchBox).
 // Lo que ya estaba conserva sus notas y su color; se actualizan nota, estado, portada y meta.
-export function upsertAll(kind, list) {
+export const VIDEOGAME_KEY = (it) =>
+  it.meta?.launchbox_id ? `lb:${it.meta.launchbox_id}` : `${norm(it.title)}|${norm(it.meta?.platform)}`
+
+export function upsertAll(kind, list, { key = null } = {}) {
   const existing = db.prepare('SELECT id, title, year, meta, notes, color FROM items WHERE kind = ?').all(kind)
   const byKey = new Map()
   for (const row of existing) {
-    byKey.set(`${norm(row.title)}|${row.year ?? ''}`, row)
-    if (!byKey.has(norm(row.title))) byKey.set(norm(row.title), row)
+    if (key) {
+      const k = key({ ...row, meta: JSON.parse(row.meta || '{}') })
+      if (k && !byKey.has(k)) byKey.set(k, row)
+    } else {
+      byKey.set(`${norm(row.title)}|${row.year ?? ''}`, row)
+      if (!byKey.has(norm(row.title))) byKey.set(norm(row.title), row)
+    }
   }
+  const find = (it) => (key ? byKey.get(key(it)) : byKey.get(`${norm(it.title)}|${it.year ?? ''}`) || byKey.get(norm(it.title)))
   const insert = db.prepare(`
-    INSERT INTO items (kind, title, creator, year, cover_url, color, rating, status, notes, position, meta)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO items (kind, title, creator, year, cover_url, color, rating, status, notes, position, featured, hidden, meta)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
   const update = db.prepare(`
-    UPDATE items SET creator = COALESCE(NULLIF(?, ''), creator), year = COALESCE(?, year), cover_url = COALESCE(?, cover_url),
+    UPDATE items SET title = ?, creator = COALESCE(NULLIF(?, ''), creator), year = COALESCE(?, year), cover_url = COALESCE(?, cover_url),
       color = COALESCE(color, ?), rating = COALESCE(?, rating), status = ?, notes = CASE WHEN notes = '' THEN ? ELSE notes END,
-      meta = ?, updated_at = datetime('now')
+      featured = COALESCE(?, featured), hidden = COALESCE(?, hidden), meta = ?, updated_at = datetime('now')
     WHERE id = ?
   `)
+  const flag = (v) => (v === undefined || v === null ? null : v ? 1 : 0)
   let position = db.prepare('SELECT COALESCE(MAX(position), -1) + 1 AS n FROM items WHERE kind = ?').get(kind).n
   const counts = { added: 0, updated: 0 }
   transaction(() => {
     for (const it of list) {
-      const row = byKey.get(`${norm(it.title)}|${it.year ?? ''}`) || byKey.get(norm(it.title))
+      const row = find(it)
       if (row) {
         const meta = { ...JSON.parse(row.meta || '{}'), ...it.meta }
-        update.run(it.creator || '', it.year ?? null, it.cover_url || null, it.color || null, it.rating ?? null,
-          it.status || 'owned', it.notes || '', JSON.stringify(meta), row.id)
+        update.run(it.title, it.creator || '', it.year ?? null, it.cover_url || null, it.color || null, it.rating ?? null,
+          it.status || 'owned', it.notes || '', flag(it.featured), flag(it.hidden), JSON.stringify(meta), row.id)
         counts.updated++
       } else {
         insert.run(kind, it.title, it.creator || '', it.year ?? null, it.cover_url || null, it.color || null,
-          it.rating ?? null, it.status || 'owned', it.notes || '', position++, JSON.stringify(it.meta || {}))
+          it.rating ?? null, it.status || 'owned', it.notes || '', position++, it.featured ? 1 : 0, it.hidden ? 1 : 0,
+          JSON.stringify(it.meta || {}))
         counts.added++
       }
     }

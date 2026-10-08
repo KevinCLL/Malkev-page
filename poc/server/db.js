@@ -1,17 +1,21 @@
-// Base de datos local: SQLite integrado en Node (node:sqlite), sin dependencias nativas.
-// El esquema es SQL estándar para que pasar a PostgreSQL más adelante sea directo.
+// Base de datos: SQLite integrado en Node (node:sqlite), sin dependencias nativas ni servidor aparte.
+// Es la base de datos de verdad de la versión local: un único fichero en data/ (o en DATA_DIR), que se
+// copia entero para hacer copias de seguridad. El esquema es SQL estándar por si algún día hay que
+// llevarlo a PostgreSQL.
 import { DatabaseSync } from 'node:sqlite'
 import { mkdirSync } from 'node:fs'
-import { dirname, join } from 'node:path'
+import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
-export const DATA_DIR = join(here, '..', 'data')
+export const DATA_DIR = process.env.DATA_DIR ? resolve(process.env.DATA_DIR) : join(here, '..', 'data')
 export const UPLOADS_DIR = join(DATA_DIR, 'uploads')
+export const BACKUPS_DIR = join(DATA_DIR, 'copias')
+export const DB_FILE = join(DATA_DIR, 'malkevnia.db')
 mkdirSync(UPLOADS_DIR, { recursive: true })
 
-export const db = new DatabaseSync(join(DATA_DIR, 'malkevnia.db'))
-db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;')
+export const db = new DatabaseSync(DB_FILE)
+db.exec('PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON; PRAGMA busy_timeout = 5000;')
 
 db.exec(`
 CREATE TABLE IF NOT EXISTS posts (
@@ -41,13 +45,13 @@ CREATE TABLE IF NOT EXISTS comments (
   post_id    INTEGER NOT NULL REFERENCES posts(id) ON DELETE CASCADE,
   author     TEXT NOT NULL,
   body       TEXT NOT NULL,
-  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible', 'hidden')),
+  status     TEXT NOT NULL DEFAULT 'visible' CHECK (status IN ('visible', 'hidden', 'pending')),
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
--- Colección de hobbies: juegos de mesa, libros de rol, pelis, series, libros y manga en una sola tabla.
+-- Colección de hobbies: juegos de mesa, libros de rol, pelis, series, libros, manga y videojuegos en una sola tabla.
 CREATE TABLE IF NOT EXISTS items (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
-  kind       TEXT NOT NULL CHECK (kind IN ('boardgame', 'rpg', 'film', 'series', 'book', 'manga')),
+  kind       TEXT NOT NULL CHECK (kind IN ('boardgame', 'rpg', 'film', 'series', 'book', 'manga', 'videogame')),
   title      TEXT NOT NULL,
   creator    TEXT NOT NULL DEFAULT '',
   year       INTEGER,
@@ -78,21 +82,33 @@ CREATE TABLE IF NOT EXISTS furniture (
 );
 CREATE INDEX IF NOT EXISTS idx_posts_pub ON posts(status, published_at);
 CREATE VIRTUAL TABLE IF NOT EXISTS posts_fts USING fts5(title, excerpt, body, tokenize = 'unicode61 remove_diacritics 2');
+-- Ajustes del servidor (contraseña de la consola, secreto para firmar tokens…).
+CREATE TABLE IF NOT EXISTS settings (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
+-- Sesiones abiertas en la consola: se guarda el hash del token que va en la cookie.
+CREATE TABLE IF NOT EXISTS sessions (
+  id         TEXT PRIMARY KEY,
+  created_at TEXT NOT NULL DEFAULT (datetime('now')),
+  expires_at TEXT NOT NULL,
+  user_agent TEXT NOT NULL DEFAULT ''
+);
 `)
 
-// Las bases de datos creadas antes de que existieran los libros de rol no admiten kind = 'rpg':
-// se rehace la tabla con la restricción nueva conservando los datos.
-const itemsSql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'items'").get()?.sql || ''
-if (!itemsSql.includes("'rpg'")) {
-  db.exec('BEGIN; ALTER TABLE items RENAME TO items_old;')
-  db.exec(itemsSql.replace("'boardgame', 'film'", "'boardgame', 'rpg', 'film'"))
-  db.exec(`
-    INSERT INTO items SELECT * FROM items_old;
-    DROP TABLE items_old;
-    CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind, shelf, position);
-    COMMIT;
-  `)
+// Las bases de datos creadas con un esquema anterior no admiten los valores nuevos (libros de rol,
+// videojuegos, comentarios pendientes de moderar): se rehace la tabla conservando los datos.
+function widenCheck(table, missing, from, to, after = '') {
+  const sql = db.prepare("SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?").get(table)?.sql || ''
+  if (!sql || sql.includes(missing) || !sql.includes(from)) return
+  db.exec(`BEGIN; ALTER TABLE ${table} RENAME TO ${table}_old;`)
+  db.exec(sql.replace(from, to))
+  db.exec(`INSERT INTO ${table} SELECT * FROM ${table}_old; DROP TABLE ${table}_old; ${after} COMMIT;`)
 }
+const ITEMS_INDEX = 'CREATE INDEX IF NOT EXISTS idx_items_kind ON items(kind, shelf, position);'
+widenCheck('items', "'rpg'", "'boardgame', 'film'", "'boardgame', 'rpg', 'film'", ITEMS_INDEX)
+widenCheck('items', "'videogame'", "'manga')", "'manga', 'videogame')", ITEMS_INDEX)
+widenCheck('comments', "'pending'", "'hidden')", "'hidden', 'pending')")
 
 export function stripHtml(html) {
   return String(html || '')
@@ -144,14 +160,20 @@ export function indexPost(post) {
     .run(post.id, post.title, post.excerpt, stripHtml(post.content_html))
 }
 
+// Transacciones anidables: la de fuera es la de verdad y las de dentro son puntos de guardado.
+let depth = 0
 export function transaction(fn) {
-  db.exec('BEGIN')
+  const outer = depth++ === 0
+  const sp = `sp${depth}`
+  db.exec(outer ? 'BEGIN' : `SAVEPOINT ${sp}`)
   try {
     const result = fn()
-    db.exec('COMMIT')
+    db.exec(outer ? 'COMMIT' : `RELEASE ${sp}`)
     return result
   } catch (err) {
-    db.exec('ROLLBACK')
+    db.exec(outer ? 'ROLLBACK' : `ROLLBACK TO ${sp}; RELEASE ${sp}`)
     throw err
+  } finally {
+    depth--
   }
 }

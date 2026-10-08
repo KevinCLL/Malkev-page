@@ -19,7 +19,9 @@ const js = files.filter((f) => f.endsWith('.js')).map((f) => readFileSync(join(b
 const css = files.filter((f) => f.endsWith('.css')).map((f) => readFileSync(join(built, f), 'utf8')).join('\n')
 if (js.length !== 1) throw new Error(`Se esperaba un único JS y hay ${js.length}`)
 
-const page = `<title>Malkevnia POC</title>
+const page = `<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Malkevnia POC</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,300..800;1,300..800&family=Orbitron:wght@500..900&family=Share+Tech+Mono&display=swap" rel="stylesheet" />

@@ -2,7 +2,7 @@
 import { computed, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api } from '../../api.js'
-import { confirmAction, fallbackColor, KIND_LABELS, STATUS_LABELS } from '../../util.js'
+import { confirmAction, coverRatio, fallbackColor, KIND_LABELS, STATUS_BY_KIND, STATUS_LABELS } from '../../util.js'
 import { toast } from '../../toast.js'
 import GenCover from '../../components/GenCover.vue'
 import AppIcon from '../../components/AppIcon.vue'
@@ -17,15 +17,8 @@ const KINDS = [
   { id: 'series', label: 'Series', room: '/sala-de-proyeccion', source: 'TMDB' },
   { id: 'book', label: 'Libros', room: '/biblioteca', source: 'Open Library' },
   { id: 'manga', label: 'Manga', room: '/biblioteca', source: 'AniList' },
+  { id: 'videogame', label: 'Videojuegos', room: '/sala-recreativa', source: null },
 ]
-const STATUS_BY_KIND = {
-  boardgame: ['owned', 'playing', 'wishlist', 'lent'],
-  rpg: ['owned', 'playing', 'reading', 'wishlist', 'lent'],
-  film: ['owned', 'watching', 'done', 'wishlist', 'lent'],
-  series: ['owned', 'watching', 'done', 'wishlist', 'lent'],
-  book: ['owned', 'reading', 'done', 'wishlist', 'lent'],
-  manga: ['owned', 'reading', 'done', 'wishlist', 'lent'],
-}
 
 const kind = computed(() => (KINDS.some((k) => k.id === route.params.kind) ? route.params.kind : 'boardgame'))
 const kindInfo = computed(() => KINDS.find((k) => k.id === kind.value))
@@ -146,7 +139,7 @@ function pick(r) {
 
     <div class="grid">
       <button v-for="it in filtered" :key="it.id" class="card panel" :class="{ hidden: it.hidden, current: editing === it.id }" @click="open(it)">
-        <span class="thumb" :class="kind"><GenCover :item="it" :ratio="kind === 'boardgame' ? '1 / 1' : '2 / 3'" :show-text="false" /></span>
+        <span class="thumb" :class="kind"><GenCover :item="it" :ratio="coverRatio(it)" :show-text="false" /></span>
         <span class="card-info">
           <strong>{{ it.title }}</strong>
           <span class="muted">{{ it.creator }}<template v-if="it.year"> · {{ it.year }}</template></span>
@@ -174,7 +167,7 @@ function pick(r) {
               <button type="button" class="btn btn-ghost btn-icon" @click="editing = null"><AppIcon name="close" /><span class="sr-only">Cerrar</span></button>
             </header>
 
-            <section class="lookup">
+            <section v-if="kindInfo.source" class="lookup">
               <span class="label">Rellenar desde {{ kindInfo.source }}</span>
               <div class="lookup-row">
                 <input v-model="lookupQuery" class="input" placeholder="Título a buscar…" @keydown.enter.prevent="search" />
@@ -195,7 +188,7 @@ function pick(r) {
 
             <div class="form-grid">
               <label class="field span-2"><span>Título</span><input v-model="form.title" class="input" required /></label>
-              <label class="field"><span>{{ kind === 'boardgame' ? 'Diseño' : kind === 'film' ? 'Dirección' : 'Autoría' }}</span><input v-model="form.creator" class="input" /></label>
+              <label class="field"><span>{{ kind === 'boardgame' ? 'Diseño' : kind === 'film' ? 'Dirección' : kind === 'videogame' ? 'Desarrollo' : 'Autoría' }}</span><input v-model="form.creator" class="input" /></label>
               <label class="field"><span>Año</span><input v-model="form.year" class="input" type="number" min="1800" max="2100" /></label>
 
               <label class="field span-2"><span>Portada (URL)</span><input v-model="form.cover_url" class="input" placeholder="Vacío: se genera una con el color" /></label>
@@ -235,6 +228,12 @@ function pick(r) {
                   </select>
                 </label>
                 <label v-if="kind === 'series'" class="field"><span>Temporadas</span><input v-model.number="form.meta.seasons" class="input" type="number" min="1" /></label>
+              </template>
+              <template v-if="kind === 'videogame'">
+                <label class="field"><span>Plataforma</span><input v-model="form.meta.platform" class="input" placeholder="Super Nintendo Entertainment System" /></label>
+                <label class="field"><span>Género</span><input v-model="form.meta.genre" class="input" placeholder="Plataformas; Acción" /></label>
+                <label class="field"><span>Editor</span><input v-model="form.meta.publisher" class="input" /></label>
+                <label class="field"><span>Partidas jugadas</span><input v-model.number="form.meta.play_count" class="input" type="number" min="0" /></label>
               </template>
               <label v-if="kind === 'book'" class="field"><span>Páginas</span><input v-model.number="form.meta.pages" class="input" type="number" min="1" /></label>
               <template v-if="kind === 'manga'">

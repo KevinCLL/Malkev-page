@@ -3,7 +3,7 @@ import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 import GenCover from './GenCover.vue'
 import RatingBar from './RatingBar.vue'
 import AppIcon from './AppIcon.vue'
-import { KIND_LABELS, STATUS_LABELS } from '../util.js'
+import { KIND_LABELS, STATUS_LABELS, coverRatio, formatDate, formatPlayTime } from '../util.js'
 
 const props = defineProps({ item: { type: Object, default: null } })
 const emit = defineEmits(['close'])
@@ -16,8 +16,12 @@ const facts = computed(() => {
   if (!it) return []
   const m = it.meta || {}
   const out = []
-  if (it.creator) out.push([it.kind === 'boardgame' ? 'Diseño' : it.kind === 'film' ? 'Dirección' : 'Autoría', it.creator])
+  if (it.creator) out.push([it.kind === 'boardgame' ? 'Diseño' : it.kind === 'film' ? 'Dirección' : it.kind === 'videogame' ? 'Desarrollo' : 'Autoría', it.creator])
   if (it.year) out.push(['Año', it.year])
+  if (m.platform) out.push(['Plataforma', m.platform])
+  if (m.genre) out.push(['Género', String(m.genre).replace(/;\s*/g, ' · ')])
+  if (m.publisher) out.push(['Editor', m.publisher])
+  if (m.region) out.push(['Región', m.region])
   if (m.players) out.push(['Jugadores', m.players])
   if (m.minutes) out.push(['Duración', `${m.minutes} min`])
   if (m.format) out.push(['Formato', FORMAT[m.format] || m.format])
@@ -25,12 +29,15 @@ const facts = computed(() => {
   if (m.pages) out.push(['Páginas', m.pages])
   if (m.volumes_owned) out.push(['Tomos', m.volumes_total ? `${m.volumes_owned} de ${m.volumes_total}` : m.volumes_owned])
   if (m.location) out.push(['Dónde está', m.location])
+  if (m.play_count) out.push(['Partidas', m.play_count])
+  if (m.play_time) out.push(['Tiempo jugado', formatPlayTime(m.play_time)])
+  if (m.last_played) out.push(['Última partida', formatDate(m.last_played, { day: 'numeric', month: 'long', year: 'numeric' })])
   if (m.dot) out.push(['Pegatina', m.dot])
   out.push(['Estado', STATUS_LABELS[it.status] || it.status])
   return out
 })
 
-const ratio = computed(() => (props.item?.kind === 'boardgame' ? '1 / 1' : '2 / 3'))
+const ratio = computed(() => (props.item ? coverRatio(props.item) : '2 / 3'))
 
 function onKey(e) {
   if (e.key === 'Escape') emit('close')

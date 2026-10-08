@@ -7,6 +7,7 @@ const routes = [
   { path: '/sala-de-juegos', name: 'games', component: () => import('./views/GamesView.vue') },
   { path: '/sala-de-proyeccion', name: 'films', component: () => import('./views/FilmsView.vue') },
   { path: '/biblioteca', name: 'library', component: () => import('./views/LibraryView.vue') },
+  { path: '/sala-recreativa', name: 'arcade', component: () => import('./views/ArcadeView.vue') },
   {
     path: '/consola',
     component: () => import('./views/admin/AdminLayout.vue'),

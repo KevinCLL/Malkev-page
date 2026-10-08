@@ -1,19 +1,70 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api.js'
-import { fallbackColor, isLight, seeded, shade } from '../util.js'
+import { countBy, fallbackColor, isLight, normalize, seeded, shade } from '../util.js'
 import ItemModal from '../components/ItemModal.vue'
 import ShelfRows from '../components/ShelfRows.vue'
+import BarList from '../components/BarList.vue'
+import AppIcon from '../components/AppIcon.vue'
+import { useItemLink } from '../useItemLink.js'
 
 const items = ref([])
 const selected = ref(null)
+useItemLink(items, selected)
 
 onMounted(async () => {
   items.value = await api.items('book,manga')
 })
 
-const books = computed(() => items.value.filter((i) => i.kind === 'book'))
-const manga = computed(() => items.value.filter((i) => i.kind === 'manga'))
+const q = ref('')
+const status = ref('all')
+const origin = ref('all')
+const STATUS = [
+  { id: 'all', label: 'Todo' },
+  { id: 'done', label: 'Leídos' },
+  { id: 'reading', label: 'Leyendo' },
+  { id: 'wishlist', label: 'Pendientes' },
+]
+const ORIGINS = [
+  { id: 'all', label: 'Todo' },
+  { id: 'manga', label: 'Manga' },
+  { id: 'manhwa', label: 'Manhwa' },
+  { id: 'manhua', label: 'Manhua' },
+]
+const ORIGIN_LABEL = { manga: 'Manga (Japón)', manhwa: 'Manhwa (Corea)', manhua: 'Manhua (China)' }
+
+const matches = (i) => {
+  const text = normalize(q.value.trim())
+  return (!text || normalize(`${i.title} ${i.creator} ${i.meta?.title_native || ''}`).includes(text))
+    && (status.value === 'all' || i.status === status.value)
+}
+const allBooks = computed(() => items.value.filter((i) => i.kind === 'book'))
+const allManga = computed(() => items.value.filter((i) => i.kind === 'manga'))
+const books = computed(() => allBooks.value.filter(matches))
+const manga = computed(() => allManga.value.filter((i) => matches(i) && (origin.value === 'all' || (i.meta?.origin || 'manga') === origin.value)))
+const filtering = computed(() => !!q.value.trim() || status.value !== 'all' || origin.value !== 'all')
+
+// Datos de la biblioteca, sobre todo lo que hay (no sobre lo filtrado).
+const data = computed(() => {
+  const b = allBooks.value
+  const m = allManga.value
+  const read = b.filter((i) => i.status === 'done')
+  const pages = read.reduce((s, i) => s + (i.meta?.pages || 0), 0)
+  const chapters = m.reduce((s, i) => s + (i.meta?.chapters_read || 0), 0)
+  const origins = [...countBy(m, (i) => i.meta?.origin || 'manga')].sort((x, y) => y[1] - x[1])
+    .map(([o, n]) => ({ label: ORIGIN_LABEL[o] || o, value: n }))
+  const authors = [...countBy(b, (i) => i.creator)].filter(([, n]) => n >= 2).sort((x, y) => y[1] - x[1] || x[0].localeCompare(y[0], 'es')).slice(0, 8)
+    .map(([a, n]) => ({ label: a, value: n }))
+  const years = [...countBy(read.filter((i) => i.meta?.date_read), (i) => String(i.meta.date_read).slice(0, 4))].sort((x, y) => x[0].localeCompare(y[0]))
+    .map(([y, n]) => ({ label: y, value: n }))
+  const rated = [...b, ...m].filter((i) => i.rating != null)
+  const best = rated.sort((x, y) => y.rating - x.rating || x.title.localeCompare(y.title, 'es')).slice(0, 5)
+  return {
+    read: read.length, pages, reading: b.filter((i) => i.status === 'reading').length, wishlist: b.filter((i) => i.status === 'wishlist').length,
+    mangaDone: m.filter((i) => i.status === 'done').length, mangaReading: m.filter((i) => i.status === 'reading').length, chapters,
+    origins, authors, years, best,
+  }
+})
 
 // Cada tomo de manga es un lomo independiente que apunta a su serie.
 const volumes = computed(() => manga.value.flatMap((series) =>
@@ -40,7 +91,7 @@ function colors(item) {
 const bookStyle = (b) => ({ ...colors(b), width: `${bookWidth(b)}px`, height: `${bookHeight(b)}px` })
 const volumeStyle = (v) => colors(v.series)
 
-const totalPages = computed(() => books.value.reduce((s, b) => s + (b.meta?.pages || 0), 0))
+const totalPages = computed(() => allBooks.value.reduce((s, b) => s + (b.meta?.pages || 0), 0))
 </script>
 
 <template>
@@ -48,8 +99,22 @@ const totalPages = computed(() => books.value.reduce((s, b) => s + (b.meta?.page
     <header class="page-head">
       <p class="eyebrow">Cubierta 3 · Biblioteca</p>
       <h1 class="page-title">Biblioteca</h1>
-      <p class="page-lead">El rincón más silencioso de la nave. {{ books.length }} libros que suman {{ totalPages.toLocaleString('es-ES') }} páginas y {{ volumes.length }} tomos de manga.</p>
+      <p class="page-lead">El rincón más silencioso de la nave. {{ allBooks.length }} libros que suman {{ totalPages.toLocaleString('es-ES') }} páginas y {{ allManga.length }} series de manga.</p>
     </header>
+
+    <div class="toolbar">
+      <label class="search-field">
+        <AppIcon name="search" :size="15" />
+        <input v-model="q" class="input" type="search" placeholder="Título o autoría…" />
+      </label>
+      <div class="chips" role="group" aria-label="Estado">
+        <button v-for="s in STATUS" :key="s.id" class="chip" :class="{ active: status === s.id }" @click="status = s.id">{{ s.label }}</button>
+      </div>
+      <div class="chips" role="group" aria-label="Origen del manga">
+        <button v-for="o in ORIGINS" :key="o.id" class="chip" :class="{ active: origin === o.id }" @click="origin = o.id">{{ o.label }}</button>
+      </div>
+    </div>
+    <p v-if="filtering" class="readout found">{{ books.length }} libros y {{ manga.length }} series de manga</p>
 
     <section class="bookcase panel" aria-labelledby="h-books">
       <h2 id="h-books" class="case-label"><span class="eyebrow">Libros</span></h2>
@@ -96,11 +161,136 @@ const totalPages = computed(() => books.value.reduce((s, b) => s + (b.meta?.page
       </ShelfRows>
     </section>
 
+    <section v-if="items.length" class="data panel panel-pad" aria-label="Datos de la biblioteca">
+      <p class="eyebrow">Datos de la biblioteca</p>
+      <div class="tiles">
+        <div class="tile"><span class="tile-label">Libros leídos</span><strong class="tile-value">{{ data.read }}</strong><span class="tile-note">{{ data.pages.toLocaleString('es-ES') }} páginas</span></div>
+        <div class="tile"><span class="tile-label">Leyendo ahora</span><strong class="tile-value">{{ data.reading }}</strong><span class="tile-note">{{ data.wishlist }} pendientes</span></div>
+        <div class="tile"><span class="tile-label">Manga terminado</span><strong class="tile-value">{{ data.mangaDone }}</strong><span class="tile-note">{{ data.mangaReading }} series siguiendo</span></div>
+        <div class="tile"><span class="tile-label">Capítulos leídos</span><strong class="tile-value">{{ data.chapters.toLocaleString('es-ES') }}</strong></div>
+      </div>
+      <div class="charts">
+        <div v-if="data.origins.length">
+          <p class="readout">Manga por origen</p>
+          <BarList :rows="data.origins" />
+        </div>
+        <div v-if="data.authors.length">
+          <p class="readout">Autores repetidos</p>
+          <BarList :rows="data.authors" />
+        </div>
+        <div v-if="data.years.length">
+          <p class="readout">Libros leídos por año</p>
+          <BarList :rows="data.years" />
+        </div>
+        <div v-if="data.best.length">
+          <p class="readout">Lo mejor de la biblioteca</p>
+          <ol class="best">
+            <li v-for="it in data.best" :key="it.id"><button class="link-btn" @click="selected = it">{{ it.title }}</button> <span class="muted">{{ it.rating }}/10</span></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
     <ItemModal :item="selected" @close="selected = null" />
   </main>
 </template>
 
 <style scoped>
+.toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.search-field {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+}
+.search-field .icon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+}
+.search-field .input {
+  padding: 8px 14px 8px 38px;
+  border-radius: 999px;
+}
+.found {
+  margin: -8px 0 14px;
+}
+.data {
+  display: grid;
+  gap: 18px;
+}
+.data .eyebrow {
+  margin: 0;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(6, 3, 16, 0.4);
+}
+.tile-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+.tile-value {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.tile-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px 28px;
+}
+.charts .readout {
+  margin: 0 0 8px;
+}
+.best {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.best li::marker {
+  color: var(--violet);
+  font-family: var(--font-mono);
+}
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--lavender);
+  text-align: left;
+}
+.link-btn:hover {
+  color: #fff;
+}
 .bookcase {
   padding: 22px 0 26px;
   margin-bottom: 28px;

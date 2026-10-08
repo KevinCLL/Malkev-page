@@ -1,16 +1,21 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { api } from '../api.js'
-import { fallbackColor, isLight, shade } from '../util.js'
+import { countBy, fallbackColor, isLight, normalize, shade } from '../util.js'
 import GenCover from '../components/GenCover.vue'
 import ItemModal from '../components/ItemModal.vue'
 import ShelfRows from '../components/ShelfRows.vue'
+import BarList from '../components/BarList.vue'
 import AppIcon from '../components/AppIcon.vue'
+import { useItemLink } from '../useItemLink.js'
 
 const items = ref([])
 const selected = ref(null)
+useItemLink(items, selected)
 const filter = ref('all')
 const mode = ref('shelf')
+const q = ref('')
+const sort = ref('shelf')
 
 try { mode.value = localStorage.getItem('malkevnia-films-mode') || 'shelf' } catch {}
 function setMode(m) {
@@ -22,10 +27,36 @@ onMounted(async () => {
   items.value = await api.items('film,series')
 })
 
+const byTitle = (a, b) => a.title.localeCompare(b.title, 'es', { sensitivity: 'base' })
+const SORTS = {
+  // Como en casa: el orden de la estantería, con las series al final.
+  shelf: (a, b) => (a.kind === b.kind ? 0 : a.kind === 'series' ? 1 : -1),
+  year: (a, b) => (b.year || 0) - (a.year || 0) || byTitle(a, b),
+  rating: (a, b) => (b.rating ?? -1) - (a.rating ?? -1) || byTitle(a, b),
+  title: byTitle,
+}
+
 const visible = computed(() => {
-  const list = filter.value === 'all' ? items.value : items.value.filter((i) => i.kind === filter.value)
-  // Las series al final de la estantería, como en casa.
-  return [...list].sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'series' ? 1 : -1))
+  const text = normalize(q.value.trim())
+  let list = filter.value === 'all' ? items.value : items.value.filter((i) => i.kind === filter.value)
+  if (text) list = list.filter((i) => normalize(`${i.title} ${i.creator}`).includes(text))
+  return [...list].sort(SORTS[sort.value] || SORTS.shelf)
+})
+
+// Datos de la sala: por décadas, por notas y quién dirige más de lo que hay en la estantería.
+const data = computed(() => {
+  const all = items.value
+  const rated = all.filter((i) => i.rating != null)
+  const avg = rated.length ? rated.reduce((s, i) => s + i.rating, 0) / rated.length : null
+  const decades = [...countBy(all.filter((i) => i.year), (i) => Math.floor(i.year / 10) * 10)]
+    .sort((a, b) => a[0] - b[0]).map(([d, n]) => ({ label: `${d}s`, value: n }))
+  const ratings = Array.from({ length: 10 }, (_, k) => 10 - k).map((r) => ({ label: `${r}`, value: rated.filter((i) => i.rating === r).length, hint: `Nota ${r}: ${rated.filter((i) => i.rating === r).length}` }))
+  const directors = [...countBy(all, (i) => i.creator.split(/,\s*/).filter(Boolean))]
+    .filter(([, n]) => n >= 3).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0], 'es')).slice(0, 10)
+    .map(([d, n]) => ({ label: d, value: n }))
+  const best = [...rated].sort((a, b) => b.rating - a.rating || byTitle(a, b)).slice(0, 5)
+  const topDecade = decades.length ? decades.reduce((m, d) => (d.value > m.value ? d : m)) : null
+  return { avg, decades, ratings, directors, best, topDecade, rated: rated.length }
 })
 
 const FORMAT = {
@@ -73,11 +104,25 @@ const counts = computed(() => ({
         <button class="chip" :class="{ active: filter === 'film' }" @click="filter = 'film'">Películas <span class="n">{{ counts.film }}</span></button>
         <button class="chip" :class="{ active: filter === 'series' }" @click="filter = 'series'">Series <span class="n">{{ counts.series }}</span></button>
       </div>
+      <label class="search-field">
+        <AppIcon name="search" :size="15" />
+        <input v-model="q" class="input" type="search" placeholder="Título o dirección…" />
+      </label>
+      <label class="sort">
+        <span class="readout">Orden</span>
+        <select v-model="sort" class="select">
+          <option value="shelf">Estantería</option>
+          <option value="year">Año</option>
+          <option value="rating">Nota</option>
+          <option value="title">Título</option>
+        </select>
+      </label>
       <div class="chips" role="group" aria-label="Vista">
         <button class="chip" :class="{ active: mode === 'shelf' }" @click="setMode('shelf')"><AppIcon name="rows" :size="14" /> Estantería</button>
         <button class="chip" :class="{ active: mode === 'covers' }" @click="setMode('covers')"><AppIcon name="grid" :size="14" /> Carátulas</button>
       </div>
     </div>
+    <p v-if="q.trim() && visible.length !== items.length" class="readout found">{{ visible.length }} {{ visible.length === 1 ? 'resultado' : 'resultados' }}</p>
 
     <section v-if="mode === 'shelf'" class="cabinet panel">
       <ShelfRows :items="visible" :width-of="caseWidth" :gap="3" :padding="36">
@@ -112,6 +157,36 @@ const counts = computed(() => ({
       </button>
     </section>
 
+    <section v-if="items.length" class="data panel panel-pad" aria-label="Datos de la sala">
+      <p class="eyebrow">Datos de la sala</p>
+      <div class="tiles">
+        <div class="tile"><span class="tile-label">Películas</span><strong class="tile-value">{{ counts.film }}</strong></div>
+        <div class="tile"><span class="tile-label">Series</span><strong class="tile-value">{{ counts.series }}</strong></div>
+        <div class="tile"><span class="tile-label">Nota media</span><strong class="tile-value">{{ data.avg === null ? '—' : data.avg.toFixed(1).replace('.', ',') }}</strong><span class="tile-note">de {{ data.rated }} con nota</span></div>
+        <div v-if="data.topDecade" class="tile"><span class="tile-label">Década más vista</span><strong class="tile-value">{{ data.topDecade.label }}</strong><span class="tile-note">{{ data.topDecade.value }} títulos</span></div>
+      </div>
+      <div class="charts">
+        <div v-if="data.decades.length">
+          <p class="readout">Por década</p>
+          <BarList :rows="data.decades" />
+        </div>
+        <div v-if="data.rated">
+          <p class="readout">Por nota</p>
+          <BarList :rows="data.ratings" />
+        </div>
+        <div v-if="data.directors.length">
+          <p class="readout">Quien más dirige</p>
+          <BarList :rows="data.directors" />
+        </div>
+        <div v-if="data.best.length">
+          <p class="readout">Lo mejor de la estantería</p>
+          <ol class="best">
+            <li v-for="it in data.best" :key="it.id"><button class="link-btn" @click="selected = it">{{ it.title }}</button> <span class="muted">{{ it.year }} · {{ it.rating }}/10</span></li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
     <ItemModal :item="selected" @close="selected = null" />
   </main>
 </template>
@@ -120,14 +195,110 @@ const counts = computed(() => ({
 .toolbar {
   display: flex;
   flex-wrap: wrap;
-  justify-content: space-between;
+  align-items: center;
   gap: 12px;
   margin-bottom: 20px;
+}
+.toolbar > :last-child {
+  margin-left: auto;
 }
 .chips {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
+}
+.search-field {
+  position: relative;
+  flex: 1 1 220px;
+  max-width: 360px;
+  display: flex;
+  align-items: center;
+}
+.search-field .icon {
+  position: absolute;
+  left: 14px;
+  color: var(--muted);
+}
+.search-field .input {
+  padding: 8px 14px 8px 38px;
+  border-radius: 999px;
+}
+.sort {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.sort .select {
+  width: auto;
+  padding: 7px 12px;
+}
+.found {
+  margin: -8px 0 14px;
+}
+.data {
+  display: grid;
+  gap: 18px;
+  margin-top: 24px;
+}
+.data .eyebrow {
+  margin: 0;
+}
+.tiles {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 12px;
+}
+.tile {
+  display: grid;
+  gap: 2px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line);
+  background: rgba(6, 3, 16, 0.4);
+}
+.tile-label {
+  font-size: 13px;
+  color: var(--muted);
+}
+.tile-value {
+  font-size: 30px;
+  font-weight: 600;
+  line-height: 1.1;
+}
+.tile-note {
+  font-size: 12px;
+  color: var(--muted);
+}
+.charts {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px 28px;
+}
+.charts .readout {
+  margin: 0 0 8px;
+}
+.best {
+  margin: 0;
+  padding-left: 20px;
+  display: grid;
+  gap: 4px;
+  font-size: 14px;
+}
+.best li::marker {
+  color: var(--violet);
+  font-family: var(--font-mono);
+}
+.link-btn {
+  border: none;
+  background: none;
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  color: var(--lavender);
+  text-align: left;
+}
+.link-btn:hover {
+  color: #fff;
 }
 .cabinet {
   padding: 30px 0 24px;

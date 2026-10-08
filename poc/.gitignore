@@ -5,3 +5,4 @@ dist-demo/
 src/demo/snapshot.json
 src/demo/assets.json
 kallax-inventario.md
+.env

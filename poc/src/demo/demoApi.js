@@ -14,7 +14,7 @@ const clone = (v) => structuredClone(v)
 const wait = (v) => new Promise((resolve) => setTimeout(() => resolve(clone(v)), 60))
 const fail = (message) => Promise.reject(new Error(message))
 const nowSql = () => new Date().toISOString().slice(0, 19).replace('T', ' ')
-const norm = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 const strip = (html) => String(html || '').replace(/<[^>]+>/g, ' ').replace(/&[a-z#0-9]+;/gi, ' ').replace(/\s+/g, ' ').trim()
 
 function slugify(text) {
@@ -142,7 +142,55 @@ function saveItem(data, id = null) {
   return wait(item)
 }
 
+// "Ahora mismo": lo que se está leyendo, viendo y jugando, como en el servidor.
+const NOW_GROUPS = [
+  { key: 'reading', label: 'Leyendo', test: (i) => ['book', 'manga', 'rpg'].includes(i.kind) && i.status === 'reading', order: (a, b) => (a.updated_at < b.updated_at ? 1 : -1) },
+  { key: 'watching', label: 'Viendo', test: (i) => ['film', 'series'].includes(i.kind) && i.status === 'watching', order: (a, b) => (a.updated_at < b.updated_at ? 1 : -1) },
+  { key: 'playing', label: 'Jugando', test: (i) => ['videogame', 'boardgame', 'rpg'].includes(i.kind) && i.status === 'playing', order: (a, b) => (a.updated_at < b.updated_at ? 1 : -1) },
+  { key: 'played', label: 'Última partida', test: (i) => i.kind === 'videogame' && i.meta.last_played, order: (a, b) => (a.meta.last_played < b.meta.last_played ? 1 : -1) },
+]
+function nowOnBoard() {
+  const items = state.items.filter((i) => !i.hidden)
+  return NOW_GROUPS.map((g) => {
+    const list = items.filter(g.test).sort(g.order)
+    return { key: g.key, label: g.label, total: list.length, items: list.slice(0, 6) }
+  }).filter((g) => g.total)
+}
+
 export const api = {
+  // En la demo la consola está abierta: no hay contraseña que crear ni comprobar.
+  auth: () => wait({ configured: true, authenticated: true }),
+  setup: () => wait({ configured: true, authenticated: true }),
+  login: () => wait({ configured: true, authenticated: true }),
+  logout: () => wait({ configured: true, authenticated: false }),
+  changePassword: () => wait({ configured: true, authenticated: true }),
+  backupUrl: '#',
+  search(q) {
+    const text = norm(q).trim()
+    const words = text.split(/\s+/).filter(Boolean)
+    if (!words.length) return wait({ posts: [], items: [], tags: [], more: 0 })
+    const posts = published()
+      .map((p) => ({ p, text: norm(`${p.title} ${p.excerpt} ${strip(p.content_html)}`) }))
+      .filter(({ text: t }) => words.every((w) => t.includes(w)))
+      .sort((a, b) => (norm(b.p.title).includes(text) ? 1 : 0) - (norm(a.p.title).includes(text) ? 1 : 0) || byDateDesc(a.p, b.p))
+      .slice(0, 8)
+      .map(({ p, text: t }) => {
+        const at = t.indexOf(words[0])
+        return { slug: p.slug, title: p.title, category: p.category, status: p.status, published_at: p.published_at, snippet: at >= 0 ? `…${t.slice(Math.max(0, at - 40), at + 60)}…` : p.excerpt }
+      })
+    const scored = []
+    for (const i of state.items) {
+      if (i.hidden) continue
+      const t = norm(`${i.title} ${i.creator} ${i.meta.platform || ''}`)
+      if (!words.every((w) => t.includes(w))) continue
+      const nt = norm(i.title)
+      scored.push([nt.startsWith(text) ? 0 : nt.includes(text) ? 1 : nt.includes(words[0]) ? 2 : 3, i])
+    }
+    scored.sort((a, b) => a[0] - b[0] || a[1].title.localeCompare(b[1].title, 'es'))
+    const items = scored.slice(0, 18).map(([, i]) => ({ id: i.id, kind: i.kind, title: i.title, creator: i.creator, year: i.year, cover_url: i.cover_url, color: i.color, status: i.status, platform: i.meta.platform || null }))
+    const tags = [...countBy(published(), (p) => p.tags)].filter(([name]) => name.includes(words[0])).map(([name, n]) => ({ name, n })).sort((a, b) => b.n - a.n).slice(0, 5)
+    return wait({ posts, items, tags, more: scored.length - items.length })
+  },
   stats() {
     const pub = published()
     const items = state.items.filter((i) => !i.hidden)
@@ -151,7 +199,9 @@ export const api = {
       comments: state.comments.filter((c) => c.status === 'visible').length,
       items: Object.fromEntries(countBy(items, (i) => i.kind)),
       manga_volumes: items.filter((i) => i.kind === 'manga').reduce((s, i) => s + (i.meta.volumes_owned || 1), 0),
+      platforms: new Set(items.filter((i) => i.kind === 'videogame').map((i) => i.meta.platform)).size,
       latest: [...pub].sort(byDateDesc).slice(0, 3).map(summary),
+      now: nowOnBoard(),
     })
   },
   posts: (params) => wait(listPosts(params)),
@@ -191,6 +241,7 @@ export const api = {
     const p = state.posts.find((x) => x.slug === slug)
     return wait(p ? visibleComments(p.id).sort((a, b) => (a.created_at < b.created_at ? -1 : 1)) : [])
   },
+  commentToken: () => wait({ token: 'demo' }),
   addComment(slug, data) {
     if (data.website) return wait({ ok: true })
     const p = state.posts.find((x) => x.slug === slug && x.status === 'published')
@@ -198,9 +249,11 @@ export const api = {
     const author = String(data.author || '').trim().slice(0, 60)
     const body = String(data.body || '').trim().slice(0, 4000)
     if (!author || !body) return fail('Pon tu nombre y un comentario.')
-    const c = { id: nextId.comment++, post_id: p.id, author, body, status: 'visible', created_at: nowSql() }
+    // Como en el servidor: con enlaces, se queda pendiente de que lo apruebe el capitán.
+    const status = /https?:\/\/|www\./i.test(body) ? 'pending' : 'visible'
+    const c = { id: nextId.comment++, post_id: p.id, author, body, status, created_at: nowSql() }
     state.comments.push(c)
-    return wait(c)
+    return wait({ ...c, pending: status === 'pending' })
   },
   adminComments() {
     return wait(state.comments
@@ -208,7 +261,7 @@ export const api = {
         const p = state.posts.find((x) => x.id === c.post_id)
         return { ...c, post_title: p?.title, post_slug: p?.slug, post_date: p?.published_at }
       })
-      .sort((a, b) => (a.created_at < b.created_at ? 1 : -1)))
+      .sort((a, b) => (a.status === 'pending' ? 0 : 1) - (b.status === 'pending' ? 0 : 1) || (a.created_at < b.created_at ? 1 : -1)))
   },
   setCommentStatus(id, status) {
     const c = state.comments.find((x) => x.id === Number(id))

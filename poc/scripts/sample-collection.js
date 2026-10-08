@@ -98,3 +98,76 @@ export const manga = [
   { title: 'Chainsaw Man', creator: 'Tatsuki Fujimoto', year: 2018, color: '#e0702a', rating: 8, meta: { volumes_owned: 11, volumes_total: 20 } },
   { title: 'Uzumaki', creator: 'Junji Itō', year: 1998, color: '#2a2a2a', rating: 9, meta: { volumes_owned: 1, volumes_total: 1 } },
 ]
+
+// Videojuegos de EJEMPLO para la sala recreativa. Los de verdad se cargan desde LaunchBox con
+// `npm run import:launchbox`. platform: nombre de la plataforma tal y como lo usa LaunchBox.
+const vg = (platform, color, list) => list.map(([title, creator, year, genre, rating, done, playCount, lastPlayed, extra]) => ({
+  title, creator, year, color, rating, status: done ? 'done' : 'owned',
+  meta: { platform, genre, play_count: playCount || 0, last_played: lastPlayed || null, ...(extra || {}) },
+}))
+export const videogames = [
+  ...vg('Nintendo Entertainment System', '#8a8f99', [
+    ['Super Mario Bros. 3', 'Nintendo', 1988, 'Plataformas', 10, true, 31, '2026-09-30T22:10:00'],
+    ['The Legend of Zelda', 'Nintendo', 1986, 'Aventura', 9, true, 12, '2026-06-02T21:00:00'],
+    ['Mega Man 2', 'Capcom', 1988, 'Acción; Plataformas', 9, false, 8, '2026-08-14T23:20:00'],
+    ['Castlevania', 'Konami', 1986, 'Acción; Plataformas', 8, false, 5, null],
+    ['Metroid', 'Nintendo', 1986, 'Acción; Aventura', 8, true, 4, null],
+    ['Contra', 'Konami', 1988, 'Disparos', 8, false, 9, '2026-07-19T20:40:00'],
+  ]),
+  ...vg('Super Nintendo Entertainment System', '#5b4fa0', [
+    ['Super Metroid', 'Nintendo', 1994, 'Acción; Aventura', 10, true, 22, '2026-10-04T23:05:00', { players: 1 }],
+    ['Chrono Trigger', 'Square', 1995, 'Rol', 10, true, 6, '2026-03-11T22:30:00'],
+    ['The Legend of Zelda: A Link to the Past', 'Nintendo', 1991, 'Aventura', 10, true, 9, '2026-05-25T21:15:00'],
+    ['Super Mario World', 'Nintendo', 1990, 'Plataformas', 10, true, 40, '2026-10-06T19:45:00'],
+    ['Street Fighter II Turbo', 'Capcom', 1993, 'Lucha', 9, false, 27, '2026-09-12T23:50:00', { players: 2 }],
+    ['Donkey Kong Country', 'Rare', 1994, 'Plataformas', 9, true, 11, null],
+    ['Secret of Mana', 'Square', 1993, 'Rol; Acción', 9, false, 3, null],
+    ['Super Castlevania IV', 'Konami', 1991, 'Acción; Plataformas', 9, true, 7, null],
+  ]),
+  ...vg('Sega Genesis', '#1f2a44', [
+    ['Sonic the Hedgehog 2', 'Sega Technical Institute', 1992, 'Plataformas', 9, true, 18, '2026-08-01T18:30:00'],
+    ['Streets of Rage 2', 'Sega', 1992, 'Beat \'em up', 10, true, 25, '2026-09-27T22:00:00', { players: 2 }],
+    ['Gunstar Heroes', 'Treasure', 1993, 'Acción; Disparos', 9, false, 6, null],
+    ['Phantasy Star IV', 'Sega', 1993, 'Rol', 9, false, 2, null],
+    ['Shining Force II', 'Camelot', 1993, 'Rol; Estrategia', 8, false, 4, null],
+  ]),
+  ...vg('Sega Master System', '#b23a3a', [
+    ['Alex Kidd in Miracle World', 'Sega', 1986, 'Plataformas', 8, true, 14, '2026-04-20T17:10:00'],
+    ['Wonder Boy III: The Dragon\'s Trap', 'Westone', 1989, 'Aventura; Plataformas', 9, false, 3, null],
+  ]),
+  ...vg('Nintendo Game Boy', '#8fa36a', [
+    ['Tetris', 'Nintendo', 1989, 'Puzle', 9, false, 52, '2026-10-07T08:20:00'],
+    ['Pokémon Rojo', 'Game Freak', 1996, 'Rol', 9, true, 5, null],
+    ['The Legend of Zelda: Link\'s Awakening', 'Nintendo', 1993, 'Aventura', 10, true, 7, '2026-02-14T23:00:00'],
+  ]),
+  ...vg('Sony Playstation', '#2b2b35', [
+    ['Final Fantasy VII', 'Square', 1997, 'Rol', 10, true, 4, '2026-01-30T22:40:00'],
+    ['Metal Gear Solid', 'Konami', 1998, 'Acción; Sigilo', 10, true, 6, null],
+    ['Castlevania: Symphony of the Night', 'Konami', 1997, 'Acción; Aventura', 10, true, 9, '2026-09-05T21:30:00'],
+    ['Resident Evil 2', 'Capcom', 1998, 'Terror', 9, true, 3, null],
+    ['Crash Bandicoot', 'Naughty Dog', 1996, 'Plataformas', 8, false, 10, null],
+    ['Tekken 3', 'Namco', 1998, 'Lucha', 9, false, 19, '2026-06-28T23:10:00', { players: 2 }],
+  ]),
+  ...vg('Nintendo 64', '#2d6a4f', [
+    ['The Legend of Zelda: Ocarina of Time', 'Nintendo', 1998, 'Aventura', 10, true, 8, '2026-07-07T20:00:00'],
+    ['Super Mario 64', 'Nintendo', 1996, 'Plataformas', 10, true, 15, null],
+    ['GoldenEye 007', 'Rare', 1997, 'Disparos', 9, false, 21, '2026-05-10T23:30:00', { players: 4 }],
+    ['Mario Kart 64', 'Nintendo', 1996, 'Carreras', 8, false, 33, '2026-09-20T22:20:00', { players: 4 }],
+  ]),
+  ...vg('Arcade', '#3a2f6b', [
+    ['Metal Slug', 'Nazca', 1996, 'Disparos', 9, true, 17, '2026-08-23T21:00:00', { players: 2 }],
+    ['Pac-Man', 'Namco', 1980, 'Laberinto', 8, false, 29, '2026-10-01T19:10:00'],
+    ['Street Fighter II: The World Warrior', 'Capcom', 1991, 'Lucha', 9, false, 12, null, { players: 2 }],
+    ['Donkey Kong', 'Nintendo', 1981, 'Plataformas', 8, false, 7, null],
+    ['Final Fight', 'Capcom', 1989, 'Beat \'em up', 8, true, 10, null, { players: 2 }],
+  ]),
+  ...vg('Commodore Amiga', '#6a5a3a', [
+    ['The Secret of Monkey Island', 'Lucasfilm Games', 1990, 'Aventura gráfica', 10, true, 3, '2026-03-02T22:50:00'],
+    ['Another World', 'Delphine Software', 1991, 'Acción; Aventura', 9, true, 2, null],
+    ['Lemmings', 'DMA Design', 1991, 'Puzle', 8, false, 6, null],
+  ]),
+  ...vg('Sega Dreamcast', '#d9d4c7', [
+    ['Shenmue', 'Sega AM2', 1999, 'Aventura', 9, false, 2, '2026-04-05T20:30:00'],
+    ['Soulcalibur', 'Namco', 1999, 'Lucha', 9, false, 8, null, { players: 2 }],
+  ]),
+]

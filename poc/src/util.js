@@ -76,6 +76,23 @@ export const KIND_LABELS = {
   series: 'Serie',
   book: 'Libro',
   manga: 'Manga',
+  videogame: 'Videojuego',
+}
+
+// Proporción de la carátula según el tipo (y, en los videojuegos, según la plataforma).
+const LANDSCAPE = /super nintendo|nintendo 64|atari|super famicom|intellivision|colecovision/i
+const SQUARE = /playstation|dreamcast|saturn|pc engine|turbografx|neo geo cd|sega cd|mega-cd|psp|3do|philips cd-i/i
+export function coverRatio(item) {
+  if (item.kind === 'boardgame') return '1 / 1'
+  if (item.kind !== 'videogame') return '2 / 3'
+  const platform = item.meta?.platform || ''
+  return LANDSCAPE.test(platform) ? '7 / 5' : SQUARE.test(platform) ? '1 / 1' : '5 / 7'
+}
+
+export function formatPlayTime(seconds) {
+  const h = Math.floor(seconds / 3600)
+  const m = Math.round((seconds % 3600) / 60)
+  return h ? `${h} h ${m ? `${m} min` : ''}`.trim() : `${m} min`
 }
 
 export const STATUS_LABELS = {
@@ -86,6 +103,24 @@ export const STATUS_LABELS = {
   watching: 'Viéndola ahora',
   done: 'Terminado',
   lent: 'Prestado',
+}
+export const STATUS_BY_KIND = {
+  boardgame: ['owned', 'playing', 'wishlist', 'lent'],
+  rpg: ['owned', 'playing', 'reading', 'wishlist', 'lent'],
+  film: ['owned', 'watching', 'done', 'wishlist', 'lent'],
+  series: ['owned', 'watching', 'done', 'wishlist', 'lent'],
+  book: ['owned', 'reading', 'done', 'wishlist', 'lent'],
+  manga: ['owned', 'reading', 'done', 'wishlist', 'lent'],
+  videogame: ['owned', 'playing', 'done', 'wishlist'],
+}
+
+export const normalize = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
+
+// Cuenta cuántos hay de cada valor (la clave puede devolver varios valores a la vez).
+export function countBy(list, key) {
+  const map = new Map()
+  for (const x of list) for (const k of [].concat(key(x))) if (k !== null && k !== undefined && k !== '') map.set(k, (map.get(k) || 0) + 1)
+  return map
 }
 
 export function debounce(fn, ms = 300) {
