@@ -3,7 +3,7 @@
 Prueba de concepto de la nueva Malkevnia: *La Malkevnia* es la nave, pequeña, surcando el espacio sola y en calma.
 Todo funciona en local, con una base de datos SQLite que vive en un fichero dentro de `poc/data/`.
 
-- **Puente**: la portada. Por el ventanal se ve un gigante gaseoso con su luna orbitando, dibujados en un shader (WebGL, sin texturas ni librerías), y la proa de la Malkevnia con sus luces de posición. Si el navegador no tiene WebGL, queda el planeta plano de CSS.
+- **Puente**: la portada. Por el ventanal se ve un gigante gaseoso con su luna orbitando, el cielo de fuera (Vía Láctea, nebulosas y miles de estrellas) y la proa de la Malkevnia con sus luces de posición, todo dibujado en shaders (WebGL, sin texturas ni librerías). Si el navegador no tiene WebGL, queda el planeta plano de CSS.
 - **Bitácora**: el blog de verdad, con búsqueda de texto completo, secciones, años, etiquetas y comentarios.
   Trae importadas las 135 entradas de `_posts/` (las 35 con `published: false` entran como borradores).
 - **Sala de juegos**: las dos Kallax 5×5 de casa, colocadas caja a caja como en las fotos: pilas, filas de pie, organizadores, huecos unidos con su barra y los libros de rol abajo. Toca un cubo para verlo de cerca y una caja para ver su ficha.
@@ -73,7 +73,7 @@ $env:TMDB_API_KEY = "tu-clave"; npm run dev
 
 ## Cómo está hecha
 
-- **Vue 3 + Vue Router + Vite**, sin librerías de componentes: los estilos, los iconos (SVG) y el fondo de estrellas (canvas) son propios.
+- **Vue 3 + Vue Router + Vite**, sin librerías de componentes: los estilos, los iconos (SVG) y el cielo son propios. El cielo (`src/sky.js`) es un shader compartido por el fondo de toda la web y el ventanal del puente: se calcula una vez en una textura (estrellas de varios colores, la Vía Láctea con su polvo, nebulosas) y cada fotograma solo la desplaza (deriva, scroll, ratón) y añade las estrellas brillantes, que titilan, y alguna estrella fugaz. Sin WebGL quedan los puntos de siempre en un canvas normal.
 - **Editor**: TipTap, que solo pone el motor; la barra de herramientas y los estilos son nuestros. Se pueden pegar o arrastrar imágenes, que se guardan en `data/uploads/`. Conserva los vídeos, audios y tablas de las entradas antiguas.
 - **Servidor**: Express con una API REST (`server/index.js`) sobre `node:sqlite` (`server/db.js`). El esquema es SQL estándar para pasarlo a PostgreSQL sin dolor.
 - **Sonido ambiente**: el botón del altavoz genera un zumbido de motor suave con Web Audio, sin ficheros.

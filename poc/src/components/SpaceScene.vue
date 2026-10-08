@@ -1,25 +1,29 @@
 <script setup>
-// Lo que se ve por el ventanal del puente: un gigante gaseoso con su luna orbitando, nebulosa al fondo
-// y la luz de un sol que queda fuera del encuadre. Todo se dibuja en un shader (WebGL), sin texturas.
+// Lo que se ve por el ventanal del puente: un gigante gaseoso con su luna orbitando, el mismo cielo
+// de estrellas, Vía Láctea y nebulosas que rodea la nave, y la luz de un sol que queda fuera del
+// encuadre. Todo se dibuja en un shader (WebGL), sin texturas ni imágenes.
 import { onBeforeUnmount, onMounted, ref } from 'vue'
+import { PRECISION, STARS_GLSL, bakeSky, buildProgram, initGL, maxTexture } from '../sky.js'
 
 const emit = defineEmits(['unsupported'])
 const canvas = ref(null)
 const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches
 
-const VERT = `
-attribute vec2 a;
-void main() { gl_Position = vec4(a, 0.0, 1.0); }
-`
+// Margen del cielo alrededor del ventanal, para el paralaje.
+const PAD = 0.05
 
-const FRAG = `
-precision highp float;
+const FRAG = `${PRECISION}
 uniform vec2 uRes;
 uniform float uTime;
 uniform vec3 uPlanet;   // centro (x, y) y radio, en unidades de la altura del ventanal
 uniform vec3 uOrbit;    // semiejes de la órbita de la luna (x, y) y su radio
 uniform vec2 uShift;    // paralaje con el ratón
 uniform float uDetail;  // 1 = todos los octavos de ruido; menos en pantallas pequeñas
+uniform sampler2D uSky; // el cielo de fondo, calculado una vez
+uniform vec2 uTex;      // tamaño de la textura del cielo
+uniform float uScale;   // píxeles del lienzo por píxel CSS
+uniform float uSeed;
+${STARS_GLSL}
 
 const vec3 LIGHT = normalize(vec3(-0.72, 0.42, 0.5));
 const vec3 ATMO = vec3(0.60, 0.50, 1.00);
@@ -136,18 +140,18 @@ void main() {
   vec2 pc = uPlanet.xy + uShift;
   float r = uPlanet.z;
 
-  // Nebulosa lejana, apenas insinuada, que se mueve con el paralaje al revés que el planeta.
-  vec2 np = p - uShift * 0.4;
-  float neb = fbm(vec3(np * 1.4 + vec2(uTime * 0.004, 0.0), 2.0));
-  float neb2 = fbm(vec3(np * 2.6 - vec2(0.0, uTime * 0.003), 7.0));
-  vec3 nebCol = mix(vec3(0.42, 0.26, 0.86), vec3(0.20, 0.60, 0.66), smoothstep(0.3, 0.7, neb2));
-  float nebA = smoothstep(0.42, 0.78, neb) * 0.32;
-  vec4 col = vec4(nebCol * nebA, nebA);
+  // El cielo lejano, que se mueve menos que el planeta con el paralaje; las estrellas brillantes,
+  // algo más cerca, un poco más.
+  vec2 pad = 0.5 * (uTex - uRes);
+  vec3 sky = texture2D(uSky, (gl_FragCoord.xy + pad - uShift * uRes.y * 0.25) / uTex).rgb;
+  vec2 cpx = (gl_FragCoord.xy - uShift * uRes.y * 0.5) / uScale;
+  sky += brightStars(cpx, 150.0, 0.42, uSeed + 31.0, uTime);
+  vec4 col = vec4(sky, 1.0);
 
   // Resplandor del sol, que queda arriba a la izquierda, fuera del ventanal.
   vec2 sun = vec2(-0.5 * uRes.x / uRes.y - 0.1, 0.62);
   float glare = exp(-length(p - sun) * 2.2) * 0.22;
-  col += vec4(vec3(0.85, 0.78, 1.0) * glare, glare);
+  col.rgb += vec3(0.85, 0.78, 1.0) * glare;
 
   // Órbita de la luna: delante del planeta cuando pasa por la parte baja.
   float th = uTime * 0.075 - 0.644;
@@ -174,14 +178,14 @@ void main() {
     col = mix(col, mo, mo.a);
   }
 
-  gl_FragColor = vec4(col.rgb * col.a, col.a);
+  gl_FragColor = vec4(col.rgb, 1.0);
 }
 `
 
 let gl = null
 let raf = 0
-let program = null
-let uniforms = {}
+let view = null
+let sky = null
 let observer = null
 let io = null
 let visible = true
@@ -192,30 +196,10 @@ let started = 0
 const target = { x: 0, y: 0 }
 const shift = { x: 0, y: 0 }
 
-function compile(type, src) {
-  const sh = gl.createShader(type)
-  gl.shaderSource(sh, src)
-  gl.compileShader(sh)
-  if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh))
-  return sh
-}
-
 function setup() {
-  gl = canvas.value.getContext('webgl', { alpha: true, premultipliedAlpha: true, antialias: false, powerPreference: 'low-power' })
+  gl = initGL(canvas.value)
   if (!gl) return false
-  program = gl.createProgram()
-  gl.attachShader(program, compile(gl.VERTEX_SHADER, VERT))
-  gl.attachShader(program, compile(gl.FRAGMENT_SHADER, FRAG))
-  gl.linkProgram(program)
-  if (!gl.getProgramParameter(program, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(program))
-  gl.useProgram(program)
-  const buf = gl.createBuffer()
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf)
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 3, -1, -1, 3]), gl.STATIC_DRAW)
-  const loc = gl.getAttribLocation(program, 'a')
-  gl.enableVertexAttribArray(loc)
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0)
-  for (const name of ['uRes', 'uTime', 'uPlanet', 'uOrbit', 'uShift', 'uDetail']) uniforms[name] = gl.getUniformLocation(program, name)
+  view = buildProgram(gl, FRAG, ['uRes', 'uTime', 'uPlanet', 'uOrbit', 'uShift', 'uDetail', 'uSky', 'uTex', 'uScale', 'uSeed'])
   return true
 }
 
@@ -223,35 +207,59 @@ function resize() {
   const el = canvas.value.parentElement
   w = el.clientWidth
   h = el.clientHeight
+  if (!w || !h) return
   const narrow = w < 720
-  // En pantallas pequeñas se dibuja a menos resolución y con menos detalle: el ruido es lo caro.
-  const scale = narrow ? 1 : Math.min(window.devicePixelRatio || 1, 1.5)
+  // En pantallas pequeñas el planeta se dibuja con menos detalle: el ruido es lo caro.
+  const maxT = maxTexture(gl)
+  const scale = Math.min(window.devicePixelRatio || 1, 1.5, maxT / (w * (1 + 2 * PAD)), maxT / (h * (1 + 2 * PAD)))
   canvas.value.width = Math.round(w * scale)
   canvas.value.height = Math.round(h * scale)
+  const texW = Math.round(w * (1 + 2 * PAD) * scale)
+  const texH = Math.round(h * (1 + 2 * PAD) * scale)
+  const aspect = texW / texH
+  const fx = (f) => f * aspect * 0.5
+  // La Vía Láctea cruza por la parte alta del ventanal, bajando hacia la derecha, por detrás del planeta.
+  sky = bakeSky(gl, texW, texH, {
+    scale,
+    seed: 9.7,
+    band: [fx(0.2), narrow ? 0.38 : 0.26, -0.3, narrow ? 0.16 : 0.2],
+    gain: [0.3, 0.7, 1.0],
+    nebulae: [
+      [fx(-0.55), 0.3, 0.5, 0],
+      [fx(0.75), 0.42, 0.42, 1],
+      [fx(-0.2), -0.32, 0.36, 2],
+    ],
+  }, sky)
   gl.viewport(0, 0, canvas.value.width, canvas.value.height)
-  gl.uniform2f(uniforms.uRes, canvas.value.width, canvas.value.height)
-  gl.uniform1f(uniforms.uDetail, narrow ? 0.5 : 1)
-  const aspect = w / h
-  // El planeta, cortado por el borde derecho; en vertical baja al rincón inferior derecho.
-  // En vertical el texto va abajo, así que el planeta sube a la mitad de arriba.
-  // La órbita de la luna se queda a la derecha, sin pasar por delante del texto; en vertical
-  // da la vuelta al revés, para que el paso por delante sea por arriba del planeta.
+  gl.useProgram(view.program)
+  gl.activeTexture(gl.TEXTURE0)
+  gl.bindTexture(gl.TEXTURE_2D, sky)
+  gl.uniform1i(view.u.uSky, 0)
+  gl.uniform2f(view.u.uTex, texW, texH)
+  gl.uniform1f(view.u.uScale, scale)
+  gl.uniform1f(view.u.uSeed, 9.7)
+  gl.uniform2f(view.u.uRes, canvas.value.width, canvas.value.height)
+  gl.uniform1f(view.u.uDetail, narrow ? 0.5 : 1)
+  const ratio = w / h
+  // El planeta, cortado por el borde derecho. En vertical el texto va abajo, así que el planeta sube
+  // a la mitad de arriba. La órbita de la luna se queda a la derecha, sin pasar por delante del texto;
+  // en vertical da la vuelta al revés, para que el paso por delante sea por arriba del planeta.
   if (narrow) {
-    gl.uniform3f(uniforms.uPlanet, aspect / 2 + 0.02, 0.22, 0.4)
-    gl.uniform3f(uniforms.uOrbit, 0.42, -0.12, 0.05)
+    gl.uniform3f(view.u.uPlanet, ratio / 2 + 0.02, 0.22, 0.4)
+    gl.uniform3f(view.u.uOrbit, 0.42, -0.12, 0.05)
   } else {
-    gl.uniform3f(uniforms.uPlanet, aspect / 2 - 0.3, -0.04, 0.47)
-    gl.uniform3f(uniforms.uOrbit, 0.5, 0.2, 0.08)
+    gl.uniform3f(view.u.uPlanet, ratio / 2 - 0.3, -0.04, 0.47)
+    gl.uniform3f(view.u.uOrbit, 0.5, 0.2, 0.08)
   }
-  if (reduced) frame(0)
+  if (reduced) frame(started)
 }
 
 function frame(now) {
   if (!gl) return
   shift.x += (target.x - shift.x) * 0.04
   shift.y += (target.y - shift.y) * 0.04
-  gl.uniform2f(uniforms.uShift, shift.x, shift.y)
-  gl.uniform1f(uniforms.uTime, 40 + (now - started) / 1000)
+  gl.uniform2f(view.u.uShift, shift.x, shift.y)
+  gl.uniform1f(view.u.uTime, 40 + (now - started) / 1000)
   gl.drawArrays(gl.TRIANGLES, 0, 3)
 }
 

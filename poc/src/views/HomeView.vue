@@ -167,6 +167,7 @@ const signals = [
   pointer-events: none;
   background:
     linear-gradient(115deg, rgba(255, 255, 255, 0.06) 0%, transparent 28%, transparent 72%, rgba(255, 255, 255, 0.03) 100%),
+    radial-gradient(55% 75% at 22% 55%, rgba(4, 2, 10, 0.45), transparent 70%),
     radial-gradient(120% 90% at 50% 120%, rgba(4, 2, 10, 0.55), transparent 60%);
   box-shadow: inset 0 0 90px rgba(4, 2, 10, 0.85);
 }
