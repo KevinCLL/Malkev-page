@@ -1,0 +1,36 @@
+---
+import Nave from '../../layouts/Nave.astro';
+import { leerEntrada } from '../../lib/bitacora';
+
+const e = await leerEntrada(Astro.params.slug!);
+if (!e) return new Response(null, { status: 404 });
+const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' });
+---
+<Nave titulo={e.titulo} descripcion={e.descripcion || undefined} sala="bitacora">
+  <article class="entrada">
+    <a class="volver" href="/bitacora">◂ Bitácora</a>
+    <p class="etiqueta">
+      <time datetime={e.fecha.toISOString()}>{fmt.format(e.fecha)}</time>
+      {e.minutos && <> · {e.minutos} min</>}
+    </p>
+    <h1>{e.titulo}</h1>
+    {e.portada && <img class="portada" src={e.portada} alt="" loading="lazy" />}
+    <div class="cuerpo" set:html={e.html} />
+    {e.etiquetas.length > 0 && (
+      <ul class="tags">{e.etiquetas.map((t) => <li>#{t}</li>)}</ul>
+    )}
+  </article>
+</Nave>
+
+<style>
+  .entrada { max-width: 72ch; margin: 0 auto; }
+  .volver { font: 13px var(--f-mono); text-decoration: none; }
+  h1 { font-size: clamp(26px, 5vw, 40px); margin: 6px 0 20px; }
+  .portada { width: 100%; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 20px; }
+  .cuerpo :global(img), .cuerpo :global(iframe), .cuerpo :global(video) { max-width: 100%; height: auto; border-radius: 8px; }
+  .cuerpo :global(pre) { overflow-x: auto; padding: 12px; background: var(--hull); border-radius: 8px; font: 14px var(--f-mono); }
+  .cuerpo :global(blockquote) { margin: 16px 0; padding: 4px 16px; border-left: 3px solid var(--accent); color: var(--muted); }
+  .cuerpo :global(table) { display: block; overflow-x: auto; border-collapse: collapse; }
+  .cuerpo :global(td), .cuerpo :global(th) { border: 1px solid var(--line); padding: 6px 10px; }
+  .tags { list-style: none; display: flex; flex-wrap: wrap; gap: 8px; padding: 0; margin: 32px 0 0; font: 13px var(--f-mono); color: var(--muted); }
+</style>

@@ -1,0 +1,40 @@
+---
+import Sala from '../../components/Sala.astro';
+import { listarEntradas } from '../../lib/bitacora';
+
+const entradas = await listarEntradas();
+const porAnyo = new Map<number, typeof entradas>();
+for (const e of entradas) {
+  const y = e.fecha.getFullYear();
+  porAnyo.set(y, [...(porAnyo.get(y) ?? []), e]);
+}
+const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
+---
+<Sala slug="bitacora">
+  {entradas.length === 0 && <p>La bitácora está vacía: falta el módulo <code>modulos/bitacora/posts.json</code> o la base de datos.</p>}
+  {[...porAnyo].map(([anyo, lista]) => (
+    <section class="anyo">
+      <h2 class="etiqueta">{anyo}</h2>
+      <ul>
+        {lista.map((e) => (
+          <li>
+            <time datetime={e.fecha.toISOString()}>{fmt.format(e.fecha)}</time>
+            <div>
+              <a href={`/bitacora/${e.slug}`}>{e.titulo}</a>
+              {e.descripcion && <p>{e.descripcion}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+    </section>
+  ))}
+</Sala>
+
+<style>
+  .anyo { margin-bottom: 28px; }
+  .anyo ul { list-style: none; padding: 0; margin: 8px 0 0; }
+  .anyo li { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }
+  .anyo time { color: var(--muted); font: 13px var(--f-mono); padding-top: 3px; }
+  .anyo a { font-weight: 600; text-decoration: none; }
+  .anyo p { margin: 2px 0 0; color: var(--muted); font-size: 15px; }
+</style>

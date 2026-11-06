@@ -1,0 +1,13 @@
+---
+import Sala from '../components/Sala.astro';
+import Terminal from '../components/Terminal.vue';
+import { salas } from '../lib/salas';
+import { listarEntradas } from '../lib/bitacora';
+
+// Mientras llega el módulo `ordenador`, una terminal mínima (isla Vue) que ya sirve para moverse.
+const destinos = salas.map(({ slug, ruta, nombre }) => ({ slug, ruta, nombre }));
+const entradas = (await listarEntradas()).map(({ slug, titulo }) => ({ slug, titulo }));
+---
+<Sala slug="ordenador">
+  <Terminal client:load salas={destinos} entradas={entradas} />
+</Sala>

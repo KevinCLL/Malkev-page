@@ -1,0 +1,50 @@
+# La Malkevnia en el servidor: web (Astro) + PostgreSQL, aislados de El Dragón Cojo.
+#
+#   cp .env.example .env   # y cambia POSTGRES_PASSWORD
+#   docker compose up -d --build
+#   docker compose exec web node scripts/seed.mjs   # primera vez: carga la bitácora
+#
+# La web solo escucha en 127.0.0.1:${WEB_PORT}; el proxy inverso que ya tenga el servidor
+# (Caddy, Nginx, Traefik…) es quien la publica en https://malkevnia.com. Ver DESPLIEGUE.md.
+name: malkevnia
+
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: web/Dockerfile
+    image: malkevnia-web:latest
+    init: true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://malkevnia:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}@db:5432/malkevnia
+      SITE_URL: ${SITE_URL:-https://malkevnia.com}
+    ports:
+      - "127.0.0.1:${WEB_PORT:-4321}:4321"
+    networks: [interna]
+
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: malkevnia
+      POSTGRES_USER: malkevnia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}
+    volumes:
+      - datos:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U malkevnia -d malkevnia"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [interna]
+    # Sin puertos publicados: solo la web llega a la base de datos.
+
+volumes:
+  datos:
+
+networks:
+  interna:

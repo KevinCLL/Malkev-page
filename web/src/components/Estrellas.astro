@@ -1,0 +1,17 @@
+---
+// Campo de estrellas de fondo, solo CSS: tres capas que derivan muy despacio.
+---
+<div class="estrellas" aria-hidden="true">
+  <div class="capa c1"></div>
+  <div class="capa c2"></div>
+  <div class="capa c3"></div>
+</div>
+
+<style>
+  .estrellas { position: fixed; inset: 0; overflow: hidden; pointer-events: none; z-index: 0; }
+  .capa { position: absolute; inset: -50% 0 0 0; background-repeat: repeat; animation: deriva linear infinite; }
+  .c1 { background-image: radial-gradient(1px 1px at 20px 30px, #fff8, transparent), radial-gradient(1px 1px at 140px 90px, #fff6, transparent), radial-gradient(1px 1px at 260px 170px, #d9ccff88, transparent); background-size: 300px 220px; animation-duration: 240s; }
+  .c2 { background-image: radial-gradient(1.5px 1.5px at 60px 120px, #c7b6ffaa, transparent), radial-gradient(1.5px 1.5px at 330px 40px, #fff9, transparent); background-size: 420px 300px; animation-duration: 160s; }
+  .c3 { background-image: radial-gradient(2px 2px at 200px 200px, #7fd6ffaa, transparent); background-size: 640px 520px; animation-duration: 110s; }
+  @keyframes deriva { to { transform: translateY(50%); } }
+</style>

@@ -1,0 +1,28 @@
+name: Web (Astro)
+
+on:
+  pull_request:
+    paths: ['web/**', '.github/workflows/web.yml']
+  push:
+    branches: [master]
+    paths: ['web/**', '.github/workflows/web.yml']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx astro check
+      - run: npm run build
+      - name: Construir la imagen Docker
+        working-directory: .
+        run: docker build -f web/Dockerfile -t malkevnia-web:ci .

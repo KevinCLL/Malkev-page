@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+Disallow: /consola
+Sitemap: https://malkevnia.com/sitemap.xml

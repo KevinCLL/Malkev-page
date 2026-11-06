@@ -1,0 +1,68 @@
+---
+import Nave from '../layouts/Nave.astro';
+import { salas } from '../lib/salas';
+import { moduloMontable } from '../lib/modulos';
+import { listarEntradas } from '../lib/bitacora';
+
+const destinos = salas.filter((s) => s.slug !== 'puente');
+const ultimas = (await listarEntradas()).slice(0, 3);
+const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' });
+---
+<Nave titulo="La Malkevnia" sala="puente">
+  <section class="puente">
+    <p class="etiqueta">Cubierta 1 · puente de mando</p>
+    <h1>Bienvenido a bordo</h1>
+    <p class="intro">
+      La Malkevnia surca el espacio sin prisa. Aquí dentro están la bitácora del capitán,
+      las Kallax llenas de juegos, la filmoteca y la biblioteca. Elige una sala.
+    </p>
+  </section>
+
+  <section aria-labelledby="t-salas">
+    <h2 id="t-salas" class="etiqueta">Salas de la nave</h2>
+    <ul class="rejilla">
+      {destinos.map((s) => (
+        <li>
+          <a class="tarjeta panel" href={s.ruta}>
+            <span class="icono" aria-hidden="true">{s.icono}</span>
+            <span class="nombre">{s.nombre}</span>
+            <span class="txt">{s.resumen}</span>
+            <span class="estado" data-listo={moduloMontable(s.modulo) || !s.modulo || s.slug === 'bitacora'}>
+              {moduloMontable(s.modulo) || !s.modulo || s.slug === 'bitacora' ? 'Operativa' : 'En obras'}
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  {ultimas.length > 0 && (
+    <section aria-labelledby="t-ultimas" class="ultimas">
+      <h2 id="t-ultimas" class="etiqueta">Últimas entradas de la bitácora</h2>
+      <ul>
+        {ultimas.map((e) => (
+          <li>
+            <a href={`/bitacora/${e.slug}`}>{e.titulo}</a>
+            <time datetime={e.fecha.toISOString()}>{fmt.format(e.fecha)}</time>
+          </li>
+        ))}
+      </ul>
+    </section>
+  )}
+</Nave>
+
+<style>
+  .puente h1 { font-size: clamp(32px, 6vw, 56px); margin: 8px 0 12px; }
+  .intro { color: var(--muted); max-width: 62ch; margin: 0 0 40px; font-size: 18px; }
+  .rejilla { list-style: none; padding: 0; margin: 12px 0 48px; display: grid; gap: 14px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 240px), 1fr)); }
+  .tarjeta { display: grid; gap: 6px; height: 100%; padding: 18px; color: var(--text); text-decoration: none; transition: border-color 0.2s, transform 0.2s; }
+  .tarjeta:hover { border-color: var(--accent); transform: translateY(-2px); color: var(--text); }
+  .icono { font-size: 22px; color: var(--glow); }
+  .nombre { font: 600 16px var(--f-display); letter-spacing: 0.03em; }
+  .txt { color: var(--muted); font-size: 14px; line-height: 1.5; }
+  .estado { justify-self: start; margin-top: 6px; font: 600 10px var(--f-mono); letter-spacing: 0.16em; text-transform: uppercase; padding: 3px 8px; border-radius: 99px; border: 1px solid var(--line); color: var(--muted); }
+  .estado[data-listo='true'] { color: #9ff0c4; border-color: rgba(159, 240, 196, 0.4); }
+  .ultimas ul { list-style: none; padding: 0; margin: 12px 0 0; }
+  .ultimas li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 4px 16px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+  .ultimas time { color: var(--muted); font: 13px var(--f-mono); }
+</style>
