@@ -3,6 +3,7 @@ import { defineConfig, envField } from 'astro/config';
 import { loadEnv } from 'vite';
 import node from '@astrojs/node';
 import vue from '@astrojs/vue';
+import modulosEnDesarrollo from './integraciones/modulos-en-desarrollo.mjs';
 
 // En desarrollo, /api/v1 (comentarios) y /admin (panel) se reenvían al catálogo, igual
 // que hará el proxy del servidor en producción.
@@ -15,7 +16,7 @@ export default defineConfig({
   site: process.env.SITE_URL ?? 'https://malkevnia.com',
   output: 'server',
   adapter: node({ mode: 'standalone' }),
-  integrations: [vue()],
+  integrations: [vue(), modulosEnDesarrollo()],
   trailingSlash: 'ignore',
   server: { host: true, port: 4321 },
   vite: catalogo
