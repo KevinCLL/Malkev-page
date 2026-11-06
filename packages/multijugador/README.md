@@ -53,11 +53,11 @@ mj.dispose(); avatars.dispose();
 | miembro | descripción |
 | --- | --- |
 | `onPlayers(cb)` | `cb([{ id, name, captain, room }])` con los demás de tu sala cuando alguien entra, sale o cambia de nombre. Se llama al suscribirse. Devuelve una función para darse de baja. |
-| `onRooms(cb)` | `cb({ sala: n })` recuento de toda la nave (máx. 1/s, solo si cambia). |
+| `onRooms(cb)` | `cb({ sala: n })` recuento de toda la nave, **contándote a ti** en tu sala. Solo salen las salas con alguien (las demás, 0). Máx. 1/s y solo si cambia. |
 | `onStatus(cb)` | `'connecting' \| 'online' \| 'reconnecting' \| 'closed'` |
 | `onError(cb)` | `'full' \| 'ip' \| 'rate' \| 'protocol' \| 'room' \| 'name' \| 'socket' \| 'connect'`. `name`: el nombre está reservado y el servidor te ha dado uno de `Viajero-…` (léelo en `mj.name`). `room`: sala no válida; el cliente vuelve solo a la anterior. |
 | `sendPose({ x, y, z, yaw, anim })` | tu pose; `yaw` en radianes (0 = mirando a +Z), `anim` ∈ `idle, walk, run, sit`. Se envía como mucho `sendHz`/s, solo si cambia, y cada 3 s como señal de vida. Las poses con `NaN` se ignoran. Con la pestaña en segundo plano el cliente manda un ping cada 20 s para no ser expulsado. |
-| `sample(t?, { interpolate })` | `[{ id, name, captain, x, y, z, yaw, anim }]` de los demás, interpolado para el instante `t` (por defecto `performance.now()`). Llamar cada frame. |
+| `sample(t?, { interpolate })` | `[{ id, name, captain, x, y, z, yaw, anim }]` de los demás, interpolado para el instante `t` (por defecto `performance.now()`). Llamar cada frame. Mismas coordenadas y mismo `yaw` que mandó cada uno con `sendPose` (redondeados a 0,01 y con `yaw` normalizado a [0, 2π) al viajar; al interpolar puede salirse un poco de ese rango, úsalo como ángulo). |
 | `setRoom(room)` | cambia de sala; los demás se vacían y llegan los de la nueva. Pedir la sala en la que ya estás no hace nada. |
 | `dispose()` | cierra y limpia. |
 | `id`, `name`, `captain`, `room`, `status`, `rooms` | lectura. |
@@ -68,7 +68,10 @@ invisibles, pero no HTML.
 
 ### `createAvatarLayer(THREE, parent, { scale, yawOffset })`
 
-Devuelve `{ root, update(players, dt), count, dispose() }`. Recibe `THREE` como
+Devuelve `{ root, update(players, dt), count, dispose() }`. El módulo exporta
+también `avatarColor({ id, captain })` (y `colorFor(id)`, `CAPTAIN_COLOR`), el
+número `0xRRGGBB` con el que se pinta cada avatar, para que el minimapa o
+cualquier lista use el mismo color. Recibe `THREE` como
 parámetro para usar la misma copia que la escena. `yawOffset` compensa si tu
 escena tiene otro "frente" (el avatar mira a +Z local).
 

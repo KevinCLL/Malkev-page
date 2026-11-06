@@ -15,10 +15,19 @@
 // igual que haya 2 o 64 visitantes (9 llamadas de dibujo + 1 por placa).
 
 const PALETTE = [0xb18cff, 0x8a7dff, 0xd38cff, 0x7fd6ff, 0x9fffd8, 0xff9fd2, 0xc2b0ff, 0x6fb7ff];
-const CAPTAIN_COLOR = 0xffd59a;
+export const CAPTAIN_COLOR = 0xffd59a;
 
+/** Color de un visitante por su id (número 0xRRGGBB). */
 export function colorFor(id) {
   return PALETTE[Math.abs(Math.imul(id | 0, 2654435761)) % PALETTE.length];
+}
+
+/**
+ * Color con el que se pinta el avatar de p ({ id, captain }), para que el
+ * minimapa, las listas y el avatar coincidan. Número 0xRRGGBB.
+ */
+export function avatarColor(p) {
+  return p && p.captain ? CAPTAIN_COLOR : colorFor(p && p.id);
 }
 
 // ---------- placa con el nombre ----------
@@ -141,7 +150,7 @@ function node(THREE, parent, part, list) {
 // Esqueleto invisible: solo transformaciones. Las mallas instanciadas copian
 // la matriz de cada nudo en cada frame.
 function makeAvatar(THREE, p, opts) {
-  const color = p.captain ? CAPTAIN_COLOR : colorFor(p.id);
+  const color = avatarColor(p);
   const parts = [];
   const g = new THREE.Group();
   g.name = `visitante-${p.id}`;

@@ -163,7 +163,7 @@ button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); ou
 <script type="module">
 import * as THREE from 'three';
 import { connect } from '../client/multijugador.js';
-import { createAvatarLayer, colorFor } from '../client/avatares.js';
+import { createAvatarLayer, avatarColor } from '../client/avatares.js';
 import { createSimServer, createBot } from './simulador.js';
 
 const SALAS = [
@@ -327,7 +327,7 @@ function pintarGente() {
   ul.replaceChildren(...gente.map((p) => {
     const li = document.createElement('li');
     const i = document.createElement('i');
-    i.style.background = `#${colorFor(p.id).toString(16).padStart(6, '0')}`;
+    i.style.background = `#${avatarColor(p).toString(16).padStart(6, '0')}`;
     li.append(i, document.createTextNode(p.name));
     return li;
   }));
