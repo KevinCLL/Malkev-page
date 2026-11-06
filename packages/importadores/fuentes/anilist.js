@@ -1,5 +1,6 @@
 // La lista de manga (y manhwa, manhua, novela ligera) de un usuario de AniList, por su API pública.
 import { crearFicha } from '../lib/modelo.js'
+import { stripHtml } from '../lib/texto.js'
 
 const QUERY = `query ($name: String) {
   MediaListCollection(userName: $name, type: MANGA) {
@@ -41,7 +42,7 @@ export async function leerAnilist(usuario) {
         rating: e.score || null,
         status: STATUS[e.status] || 'owned',
         notes: e.notes || '',
-        synopsis: m.description ? m.description.replace(/<[^>]+>/g, '').trim() : null,
+        synopsis: m.description ? stripHtml(m.description) || null : null,
         cover_url: m.coverImage?.extraLarge || m.coverImage?.large || null,
         color: m.coverImage?.color || null,
         genres: m.genres || [],

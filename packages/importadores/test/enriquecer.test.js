@@ -107,3 +107,16 @@ test('Open Library: --sin-red sin caché → pendiente', async () => {
   assert.equal(f.match.estado, 'pendiente')
   assert.equal(pedidas.length, 0)
 })
+
+test('correcciones: cambian la ficha, se marcan como corregidas y «ignorar» la quita', async () => {
+  const { aplicarCorrecciones } = await import('../lib/enriquecer.js')
+  const [a, ...resto] = aplicarCorrecciones([
+    crearFicha({ kind: 'book', title: 'Invariantes (Spanish Edition)', external_ids: { goodreads: 248060046 } }),
+    crearFicha({ kind: 'film', title: 'Basura', external_ids: { filmaffinity: 1 } }),
+  ], { 'goodreads:248060046': { titulo: 'Invariantes', estado: 'leído' }, 'film/basura': { ignorar: true } })
+  assert.equal(resto.length, 0)
+  assert.equal(a.title, 'Invariantes')
+  assert.equal(a.slug, 'invariantes-spanish-edition') // el slug no cambia: así casa con la ficha que ya existe
+  assert.equal(a.status, 'done')
+  assert.deepEqual(a.corregido.sort(), ['status', 'title'])
+})

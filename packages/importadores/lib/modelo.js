@@ -15,11 +15,12 @@ export function crearFicha(f) {
   if (status === 'reading' && (f.kind === 'film' || f.kind === 'series')) status = 'watching'
   if (status === 'watching' && (f.kind === 'book' || f.kind === 'manga')) status = 'reading'
   const year = Number(f.year)
+  // El catálogo exige un slug ^[a-z0-9]+(-[a-z0-9]+)*$ y títulos de 1 a 500 caracteres.
   const rating = f.rating === null || f.rating === undefined || f.rating === '' ? null : Math.round(Number(f.rating))
   const ficha = {
     kind: f.kind,
-    slug: f.slug || null,
-    title,
+    slug: f.slug && SLUG.test(f.slug) ? f.slug : f.slug ? slugify(f.slug) : null,
+    title: title.slice(0, 500),
     original_title: f.original_title || null,
     creator: (f.creator || '').trim(),
     year: Number.isInteger(year) && year >= 1000 && year <= 2200 ? year : null,
@@ -35,13 +36,24 @@ export function crearFicha(f) {
     external_ids: limpiarIds(f.external_ids),
     featured: Boolean(f.featured),
     hidden: Boolean(f.hidden),
-    started_on: f.started_on || null,
-    finished_on: f.finished_on || null,
+    started_on: fechaValida(f.started_on),
+    finished_on: fechaValida(f.finished_on),
     sources: [...new Set(f.sources || [])],
     match: f.match || null,
   }
+  if (f.corregido?.length) ficha.corregido = [...new Set(f.corregido)]
   ficha.slug = ficha.slug || slugFicha(ficha)
   return ficha
+}
+
+const SLUG = /^[a-z0-9]+(-[a-z0-9]+)*$/
+
+// Una fecha AAAA-MM-DD que exista de verdad (un 31 de febrero haría fallar todo el SQL).
+export function fechaValida(v) {
+  const m = String(v ?? '').match(/^(\d{4})-(\d{2})-(\d{2})$/)
+  if (!m) return null
+  const d = new Date(Date.UTC(+m[1], +m[2] - 1, +m[3]))
+  return d.getUTCFullYear() === +m[1] && d.getUTCMonth() === +m[2] - 1 && d.getUTCDate() === +m[3] && +m[1] >= 1000 ? v : null
 }
 
 function limpiarIds(ids = {}) {
@@ -53,11 +65,11 @@ function limpiarIds(ids = {}) {
 // Como en el catálogo: el título; si choca con otro del mismo tipo, se le añade el año (ver slugsUnicos).
 export const slugFicha = (f) => slugify(f.title)
 
-// Dos fichas son la misma si comparten un identificador externo, o el título normalizado y el año.
+// Dos fichas son la misma si comparten un identificador externo, o el título normalizado y el año
+// (sin año, el título y el autor: dos «Poemas» sin fecha de autores distintos no son la misma obra).
 export function claves(f) {
-  const out = Object.entries(f.external_ids).filter(([k]) => k !== 'isbn').map(([k, v]) => `${f.kind}:${k}:${v}`)
-  if (f.external_ids.isbn) out.push(`${f.kind}:isbn:${f.external_ids.isbn}`)
-  out.push(`${f.kind}:t:${norm(f.title)}|${f.year ?? ''}`)
+  const out = Object.entries(f.external_ids).map(([k, v]) => `${f.kind}:${k}:${v}`)
+  out.push(f.year ? `${f.kind}:t:${norm(f.title)}|${f.year}` : `${f.kind}:t:${norm(f.title)}|?|${norm(f.creator.split(',')[0])}`)
   return out
 }
 
@@ -84,15 +96,18 @@ export function fusionar(a, b) {
     started_on: pick(a.started_on, b.started_on),
     finished_on: pick(a.finished_on, b.finished_on),
     sources: [...a.sources, ...b.sources],
+    corregido: [...(a.corregido || []), ...(b.corregido || [])],
   })
 }
 
 // Dos entradas de la misma fuente con ids distintos son dos fichas de verdad (dos ediciones en Goodreads,
 // por ejemplo), aunque TMDB u Open Library las lleven a la misma obra.
 const IDS_PROPIOS = ['filmaffinity', 'goodreads', 'anilist']
-const distintas = (a, b) => IDS_PROPIOS.some((k) => a.external_ids[k] != null && b.external_ids[k] != null && a.external_ids[k] !== b.external_ids[k])
+export const distintas = (a, b) =>
+  IDS_PROPIOS.some((k) => a.external_ids[k] != null && b.external_ids[k] != null && String(a.external_ids[k]) !== String(b.external_ids[k]))
 
-// Quita duplicados entre fuentes y garantiza slugs únicos por tipo.
+// Quita duplicados entre fuentes y garantiza slugs únicos por tipo, con la misma regla que el seed del
+// catálogo: título; si choca, título-año; si sigue chocando, título-2, -3…
 export function deduplicar(fichas) {
   const porClave = new Map()
   const lista = []
@@ -114,7 +129,7 @@ export function slugsUnicos(lista) {
   return lista.map((f) => {
     let slug = f.slug
     if (usados.has(`${f.kind}/${slug}`) && f.year) slug = `${f.slug}-${f.year}`
-    for (let n = 2; usados.has(`${f.kind}/${slug}`); n++) slug = `${f.slug}${f.year ? `-${f.year}` : ''}-${n}`
+    for (let n = 2; usados.has(`${f.kind}/${slug}`); n++) slug = `${f.slug}-${n}`
     usados.add(`${f.kind}/${slug}`)
     return slug === f.slug ? f : { ...f, slug }
   })

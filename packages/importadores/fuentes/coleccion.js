@@ -25,7 +25,9 @@ export function desdePoc(it) {
   }
   const finished_on = meta.date_read ? fecha(meta.date_read) : null
   delete meta.date_read
-  if (meta.overview) { details.overview = meta.overview; delete meta.overview }
+  // El autocompletado de la POC guardaba la sinopsis de TMDB en meta.overview.
+  const synopsis = meta.overview || null
+  delete meta.overview
   Object.assign(details, meta)
   return crearFicha({
     kind: it.kind,
@@ -34,6 +36,7 @@ export function desdePoc(it) {
     creator: it.creator,
     year: it.year,
     rating: it.rating,
+    synopsis,
     status: it.status,
     notes: it.notes,
     cover_url: it.cover_url,

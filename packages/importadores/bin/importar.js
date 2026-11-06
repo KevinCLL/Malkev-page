@@ -82,7 +82,9 @@ const rutaCorr = o.correcciones || (existsSync('correcciones.json') ? 'correccio
 const correcciones = rutaCorr ? JSON.parse(readFileSync(rutaCorr, 'utf8')) : {}
 if (rutaCorr) log(`✦ Correcciones: ${Object.keys(correcciones).length} (${rutaCorr})`)
 
-fichas = deduplicar(aplicarCorrecciones(fichas, correcciones))
+// Primero se quitan duplicados (así los slugs ya son los definitivos, los de revisar.json) y luego se
+// aplican las correcciones, que pueden cambiar título o año y juntar fichas: de ahí el segundo paso.
+fichas = deduplicar(aplicarCorrecciones(deduplicar(fichas), correcciones))
 log(`✦ ${fichas.length} fichas tras quitar duplicados`)
 
 if (!o['sin-enriquecer']) {

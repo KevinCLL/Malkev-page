@@ -16,7 +16,8 @@ export function leerGoodreads(ruta) {
       return crearFicha({
         kind: 'book',
         title: r.Title,
-        creator: [r.Author, ...String(r['Additional Authors'] || '').split(',')].map((s) => s?.trim()).filter(Boolean).slice(0, 2).join(', '),
+        // Solo el autor: en «Additional Authors» Goodreads mete también traductores e ilustradores.
+        creator: r.Author || '',
         year: num(r['Original Publication Year']) || num(r['Year Published']),
         rating: rating ? rating * 2 : null,
         status: STATUS[r['Exclusive Shelf']] || 'owned',
@@ -25,6 +26,7 @@ export function leerGoodreads(ruta) {
           pages: num(r['Number of Pages']),
           publisher: r.Publisher || null,
           binding: r.Binding || null,
+          additional_authors: r['Additional Authors'] || null,
           shelves: String(r.Bookshelves || '').split(',').map((s) => s.trim()).filter(Boolean),
           owned_copies: num(r['Owned Copies']),
         },

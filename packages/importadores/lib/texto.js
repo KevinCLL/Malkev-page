@@ -33,10 +33,24 @@ export function similar(a, b) {
   const by = bigrams(y)
   let hits = 0
   for (const [g, n] of bx) hits += Math.min(n, by.get(g) || 0)
-  const dice = (2 * hits) / (x.length - 1 + y.length - 1)
-  // Si uno contiene al otro entero («Alien» y «Alien, el octavo pasajero»), cuenta casi como igual.
-  const contains = x.length >= 4 && y.length >= 4 && (x.includes(y) || y.includes(x)) ? 0.9 : 0
+  const total = x.length - 1 + y.length - 1
+  const dice = total > 0 ? (2 * hits) / total : 0
+  // Si uno contiene al otro entero, en palabras completas («Alien» y «Alien, el octavo pasajero»), cuenta
+  // casi como igual; «Lava» y «Laval Virtual» no.
+  const dentro = (a, b) => ` ${a} `.includes(` ${b} `)
+  const contains = x.length >= 4 && y.length >= 4 && (dentro(x, y) || dentro(y, x)) ? 0.9 : 0
   return Math.max(dice, contains)
+}
+
+// Formas de un título para buscarlo: tal cual, sin tildes (la búsqueda de TMDB a veces no encuentra
+// «ejércitos» pero sí «ejercitos»), sin lo que va entre paréntesis y solo lo de dentro
+// («Híncame el diente (Vampires Suck)»).
+export function variantes(titulo) {
+  const t = String(titulo).trim()
+  const sinTildes = t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').normalize('NFC')
+  const fuera = t.replace(/\s*\([^()]*\)\s*/g, ' ').trim()
+  const dentro = [...t.matchAll(/\(([^()]+)\)/g)].map((m) => m[1].trim()).filter((s) => s.length >= 3)
+  return [...new Set([t, sinTildes, fuera, ...dentro].filter(Boolean))]
 }
 
 // CSV con comillas, comas o punto y coma, y saltos de línea dentro de los campos.

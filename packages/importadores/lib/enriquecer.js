@@ -43,24 +43,33 @@ export function correccionDe(correcciones, f) {
   return null
 }
 
+const TIPOS = { peli: 'film', pelicula: 'film', serie: 'series', libro: 'book', manga: 'manga' }
+const ESTADOS = { visto: 'done', leido: 'done', 'leído': 'done', leyendo: 'reading', viendo: 'watching', pendiente: 'wishlist', tengo: 'owned', pausado: 'paused', abandonado: 'dropped' }
+
 export function aplicarCorrecciones(fichas, correcciones) {
   const out = []
   for (const f of fichas) {
     const c = correccionDe(correcciones, f)
     if (!c) { out.push(f); continue }
     if (c.ignorar) continue
+    const cambios = {
+      title: c.titulo ?? c.title,
+      original_title: c.titulo_original,
+      creator: c.autor ?? c.director,
+      year: c['año'] ?? c.year,
+      status: ESTADOS[c.estado] ?? c.estado,
+      hidden: c.oculto,
+      featured: c.destacado,
+    }
+    for (const k of Object.keys(cambios)) if (cambios[k] === undefined) delete cambios[k]
     out.push(crearFicha({
       ...f,
-      title: c.titulo ?? c.title ?? f.title,
-      original_title: c.titulo_original ?? f.original_title,
-      creator: c.autor ?? c.director ?? f.creator,
-      year: c['año'] ?? c.year ?? f.year,
+      ...cambios,
       slug: c.slug ?? f.slug,
-      kind: c.tipo ?? f.kind,
-      status: c.estado ?? f.status,
-      hidden: c.oculto ?? f.hidden,
-      featured: c.destacado ?? f.featured,
-      external_ids: { ...f.external_ids, ...(c.isbn ? { isbn: c.isbn } : {}), ...(c.imdb ? { imdb: c.imdb } : {}) },
+      kind: TIPOS[c.tipo] ?? c.tipo ?? f.kind,
+      external_ids: { ...f.external_ids, ...(c.isbn ? { isbn: String(c.isbn) } : {}), ...(c.imdb ? { imdb: c.imdb } : {}) },
+      // Lo corregido a mano manda también sobre lo que ya haya en la base de datos (ver lib/sql.js).
+      corregido: [...new Set([...(f.corregido || []), ...Object.keys(cambios)])],
     }))
   }
   return out

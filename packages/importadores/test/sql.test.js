@@ -14,7 +14,7 @@ test('el SQL es una transacción con upsert por (kind, slug)', () => {
   const sql = generarSql([crearFicha({ kind: 'film', title: "Ocean's Eleven", year: 2001, rating: 7, external_ids: { tmdb: 161 } })])
   assert.match(sql, /^BEGIN;$/m)
   assert.match(sql, /^COMMIT;$/m)
-  assert.match(sql, /ON CONFLICT \(kind, slug\) DO UPDATE/)
+  assert.match(sql, /ON CONFLICT \(kind, slug\) DO NOTHING/)
   assert.match(sql, /'Ocean''s Eleven'/)
   assert.match(sql, /'\{"tmdb":161\}'::jsonb/)
   assert.doesNotMatch(generarSql([], {}), /INSERT INTO importacion/)
