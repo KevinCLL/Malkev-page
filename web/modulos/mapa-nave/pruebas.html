@@ -1,0 +1,9 @@
+<!doctype html><meta charset="utf-8"><title>test</title>
+<style>body{margin:0;background:#000;font-family:sans-serif} .hud{position:fixed;pointer-events:none;top:10px;right:10px;width:320px} #cover{position:fixed;inset:0;background:#000;z-index:30} input{position:fixed;left:10px;bottom:10px}</style>
+<div id="mini" class="hud" hidden></div><input id="inp"><button id="outside" style="position:fixed;left:10px;top:10px">fuera</button>
+<script type="module">
+import M, { init, parseWindows } from './mapa-nave.js';
+window.M = M; window.init = init;
+window.layout = await (await fetch('layout.json')).json();
+window.ready = true;
+</script>

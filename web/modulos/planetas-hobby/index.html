@@ -1,0 +1,250 @@
+<title>Planetas de la Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Juego a pantalla completa: selector orbital y, al aterrizar, la superficie con HUD en las esquinas. Un único look oscuro de cabina. */
+:root{
+  --void:#07050f; --panel:rgba(16,11,34,.74); --line:rgba(170,140,255,.28);
+  --text:#ede6ff; --muted:#aa9fd4; --accent:#b59bff; --glow:#7fd6ff;
+  --f-display:"Orbitron","Exo 2",system-ui,sans-serif; --f-body:"Exo 2",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--f-body)}
+canvas.full{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.eb{font:600 10px var(--f-mono);letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+
+/* Selector */
+#selector .head{position:fixed;top:calc(18px + env(safe-area-inset-top,0px));left:0;right:0;text-align:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));pointer-events:none}
+#selector h1{font:700 clamp(22px,4vw,38px) var(--f-display);letter-spacing:.06em;margin:6px 0 4px;text-wrap:balance}
+#selector .head p{margin:0;color:var(--muted);font-size:15px}
+#ficha{position:fixed;left:50%;top:63%;transform:translateX(-50%);text-align:center;pointer-events:none;width:min(440px,calc(100vw - 32px));transition:opacity .3s}
+#ficha .nm{font:700 22px var(--f-display);letter-spacing:.05em}
+#ficha .hb{font:600 12px var(--f-mono);letter-spacing:.2em;color:var(--glow);text-transform:uppercase;margin-top:4px}
+#ficha .lm{color:var(--muted);margin-top:8px;font-size:15px;text-wrap:balance}
+#lista{position:fixed;left:0;right:0;bottom:calc(16px + env(safe-area-inset-bottom,0px));display:flex;flex-wrap:wrap;justify-content:center;gap:8px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#lista button{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:8px 14px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;backdrop-filter:blur(6px);transition:border-color .2s,background .2s}
+#lista button:hover,#lista button.on{border-color:var(--accent);background:rgba(60,40,120,.7)}
+#lista b{font:600 13px var(--f-display);letter-spacing:.04em}
+#lista span{font:400 11px var(--f-mono);color:var(--muted)}
+
+/* Superficie */
+.hud{position:fixed;z-index:5}
+#planeta{top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(6px);max-width:min(340px,calc(100vw - 32px))}
+#planeta .nm{font:700 20px var(--f-display);letter-spacing:.04em;margin-top:4px}
+#planeta .mu{font:600 14px var(--f-body);color:var(--glow);margin-top:2px}
+#planeta .ds{font-size:13.5px;line-height:1.5;color:var(--muted);margin:8px 0 0}
+#volver{margin-top:10px;background:none;border:1px solid var(--line);border-radius:8px;padding:6px 10px;font:600 11px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text)}
+#volver:hover{border-color:var(--accent)}
+#hitos{top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;display:flex;flex-direction:column;gap:4px;backdrop-filter:blur(6px);min-width:200px}
+#hitos .eb{margin:2px 6px 6px}
+#hitos button{background:none;border:1px solid transparent;border-radius:8px;padding:7px 10px;text-align:left;font:400 14px var(--f-body);display:flex;gap:10px;align-items:center}
+#hitos button:hover,#hitos button.on{border-color:var(--line);background:rgba(90,60,170,.3)}
+#hitos button i{font:600 11px var(--f-mono);color:var(--glow);font-style:normal;font-variant-numeric:tabular-nums}
+#info{left:50%;bottom:calc(16px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);width:min(560px,calc(100vw - 32px));background:var(--panel);border:1px solid var(--accent);border-radius:12px;padding:14px 18px;backdrop-filter:blur(8px)}
+#info .nm{font:700 17px var(--f-display);letter-spacing:.03em;margin-top:4px}
+#info p{margin:8px 0 0;line-height:1.55;font-size:15px}
+#info .links{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+#info .links a{font:400 12px var(--f-mono);color:var(--glow);text-decoration:none;border:1px solid var(--line);border-radius:999px;padding:4px 10px}
+#info .links a:hover{border-color:var(--glow)}
+#info .x{position:absolute;top:8px;right:10px;background:none;border:0;color:var(--muted);font-size:18px;line-height:1}
+#marcas{position:fixed;inset:0;pointer-events:none;z-index:4}
+.marca{position:absolute;transform:translate(-50%,-100%);display:flex;flex-direction:column;align-items:center;gap:4px;pointer-events:auto;background:none;border:0;padding:0;transition:opacity .25s}
+.marca span{font:600 11px var(--f-mono);letter-spacing:.08em;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:3px 9px;white-space:nowrap}
+.marca::after{content:"";width:8px;height:8px;border-radius:50%;background:var(--glow);box-shadow:0 0 10px var(--glow)}
+.marca:hover span{border-color:var(--glow)}
+#ayuda{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));font:400 11px var(--f-mono);color:var(--muted);line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:6px 12px}
+#velo{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:var(--void);transition:opacity 1.1s;pointer-events:none;text-align:center;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#velo .nm{font:700 clamp(22px,5vw,40px) var(--f-display);letter-spacing:.08em;margin-top:10px}
+#velo .bar{width:180px;height:2px;background:var(--line);margin:18px auto 0;overflow:hidden;border-radius:2px}
+#velo .bar i{display:block;height:100%;width:40%;background:var(--glow);animation:barra 1.2s ease-in-out infinite}
+@keyframes barra{from{transform:translateX(-100%)}to{transform:translateX(260%)}}
+@media (max-width:760px){
+  #hitos{top:auto;bottom:calc(16px + env(safe-area-inset-bottom,0px));right:auto;left:max(16px,env(safe-area-inset-left,0px));flex-direction:row;overflow-x:auto;max-width:calc(100vw - 32px);min-width:0;padding:6px}
+  #hitos .eb{display:none}
+  #hitos button{white-space:nowrap;font-size:13px}
+  #info{bottom:calc(80px + env(safe-area-inset-bottom,0px))}
+  #planeta .ds{display:none}
+  #ayuda,.marca span{display:none}
+  #ficha{top:62%}
+}
+@media (prefers-reduced-motion:reduce){#velo .bar i{animation:none}}
+</style>
+
+<div id="selector">
+  <canvas id="cSel" class="full"></canvas>
+  <div class="head">
+    <div class="eb">La Malkevnia · cartas de navegación</div>
+    <h1>¿Dónde aterrizamos?</h1>
+    <p>Cada planeta guarda el museo de un hobby. Toca uno para acercarlo y otra vez para aterrizar.</p>
+  </div>
+  <div id="ficha"><div class="nm"></div><div class="hb"></div><div class="lm"></div></div>
+  <nav id="lista" aria-label="Planetas"></nav>
+</div>
+
+<div id="superficie" hidden>
+  <canvas id="cSup" class="full"></canvas>
+  <div id="marcas"></div>
+  <section id="planeta" class="hud">
+    <div class="eb" id="pHobby"></div>
+    <div class="nm" id="pNombre"></div>
+    <div class="mu" id="pMuseo"></div>
+    <p class="ds" id="pDesc"></p>
+    <button id="volver" type="button">← Volver a órbita</button>
+  </section>
+  <nav id="hitos" class="hud" aria-label="Hitos del museo"></nav>
+  <section id="info" class="hud" hidden>
+    <button class="x" id="cerrar" type="button" aria-label="Cerrar">×</button>
+    <div class="eb">Hito del museo</div>
+    <div class="nm" id="iNombre"></div>
+    <p id="iTexto"></p>
+    <div class="links" id="iLinks"></div>
+  </section>
+  <div id="ayuda" class="hud" hidden>Arrastra para mirar · rueda para acercarte<br>Toca un hito para ir hasta él</div>
+</div>
+
+<div id="velo"><div><div class="eb">Entrando en la atmósfera</div><div class="nm" id="vNombre">La Malkevnia</div><div class="bar"><i></i></div></div></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { PLANETAS, crearPlanetaOrbital, init } from './planetas-hobby.js';
+
+const $ = (s) => document.querySelector(s);
+const velo = $('#velo');
+const ocultarVelo = () => { velo.style.opacity = 0; };
+const mostrarVelo = (nombre) => { $('#vNombre').textContent = nombre; velo.style.opacity = 1; };
+
+// ── Selector orbital ──
+const cSel = $('#cSel');
+const r = new THREE.WebGLRenderer({ canvas: cSel, antialias: true });
+r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.toneMapping = THREE.ACESFilmicToneMapping;
+const escena = new THREE.Scene();
+const cam = new THREE.PerspectiveCamera(42, 1, 0.1, 500);
+// Fondo de estrellas
+{
+  const n = 2500, p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(120 + Math.random() * 80); v.toArray(p, i * 3); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  escena.add(new THREE.Points(g, new THREE.PointsMaterial({ color: '#d8ccff', size: 0.5, sizeAttenuation: true, transparent: true, opacity: 0.8 })));
+}
+const luz = new THREE.Vector3(-0.6, 0.35, 0.75);
+const mundos = PLANETAS.map((P, i) => {
+  const m = crearPlanetaOrbital(P.id, { radio: 1, luz });
+  m.userData.i = i; escena.add(m); return m;
+});
+let foco = 0, hover = -1;
+function colocarMundos() {
+  const ancho = cSel.clientWidth, alto = cSel.clientHeight; const movil = ancho < 760;
+  cam.aspect = ancho / alto; cam.updateProjectionMatrix();
+  cam.position.set(0, movil ? 1.2 : 0.8, movil ? 17 : 13); cam.lookAt(0, 0, 0);
+  const sep = movil ? 1.9 : 2.6;
+  mundos.forEach((m, i) => { m.userData.sep = sep; });
+}
+function resizeSel() { r.setSize(cSel.clientWidth, cSel.clientHeight, false); colocarMundos(); }
+new ResizeObserver(resizeSel).observe(cSel);
+
+const lista = $('#lista');
+PLANETAS.forEach((P, i) => {
+  const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<b>${P.nombre}</b><span>${P.hobby}</span>`;
+  b.addEventListener('mouseenter', () => elegir(i)); b.addEventListener('focus', () => elegir(i)); b.addEventListener('click', () => aterrizar(P.id));
+  lista.appendChild(b);
+});
+function elegir(i) {
+  foco = i; const P = PLANETAS[i];
+  $('#ficha .nm').textContent = P.nombre; $('#ficha .hb').textContent = `${P.hobby} · ${P.museo}`; $('#ficha .lm').textContent = P.lema;
+  [...lista.children].forEach((b, k) => b.classList.toggle('on', k === i));
+}
+elegir(0);
+
+const ray = new THREE.Raycaster(), ptr = new THREE.Vector2();
+const tocado = (e) => { const rc = cSel.getBoundingClientRect(); ptr.set(((e.clientX - rc.left) / rc.width) * 2 - 1, -((e.clientY - rc.top) / rc.height) * 2 + 1); ray.setFromCamera(ptr, cam);
+  const h = ray.intersectObjects(mundos.map((m) => m.children[0]))[0]; return h ? h.object.parent.userData.i : -1; };
+cSel.addEventListener('pointermove', (e) => { hover = tocado(e); cSel.style.cursor = hover >= 0 ? 'pointer' : ''; });
+addEventListener('keydown', (e) => { if (!selActivo) return; if (e.key === 'ArrowRight') elegir((foco + 1) % PLANETAS.length); if (e.key === 'ArrowLeft') elegir((foco + PLANETAS.length - 1) % PLANETAS.length); if (e.key === 'Enter' && document.activeElement === document.body) aterrizar(PLANETAS[foco].id); });
+// Toque: acerca el planeta y, si ya estaba delante, aterriza. Deslizar en horizontal pasa al siguiente.
+let inicio = null;
+cSel.addEventListener('pointerdown', (e) => { inicio = [e.clientX, e.clientY]; });
+cSel.addEventListener('pointerup', (e) => {
+  if (!inicio) return; const dx = e.clientX - inicio[0], dy = e.clientY - inicio[1]; inicio = null;
+  if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) { elegir((foco + (dx < 0 ? 1 : PLANETAS.length - 1)) % PLANETAS.length); return; }
+  if (Math.hypot(dx, dy) > 8) return;
+  const i = tocado(e); if (i < 0) return; if (i === foco) aterrizar(PLANETAS[i].id); else elegir(i);
+});
+
+let selActivo = true, tSel = 0, rafSel = 0, prev = performance.now();
+function bucleSel(now) {
+  rafSel = requestAnimationFrame(bucleSel); if (!selActivo) return;
+  const dt = Math.min((now - prev) / 1000, 0.1); prev = now; tSel += dt;
+  mundos.forEach((m, i) => {
+    const sel = i === foco; const s = sel ? 1.0 : 0.55; m.scale.lerp(new THREE.Vector3(s, s, s), 0.08);
+    const k = i - foco; const sep = m.userData.sep || 2.6;
+    const x = Math.sign(k) * (Math.abs(k) ? 1.1 + Math.abs(k) * sep * 0.82 : 0);
+    m.position.lerp(new THREE.Vector3(x, 0.4 - Math.abs(k) * 0.1 + Math.sin(tSel * 0.7 + i) * 0.08, sel ? 1.8 : -Math.abs(k) * 0.7), 0.07);
+    m.userData.update(tSel + i * 10);
+  });
+  r.render(escena, cam);
+}
+requestAnimationFrame(bucleSel);
+
+// ── Superficie ──
+let ctrl = null, hitoActivo = null;
+const marcas = $('#marcas');
+function pintarHUD(P) {
+  $('#pHobby').textContent = P.hobby; $('#pNombre').textContent = P.nombre; $('#pMuseo').textContent = P.museo; $('#pDesc').textContent = P.descripcion;
+  const nav = $('#hitos'); nav.innerHTML = '<div class="eb">Hitos del museo</div>';
+  marcas.innerHTML = '';
+  ctrl.hitos.forEach((h, i) => {
+    const b = document.createElement('button'); b.type = 'button'; b.innerHTML = `<i>${String(i + 1).padStart(2, '0')}</i>${h.nombre}`; b.dataset.id = h.id;
+    b.addEventListener('click', () => ctrl.irAHito(h.id)); nav.appendChild(b);
+    const m = document.createElement('button'); m.type = 'button'; m.className = 'marca'; m.dataset.id = h.id; m.innerHTML = `<span>${h.nombre}</span>`; m.setAttribute('aria-label', h.nombre);
+    m.addEventListener('click', () => ctrl.irAHito(h.id)); marcas.appendChild(m);
+  });
+}
+function mostrarHito(h) {
+  hitoActivo = h.id; $('#iNombre').textContent = h.nombre; $('#iTexto').textContent = h.texto;
+  const links = $('#iLinks'); links.innerHTML = '';
+  (h.enlaces || []).forEach((l) => { const a = document.createElement('a'); a.href = l.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = l.titulo; links.appendChild(a); });
+  $('#info').hidden = false;
+  [...$('#hitos').querySelectorAll('button')].forEach((b) => b.classList.toggle('on', b.dataset.id === h.id));
+}
+$('#cerrar').addEventListener('click', () => { $('#info').hidden = true; hitoActivo = null; [...$('#hitos').querySelectorAll('button')].forEach((b) => b.classList.remove('on')); });
+
+function bucleMarcas() {
+  requestAnimationFrame(bucleMarcas); if (!ctrl || ctrl.pausado) return;
+  ctrl.hitosEnPantalla().forEach((p) => { const m = marcas.querySelector(`[data-id="${p.id}"]`); if (!m) return;
+    m.style.left = p.x + 'px'; m.style.top = p.y + 'px'; m.style.opacity = p.visible && p.id !== hitoActivo && p.distancia > 9 ? 1 : 0; m.style.pointerEvents = p.visible ? 'auto' : 'none'; });
+}
+requestAnimationFrame(bucleMarcas);
+
+function aterrizar(id) {
+  const P = PLANETAS.find((p) => p.id === id) || PLANETAS[0];
+  mostrarVelo(P.nombre);
+  setTimeout(() => {
+    selActivo = false; $('#selector').hidden = true; $('#superficie').hidden = false; $('#info').hidden = true; hitoActivo = null;
+    if (!ctrl) ctrl = init($('#cSup'), P.id, { onHito: mostrarHito });
+    else { ctrl.reanudar(); ctrl.setPlaneta(P.id); }
+    pintarHUD(P); $('#ayuda').hidden = false;
+    if (location.hash !== '#' + P.id) history.replaceState(null, '', '#' + P.id);
+    setTimeout(ocultarVelo, 350);
+  }, 650);
+}
+function volver() {
+  mostrarVelo('Órbita');
+  setTimeout(() => {
+    ctrl?.pausar(); $('#superficie').hidden = true; $('#selector').hidden = false; selActivo = true; prev = performance.now();
+    history.replaceState(null, '', location.pathname + location.search); resizeSel(); setTimeout(ocultarVelo, 300);
+  }, 600);
+}
+$('#volver').addEventListener('click', volver);
+addEventListener('keydown', (e) => { if (e.key === 'Escape' && ctrl && !ctrl.pausado) volver(); });
+
+const inicial = location.hash.slice(1);
+if (PLANETAS.some((p) => p.id === inicial)) aterrizar(inicial);
+else { resizeSel(); setTimeout(ocultarVelo, 300); }
+addEventListener('hashchange', () => { const h = location.hash.slice(1); if (PLANETAS.some((p) => p.id === h) && (!ctrl || ctrl.pausado || ctrl.planeta.id !== h)) aterrizar(h); });
+</script>

@@ -1,0 +1,12 @@
+<!doctype html><html><head><meta charset="utf-8"><style>html,body{margin:0;height:100%;background:#000}</style>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}</script></head><body>
+<script type="module">
+import * as THREE from 'three';
+import { init } from './kallax-3d.js';
+const r = new THREE.WebGLRenderer({antialias:true}); r.setSize(innerWidth, innerHeight); document.body.appendChild(r.domElement);
+const scene = new THREE.Scene(); scene.add(new THREE.HemisphereLight(0xffffff, 0x222244, 1.2));
+const cam = new THREE.PerspectiveCamera(72, innerWidth/innerHeight, .05, 100); cam.position.set(4.3, 1.6, 2.2); cam.lookAt(5.4, 1.2, 0.5);
+const k = init(scene, { camera: cam, domElement: r.domElement, pointer: 'center', search: false, position: new THREE.Vector3(5, 0, 0), rotationY: 0, onOpen: i => console.log('open', i.name), onHover: i => window.__h = i && i.name });
+window.k = k; let last = performance.now();
+(function loop(t){ requestAnimationFrame(loop); k.update((t-last)/1000); last=t; r.render(scene, cam); })(last);
+</script></body></html>

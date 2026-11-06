@@ -43,6 +43,16 @@ export function localizar<T extends string | null>(s: T): T {
 const API = (CATALOGO_API_URL ?? '').replace(/\/+$/, '');
 /** Con el catálogo hay comentarios (su API se publica en /api/v1 del mismo dominio). */
 export const hayCatalogo = API !== '';
+
+/** Para /api/salud: ¿responde la API del catálogo? */
+export async function catalogoVivo(): Promise<boolean> {
+  if (!API) return false;
+  try {
+    return (await fetch(API, { signal: AbortSignal.timeout(2000) })).ok;
+  } catch {
+    return false;
+  }
+}
 /** La API ya manda Cache-Control de 60 s; aquí guardamos lo mismo para no pedirla en cada visita. */
 const TTL_MS = 60_000;
 const memoria = new Map<string, { hasta: number; valor: unknown }>();
@@ -193,6 +203,11 @@ export async function resolverUrlAntigua(ruta: string): Promise<string | null> {
       avisar('API del catálogo', e);
     }
   }
-  const ultimo = ruta.split(/[/?#]/).filter(Boolean).at(-1);
-  return ultimo && !/^\d+$/.test(ultimo) ? decodeURIComponent(ultimo) : null;
+  const m = ruta.match(/^\/blog\/\d{4}\/\d{2}\/\d{2}\/([^/?#]+)\/?$/);
+  if (!m) return null;
+  try {
+    return decodeURIComponent(m[1]);
+  } catch {
+    return null;
+  }
 }

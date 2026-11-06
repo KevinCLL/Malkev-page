@@ -1,0 +1,38 @@
+<title>Kallax de La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+  /* Una sola ambientación: la bodega oscura de la nave */
+  :root { --bg: #07040f; --fg: #efe8ff; --muted: rgba(239,232,255,.62); --accent: #b9a2ff; --chip: rgba(20,12,40,.55); --line: rgba(190,160,255,.18); color-scheme: dark; }
+  html, body { height: 100%; background: var(--bg); color: var(--fg); overflow: hidden; }
+  #app { position: fixed; inset: 0; }
+  #help { position: fixed; left: 50%; bottom: calc(14px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); font: 12.5px "Segoe UI", system-ui, sans-serif; color: var(--muted);
+    background: var(--chip); padding: 6px 14px; border-radius: 999px; border: 1px solid var(--line); pointer-events: none; white-space: nowrap; z-index: 6 }
+  #load { position: fixed; inset: 0; display: grid; place-items: center; font: 14px ui-monospace, monospace; letter-spacing: .14em; color: var(--accent); z-index: 9; background: var(--bg); transition: opacity .6s }
+  @media (max-width: 720px) { #help { display: none } }
+</style>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<div id="app"></div>
+<div id="load">CARGANDO LA BODEGA…</div>
+<div id="help">Arrastra para mirar · rueda para acercarte · clic en una caja para cogerla · Mayús + arrastrar para desplazarte</div>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { init } from './kallax-3d.js';
+
+const k = init(document.getElementById('app'), {
+  createComposer(renderer, scene, camera) {
+    const c = new EffectComposer(renderer);
+    c.addPass(new RenderPass(scene, camera));
+    c.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.45, 0.5, 0.86));
+    c.addPass(new OutputPass());
+    return c;
+  },
+});
+window.kallax = k;
+const l = document.getElementById('load'); l.style.opacity = 0; setTimeout(() => l.remove(), 700);
+</script>

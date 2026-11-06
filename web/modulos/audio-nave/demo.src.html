@@ -68,6 +68,8 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .now { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin-top: 12px; }
 .now strong { font: 600 20px/1.2 var(--f-display); }
 .now span { color: var(--ink-dim); }
+.now .detail { font: 500 12px/1.4 var(--f-mono); letter-spacing: .04em; color: var(--ink-dim); flex-basis: 100%; }
+.status .hint { font: 500 12px/1.2 var(--f-mono); }
 
 .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; }
 @media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
@@ -106,10 +108,11 @@ footer code { font-family: var(--f-mono); color: var(--ink); }
     <div>
       <div class="label">La Malkevnia · cubierta principal</div>
       <h1>Sonido de a bordo</h1>
-      <p class="sub">Motores, aire, música y puertas de la nave, todo sintetizado en tu navegador. Elige una sala en el plano y ajusta cada capa.</p>
+      <p class="sub">Motores, aire, música y los sonidos propios de cada sala, todo sintetizado en tu navegador. Elige una sala en el plano y ajusta cada capa.</p>
     </div>
     <div class="status" id="status">
       <span class="dot" aria-hidden="true"></span>
+      <span class="hint" id="state" aria-live="polite">Apagado</span>
       <button id="power" type="button">Encender el audio</button>
     </div>
   </header>
@@ -117,7 +120,7 @@ footer code { font-family: var(--f-mono); color: var(--ink); }
   <section class="panel" aria-labelledby="h-plan">
     <h2 id="h-plan">Plano de la nave</h2>
     <div class="plan-wrap"><svg id="plan" viewBox="0 0 37.5 15.5" role="group" aria-label="Salas de la nave"></svg></div>
-    <div class="now" aria-live="polite"><strong id="roomName">Pasillo central</strong><span id="roomMood">Tránsito tranquilo, pad suave</span></div>
+    <div class="now" aria-live="polite"><strong id="roomName">Pasillo central</strong><span id="roomMood">Tránsito tranquilo, pad suave</span><span class="detail" id="roomDetail"></span></div>
   </section>
 
   <div class="grid">
@@ -145,9 +148,11 @@ footer code { font-family: var(--f-mono); color: var(--ink); }
       <div class="row" style="align-items:center">
         <label class="label" for="surface">Suelo</label>
         <select id="surface">
+          <option value="">Según la sala</option>
           <option value="metal">Chapa</option>
           <option value="rejilla">Rejilla</option>
           <option value="moqueta">Moqueta</option>
+          <option value="madera">Madera</option>
         </select>
       </div>
       <label class="check"><input type="checkbox" id="travel" checked> Al cambiar de sala, abrir puerta y caminar</label>
@@ -179,6 +184,9 @@ const PLAN = [
 ];
 const ORDER = ['puente','pasillo','maquinas','recreativa','proyeccion','bitacora','juegos','biblioteca','ordenador'];
 const SHORT = { maquinas:'Máquinas', recreativa:'Recreativa', proyeccion:'Proyección', bitacora:'Bitácora', pasillo:'Pasillo central', juegos:'Juegos', biblioteca:'Biblioteca', ordenador:'Ordenador', puente:'Puente' };
+const FLOOR = { metal:'chapa', rejilla:'rejilla', moqueta:'moqueta', madera:'madera' };
+const SOUNDS = { turbine:'turbina', projector:'proyector', servers:'servidores', stars:'viento solar', clock:'reloj',
+  blip:'telemetría', tick:'el casco', hiss:'vapor', creak:'crujidos', chirp:'máquinas recreativas', typing:'teclas', dice:'dados' };
 const NS = 'http://www.w3.org/2000/svg';
 const svg = $('plan');
 const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
@@ -200,14 +208,14 @@ const you = el('circle', { id: 'you', r: .32, cx: roomEls.pasillo.cx, cy: roomEl
 // Mezclador
 const FADERS = [['master','Maestro'],['motores','Motores'],['ambiente','Ambiente'],['musica','Música'],['efectos','Efectos']];
 let saved = {}; try { saved = JSON.parse(localStorage.getItem('audio-nave-vol') || '{}'); } catch {}
-for (const [k, v] of Object.entries(saved)) if (typeof v === 'number') A.setVolume(k, v);
+for (const [k, v] of Object.entries(saved)) if (typeof v === 'number' && FADERS.some(([f]) => f === k)) A.setVolume(k, v);
 FADERS.forEach(([k, name]) => {
   const d = document.createElement('div'); d.className = 'fader' + (k === 'master' ? ' master' : '');
   const pct = Math.round(A.getVolume(k) * 100);
   d.innerHTML = `<span class="val" id="v-${k}">${pct}</span><input class="v" type="range" min="0" max="100" value="${pct}" id="f-${k}" aria-label="Volumen de ${name}"><label for="f-${k}">${name}</label>`;
   $('faders').append(d);
   d.querySelector('input').addEventListener('input', (e) => {
-    const v = e.target.value / 100; A.setVolume(k, v); $('v-' + k).textContent = e.target.value;
+    A.setVolume(k, e.target.value / 100); $('v-' + k).textContent = e.target.value;
     try { localStorage.setItem('audio-nave-vol', JSON.stringify(A.getState().volumes)); } catch {}
   });
 });
@@ -215,38 +223,56 @@ FADERS.forEach(([k, name]) => {
 let current = 'pasillo', busy = false;
 function showRoom(id) {
   current = id;
-  Object.entries(roomEls).forEach(([k, r]) => r.g.classList.toggle('active', k === id));
-  $('roomName').textContent = A.ROOMS[id].name; $('roomMood').textContent = A.ROOMS[id].mood;
+  Object.entries(roomEls).forEach(([k, r]) => { r.g.classList.toggle('active', k === id); r.g.setAttribute('aria-current', k === id ? 'true' : 'false'); });
+  const R = A.ROOMS[id];
+  $('roomName').textContent = R.name; $('roomMood').textContent = R.mood;
+  const extra = [R.texture, ...Object.keys(R.events)].filter(Boolean).map((k) => SOUNDS[k]);
+  $('roomDetail').textContent = `Suelo de ${FLOOR[R.floor]}` + (extra.length ? ` · Se oye: ${extra.join(', ')}` : '');
   you.setAttribute('cx', roomEls[id].cx); you.setAttribute('cy', roomEls[id].cy + (id === 'pasillo' ? 0 : -1.2));
 }
 showRoom('pasillo');
 
 const fxButtons = ['doorOpen','doorClose','step','walk','beep','mute'].map($);
-const setEnabled = (on) => fxButtons.forEach((b) => b.disabled = !on);
-setEnabled(false);
-const surface = () => $('surface').value;
+const surface = () => $('surface').value || undefined;
+
+// La interfaz sigue el estado real del motor de audio.
+function render(st) {
+  const on = st.ready;
+  fxButtons.forEach((b) => { b.disabled = !on; });
+  $('power').textContent = on ? 'Apagar' : 'Encender el audio';
+  $('power').classList.toggle('on', on);
+  $('status').classList.toggle('on-air', st.running && !st.muted);
+  $('state').textContent = !on ? 'Apagado' : st.muted ? 'Silenciado' : st.running ? 'Sonando' : 'En pausa: toca la página';
+  $('walk').setAttribute('aria-pressed', String(st.walking));
+  $('mute').setAttribute('aria-pressed', String(st.muted));
+  $('mute').textContent = st.muted ? 'Activar sonido' : 'Silenciar todo';
+}
+A.onChange(render); render(A.getState());
 
 async function power() {
-  if (A.getState().running) { await A.dispose(); $('power').textContent = 'Encender el audio'; $('power').classList.remove('on'); $('status').classList.remove('on-air'); setEnabled(false); $('walk').setAttribute('aria-pressed','false'); return; }
-  try { await A.init({ room: current }); } catch (e) { $('roomMood').textContent = 'No se pudo iniciar el audio: ' + e.message; return; }
-  $('power').textContent = 'Apagar'; $('power').classList.add('on'); $('status').classList.add('on-air'); setEnabled(true);
-  if (A.getState().muted) A.setMuted(false); $('mute').setAttribute('aria-pressed','false');
-  drawScope();
+  const btn = $('power'); btn.disabled = true;
+  try {
+    if (A.getState().ready) { await A.dispose(); return; }
+    A.setMuted(false);
+    await A.init({ room: current });
+    drawScope();
+  } catch (e) {
+    $('state').textContent = 'No se pudo iniciar el audio: ' + e.message;
+  } finally { btn.disabled = false; }
 }
 $('power').addEventListener('click', power);
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function goTo(id) {
   if (id === current || busy) return;
-  const on = A.getState().running;
-  if (!on || !$('travel').checked) { showRoom(id); A.setRoom(id); return; }
+  if (!A.getState().running || !$('travel').checked) { showRoom(id); A.setRoom(id); return; }
   busy = true;
   const wasWalking = A.getState().walking;
   A.playDoor('open'); await sleep(550);
   A.setWalking(true, { rate: 2.1, surface: surface() });
   showRoom(id); A.setRoom(id, { fade: 3 });
   await sleep(1500);
-  if (!wasWalking) A.setWalking(false);
+  if (!wasWalking) A.setWalking(false); else A.setWalking(true, { surface: surface() });
   A.playDoor('close');
   busy = false;
 }
@@ -255,15 +281,15 @@ $('doorOpen').onclick = () => A.playDoor('open');
 $('doorClose').onclick = () => A.playDoor('close');
 $('step').onclick = () => A.footstep({ surface: surface() });
 $('beep').onclick = () => A.beep();
-$('walk').onclick = () => { const on = !A.getState().walking; A.setWalking(on, { surface: surface() }); $('walk').setAttribute('aria-pressed', on); };
+$('walk').onclick = () => A.setWalking(!A.getState().walking, { surface: surface() });
 $('surface').onchange = () => { if (A.getState().walking) A.setWalking(true, { surface: surface() }); };
-$('mute').onclick = () => { const m = !A.getState().muted; A.setMuted(m); $('mute').setAttribute('aria-pressed', m); $('mute').textContent = m ? 'Activar sonido' : 'Silenciar todo'; };
+$('mute').onclick = () => A.setMuted(!A.getState().muted);
 
 document.addEventListener('keydown', (e) => {
-  if (e.target.matches('input, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.matches('input, select, textarea') || e.metaKey || e.ctrlKey || e.altKey || e.repeat) return;
   const n = parseInt(e.key, 10);
   if (n >= 1 && n <= 9) { goTo(ORDER[n - 1]); return; }
-  if (!A.getState().running) return;
+  if (!A.getState().ready) return;
   const k = e.key.toLowerCase();
   if (k === 'p') A.playDoor('open');
   else if (e.key === ' ' && !e.target.matches('button, .room')) { e.preventDefault(); A.footstep({ surface: surface() }); }
@@ -271,17 +297,21 @@ document.addEventListener('keydown', (e) => {
   else if (k === 'm') $('mute').click();
 });
 
-// Osciloscopio
+// Osciloscopio: un solo bucle, y el lienzo solo se redimensiona si cambia de tamaño.
+let scopeOn = false;
 function drawScope() {
-  const c = $('scope'), g = c.getContext('2d'); const an = A.getAnalyser(); if (!an) return;
-  const buf = new Uint8Array(an.fftSize);
-  const css = getComputedStyle(document.documentElement);
+  if (scopeOn) return; scopeOn = true;
+  const c = $('scope'), g = c.getContext('2d');
+  const buf = new Uint8Array(2048);
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--glow').trim();
   const draw = () => {
-    const a = A.getAnalyser(); if (!a) { g.clearRect(0, 0, c.width, c.height); return; }
-    const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio;
+    const a = A.getAnalyser();
+    if (!a) { g.clearRect(0, 0, c.width, c.height); scopeOn = false; return; }
+    const w = Math.round(c.clientWidth * devicePixelRatio), h = Math.round(c.clientHeight * devicePixelRatio);
+    if (c.width !== w || c.height !== h) { c.width = w; c.height = h; }
     a.getByteTimeDomainData(buf);
-    g.clearRect(0, 0, w, h); g.lineWidth = 1.5 * devicePixelRatio; g.strokeStyle = css.getPropertyValue('--glow');
-    g.shadowColor = g.strokeStyle; g.shadowBlur = 8; g.beginPath();
+    g.clearRect(0, 0, w, h); g.lineWidth = 1.5 * devicePixelRatio; g.strokeStyle = color;
+    g.shadowColor = color; g.shadowBlur = 8; g.beginPath();
     for (let i = 0; i < buf.length; i += 2) { const x = (i / buf.length) * w, y = h / 2 + ((buf[i] - 128) / 128) * h * 1.6; i ? g.lineTo(x, y) : g.moveTo(x, y); }
     g.stroke(); requestAnimationFrame(draw);
   };
@@ -292,13 +322,13 @@ function drawScope() {
 (() => {
   const c = $('stars'), g = c.getContext('2d'); let st = [];
   const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const size = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; st = Array.from({ length: 160 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, z: Math.random() })); };
-  size(); addEventListener('resize', size);
+  const size = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; st = Array.from({ length: 160 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, z: Math.random() })); if (reduce) frame(); };
   const frame = () => {
     g.clearRect(0, 0, c.width, c.height);
     for (const s of st) { s.x -= (0.05 + s.z * 0.25) * devicePixelRatio; if (s.x < 0) s.x = c.width; g.fillStyle = `rgba(220,210,255,${0.2 + s.z * 0.6})`; g.fillRect(s.x, s.y, (0.6 + s.z) * devicePixelRatio, (0.6 + s.z) * devicePixelRatio); }
     if (!reduce) requestAnimationFrame(frame);
   };
-  frame();
+  size(); addEventListener('resize', size);
+  if (!reduce) frame();
 })();
 </script>

@@ -25,6 +25,7 @@ h1{margin:0;font:700 13px/1.2 var(--f-display);letter-spacing:.14em;text-transfo
 .seg button[aria-pressed="true"]{background:var(--lav);color:#160c33}
 .chip{border:1px solid var(--line);border-radius:8px;background:var(--glass)}
 .chip.on{border-color:var(--ok);color:var(--ok)}
+button{touch-action:manipulation}
 button:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
 .read{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums;max-width:min(260px,60vw);text-align:right}
 .read b{color:var(--ink);font-weight:600}
@@ -51,7 +52,7 @@ button:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
 
 <div class="hud tr">
   <button class="chip" id="gyro">Giroscopio: apagado</button>
-  <div class="panel read" aria-live="polite">
+  <div class="panel read">
     Joystick <b id="rJoy">0.00 · 0.00</b><br>
     Rumbo <b id="rYaw">0°</b> · Cabeceo <b id="rPitch">0°</b><br>
     Balizas <b id="rBeacons">0 / 5</b>
@@ -60,7 +61,7 @@ button:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
 </div>
 
 <div id="help"></div>
-<div id="toast"></div>
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script type="importmap">
 {"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
@@ -84,22 +85,23 @@ scene.fog = new THREE.Fog(0x0b0717, 18, 60);
 const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 400);
 camera.rotation.order = 'YXZ';
 
-scene.add(new THREE.HemisphereLight(0x9d86ff, 0x1a1233, 0.9));
+scene.add(new THREE.HemisphereLight(0x9d86ff, 0x1a1233, 1.15));
 const key = new THREE.PointLight(0xc4a8ff, 60, 30, 1.6); key.position.set(0, 5.5, 0); scene.add(key);
 const rim = new THREE.PointLight(0x6ad7ff, 25, 20, 1.6); rim.position.set(-7, 2, -7); scene.add(rim);
 
 const W = 9; // media anchura de la sala
+const named = (m, name) => { m.userData.name = name; return m; };
 const mat = (c, e = 0, r = .8) => new THREE.MeshStandardMaterial({ color: c, emissive: e, roughness: r, metalness: .25 });
 // suelo con rejilla
-const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x1c1436));
+const floor = named(new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x1c1436)), 'Cubierta 2');
 floor.rotation.x = -Math.PI / 2; scene.add(floor);
 const grid = new THREE.GridHelper(W * 2, 18, 0x6b4fd8, 0x35266b); grid.position.y = .01; scene.add(grid);
 // techo
-const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x140e29));
+const ceil = named(new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x140e29)), 'Techo');
 ceil.rotation.x = Math.PI / 2; ceil.position.y = 6; scene.add(ceil);
 // paredes, con un ventanal en la del fondo
 const wallM = mat(0x241a45);
-function wall(w, h, x, y, z, ry) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallM); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); }
+function wall(w, h, x, y, z, ry) { const m = named(new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallM), 'Mamparo'); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); }
 wall(W * 2, 6, 0, 3, W, Math.PI); wall(W * 2, 6, W, 3, 0, -Math.PI / 2); wall(W * 2, 6, -W, 3, 0, Math.PI / 2);
 wall(W * 2, 1.2, 0, .6, -W, 0); wall(W * 2, 1.4, 0, 5.3, -W, 0); wall(4, 3.4, -7, 2.9, -W, 0); wall(4, 3.4, 7, 2.9, -W, 0);
 const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(10.2, 3.6, .15)), new THREE.LineBasicMaterial({ color: 0x8f74ff }));
@@ -109,13 +111,13 @@ for (const s of [-1, 1]) { const strip = new THREE.Mesh(new THREE.BoxGeometry(W 
 // columnas y cajas
 const colliders = [];
 for (const [x, z] of [[-4.5, -3], [4.5, -3], [-4.5, 4], [4.5, 4]]) {
-  const p = new THREE.Mesh(new THREE.CylinderGeometry(.45, .55, 6, 20), mat(0x2f2259)); p.position.set(x, 3, z); scene.add(p);
+  const p = named(new THREE.Mesh(new THREE.CylinderGeometry(.45, .55, 6, 20), mat(0x2f2259)), 'Columna de soporte'); p.position.set(x, 3, z); scene.add(p);
   const ring = new THREE.Mesh(new THREE.TorusGeometry(.6, .03, 8, 32), new THREE.MeshBasicMaterial({ color: 0xb9a3ff })); ring.rotation.x = Math.PI / 2; ring.position.set(x, 1.2, z); scene.add(ring);
-  colliders.push({ x, z, r: .55 });
+  colliders.push({ x, z, r: .55, h: 6 });
 }
 for (const [x, z, s] of [[7, -6.5, 1.2], [6, -7, .8], [-7.2, 6.8, 1], [-6.6, 7.2, .7]]) {
-  const b = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat(0x3a2a6e, 0x120a30)); b.position.set(x, s / 2, z); b.rotation.y = x; scene.add(b);
-  colliders.push({ x, z, r: s * .75 });
+  const b = named(new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat(0x3a2a6e, 0x120a30)), 'Caja de carga'); b.position.set(x, s / 2, z); b.rotation.y = x; scene.add(b);
+  colliders.push({ x, z, r: s * .75, h: s });
 }
 // estrellas y planeta al otro lado del ventanal
 const starG = new THREE.BufferGeometry(), sp = [];
@@ -123,17 +125,19 @@ for (let i = 0; i < 2500; i++) { const v = new THREE.Vector3().randomDirection()
 starG.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
 const stars = new THREE.Points(starG, new THREE.PointsMaterial({ color: 0xe9e0ff, size: .9, sizeAttenuation: true, fog: false }));
 scene.add(stars);
-const planet = new THREE.Mesh(new THREE.SphereGeometry(14, 48, 32), new THREE.MeshStandardMaterial({ color: 0x9a7fe8, emissive: 0x3a1f70, roughness: 1, fog: false }));
+const planet = named(new THREE.Mesh(new THREE.SphereGeometry(14, 48, 32), new THREE.MeshStandardMaterial({ color: 0x9a7fe8, emissive: 0x3a1f70, roughness: 1, fog: false })), 'Thalassa, a 4,2 UA');
 planet.position.set(-20, 6, -70); scene.add(planet);
 
 // balizas a recoger para comprobar que el movimiento es preciso
 const beacons = [];
-const bGeo = new THREE.OctahedronGeometry(.32);
+const bGeo = new THREE.OctahedronGeometry(.32), glowGeo = new THREE.SphereGeometry(.6, 16, 12);
+const glowMat = new THREE.MeshBasicMaterial({ color: 0x8ff0c9, transparent: true, opacity: .14, blending: THREE.AdditiveBlending, depthWrite: false });
 for (const [x, y, z] of [[0, 1.4, -5], [6.5, 1.4, 1], [-6.5, 1.4, -1], [0, 4.4, 5], [-2, 1.4, 7]]) {
-  const m = new THREE.Mesh(bGeo, new THREE.MeshBasicMaterial({ color: 0x8ff0c9 }));
+  // sin luces por baliza: cambiar el número de luces recompila los shaders y da tirones en el móvil
+  const m = named(new THREE.Mesh(bGeo, new THREE.MeshBasicMaterial({ color: 0x8ff0c9 })), 'Baliza de calibración');
+  m.add(new THREE.Mesh(glowGeo, glowMat));
   m.position.set(x, y, z); scene.add(m);
-  const halo = new THREE.PointLight(0x8ff0c9, 3, 3); halo.position.copy(m.position); scene.add(halo);
-  beacons.push({ m, halo, got: false });
+  beacons.push({ m, got: false });
 }
 
 /* ---------- Estado del jugador ---------- */
@@ -147,11 +151,23 @@ function look(dYaw, dPitch) {
   player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch + dPitch));
 }
 
+// toque corto: identifica lo que hay bajo el dedo (prueba de onTap con coordenadas)
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+function identify(x, y) {
+  const r = canvas.getBoundingClientRect();
+  ndc.set((x - r.left) / r.width * 2 - 1, -(y - r.top) / r.height * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  const hit = ray.intersectObjects(scene.children, true).find(h => h.object.visible && (h.object.userData.name || h.object.parent?.userData.name));
+  if (!hit) return toast('Espacio profundo');
+  const o = hit.object.userData.name ? hit.object : hit.object.parent;
+  toast(`${o.userData.name}${o === planet ? '' : ' · ' + hit.distance.toFixed(1).replace('.', ',') + ' m'}`);
+}
+
 /* ---------- Controles táctiles (el módulo) ---------- */
 const ctl = initControls(canvas, {
   onMove: (x, y) => { move.x = x; move.y = y; },
   onLook: look,
-  onTap: () => toast('Toque'),
+  onTap: identify,
   onGyroChange: s => paintGyro(s),
   buttons: [],
 });
@@ -162,7 +178,6 @@ function setButtons() {
     : [{ id: 'jump', label: 'Saltar', onPress: jump }]);
 }
 setButtons();
-ctl.setEnabled(TOUCH);
 
 /* ---------- Escritorio: WASD + arrastrar ratón ---------- */
 addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space' && mode === 'walk') jump(); });
@@ -177,7 +192,13 @@ function setMode(m) {
   mode = m;
   $('mWalk').setAttribute('aria-pressed', m === 'walk');
   $('mFly').setAttribute('aria-pressed', m === 'fly');
-  if (m === 'walk') { player.vy = 0; }
+  if (m === 'walk') { // al aterrizar encima de una caja, sal de ella hacia fuera
+    player.vy = 0;
+    for (const c of colliders) {
+      const dx = player.pos.x - c.x, dz = player.pos.z - c.z, d = Math.hypot(dx, dz), need = c.r + .32;
+      if (d < need) { const k = need / (d || 1); player.pos.x = c.x + (d ? dx : 1) * k; player.pos.z = c.z + dz * k; }
+    }
+  }
   lift = 0; setButtons(); paintHelp();
   toast(m === 'fly' ? 'Vuelo libre' : 'A pie');
 }
@@ -186,7 +207,7 @@ $('mFly').onclick = () => setMode('fly');
 
 function paintHelp() {
   $('help').innerHTML = TOUCH
-    ? `<b>Pulgar izquierdo</b> para moverte · <b>arrastra a la derecha</b> para mirar${mode === 'fly' ? ' · <b>Subir/Bajar</b> con los botones' : ''}`
+    ? `<b>Pulgar izquierdo</b> para moverte · <b>arrastra a la derecha</b> para mirar · <b>toca</b> algo para identificarlo${mode === 'fly' ? ' · <b>Subir/Bajar</b> con los botones' : ''}`
     : `Estás en un ordenador: <b>WASD</b> para moverte, <b>arrastra</b> con el ratón para mirar${mode === 'fly' ? ', <b>Q/E</b> para bajar y subir' : ', <b>Espacio</b> para saltar'}. Ábrelo en el móvil para probar los controles táctiles.`;
 }
 paintHelp();
@@ -216,6 +237,8 @@ addEventListener('resize', resize); resize();
 
 const fwd = new THREE.Vector3(), right = new THREE.Vector3(), dir = new THREE.Vector3();
 let last = performance.now(), got = 0;
+const shown = {};
+const put = (id, t) => { if (shown[id] !== t) { shown[id] = t; $(id).textContent = t; } }; // solo toca el DOM si cambia
 const deg = r => Math.round(((r * 180 / Math.PI) % 360 + 540) % 360 - 180);
 
 function step(now) {
@@ -239,10 +262,9 @@ function step(now) {
     camera.getWorldDirection(fwd);
     right.crossVectors(fwd, camera.up).normalize();
     dir.copy(fwd).multiplyScalar(my).addScaledVector(right, mx).addScaledVector(camera.up, up).multiplyScalar(speed * dt);
-    player.pos.add(dir);
-    player.pos.x = THREE.MathUtils.clamp(player.pos.x, -W + .4, W - .4);
-    player.pos.z = THREE.MathUtils.clamp(player.pos.z, -W + .4, W - .4);
-    player.pos.y = THREE.MathUtils.clamp(player.pos.y, .4, 5.6);
+    const ny = THREE.MathUtils.clamp(player.pos.y + dir.y, .4, 5.6);
+    if (!hitsCollider(player.pos.x, player.pos.z, ny - .3)) player.pos.y = ny; // no te hundas en una caja al bajar
+    tryMove(dir.x, dir.z);
   }
 
   camera.position.copy(player.pos);
@@ -252,16 +274,16 @@ function step(now) {
     if (b.got) continue;
     b.m.rotation.y += dt * 1.5; b.m.position.y += Math.sin(now / 400 + b.m.position.x) * .002;
     if (b.m.position.distanceTo(player.pos) < .9) {
-      b.got = true; b.m.visible = false; b.halo.visible = false; got++;
+      b.got = true; b.m.visible = false; got++;
       toast(got === beacons.length ? 'Todas las balizas. Controles calibrados' : `Baliza ${got} de ${beacons.length}`);
     }
   }
   stars.rotation.y += dt * .004;
 
-  $('rJoy').textContent = `${mx.toFixed(2)} · ${my.toFixed(2)}`;
-  $('rYaw').textContent = deg(-player.yaw) + '°';
-  $('rPitch').textContent = deg(player.pitch) + '°';
-  $('rBeacons').textContent = `${got} / ${beacons.length}`;
+  put('rJoy', `${mx.toFixed(2)} · ${my.toFixed(2)}`);
+  put('rYaw', deg(-player.yaw) + '°');
+  put('rPitch', deg(player.pitch) + '°');
+  put('rBeacons', `${got} / ${beacons.length}`);
 
   renderer.render(scene, camera);
   requestAnimationFrame(step);
@@ -269,7 +291,10 @@ function step(now) {
 
 function blocked(x, z) {
   if (Math.abs(x) > W - .35 || Math.abs(z) > W - .35) return true;
-  for (const c of colliders) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + .3) ** 2) return true;
+  return hitsCollider(x, z, mode === 'walk' ? 0 : player.pos.y - .3); // en vuelo puedes pasar por encima de las cajas
+}
+function hitsCollider(x, z, feet) {
+  for (const c of colliders) if (feet < c.h && (x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + .3) ** 2) return true;
   return false;
 }
 function tryMove(dx, dz) {

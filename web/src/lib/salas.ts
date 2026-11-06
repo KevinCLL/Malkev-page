@@ -7,9 +7,15 @@
  * la monta a pantalla completa; si no, enseña un marcador con lo que va a haber ahí.
  * Cada carpeta trae un README que dice cuál es su página: ponla en `entrada`.
  *
+ * Nave unificada: cuando exista `modulos/nave-unificada/index.html` (hilo de integración),
+ * las salas con `nave` la montan a ella, abierta directamente en su sitio con el fragmento
+ * de URL que entiende (`#sala=juegos`, `#modo=universo`…). Si no existe, cada sala usa
+ * su módulo suelto.
+ *
  * Para traer módulos nuevos: `npm run modulos:sync` (copia /mnt/project-files/modulos/*,
- * nave-3d y universo-3d). Los módulos que son librerías (audio-nave, controles-moviles,
- * multijugador, rendimiento…) se integran dentro de nave-3d, no tienen sala propia.
+ * nave-3d y universo-3d). Los módulos que solo son librerías JS (audio-nave,
+ * controles-moviles, multijugador, civilizaciones, sistemas-estelares…) no tienen sala
+ * propia: los integran nave-3d y universo-3d.
  */
 export interface Sala {
   slug: string;
@@ -21,8 +27,13 @@ export interface Sala {
   modulo?: string;
   /** Página del módulo que se monta (relativa a su carpeta). Por defecto `index.html`. */
   entrada?: string;
+  /** Dónde abre la nave unificada para esta sala (fragmento sin `#`; '' = inicio). */
+  nave?: string;
   icono: string;
 }
+
+/** Carpeta de la experiencia unificada (todos los módulos en una sola nave). */
+export const NAVE_UNIFICADA = 'nave-unificada';
 
 export const salas: Sala[] = [
   {
@@ -40,6 +51,7 @@ export const salas: Sala[] = [
     cubierta: 'Toda la nave',
     resumen: 'La Malkevnia en 3D: camina por el pasillo central y entra en cada sala.',
     modulo: 'nave-3d',
+    nave: '',
     icono: '⬡',
   },
   {
@@ -58,7 +70,17 @@ export const salas: Sala[] = [
     cubierta: 'Cubierta 2',
     resumen: 'Las Kallax con los juegos de mesa. Coge una caja y ábrela.',
     modulo: 'kallax-3d',
+    nave: 'sala=juegos',
     icono: '▦',
+  },
+  {
+    slug: 'sala-recreativa',
+    ruta: '/sala-recreativa',
+    nombre: 'Sala recreativa',
+    cubierta: 'Cubierta 2',
+    resumen: 'Las máquinas recreativas de la nave, para echar una partida.',
+    nave: 'sala=recreativa',
+    icono: '◉',
   },
   {
     slug: 'sala-de-proyeccion',
@@ -67,6 +89,7 @@ export const salas: Sala[] = [
     cubierta: 'Cubierta 2',
     resumen: 'La filmoteca: pantalla, butacas y cartelera.',
     modulo: 'sala-cine',
+    nave: 'sala=proyeccion',
     icono: '▶',
   },
   {
@@ -76,6 +99,7 @@ export const salas: Sala[] = [
     cubierta: 'Cubierta 3',
     resumen: 'Libros y mangas con sus lomos de verdad.',
     modulo: 'libreria-3d',
+    nave: 'sala=biblioteca',
     icono: '▤',
   },
   {
@@ -86,6 +110,7 @@ export const salas: Sala[] = [
     resumen: 'Terminal de comandos: ir a una sala, buscar, leer la bitácora.',
     modulo: 'ordenador-abordo',
     entrada: 'ordenador-de-a-bordo.html',
+    nave: 'sala=ordenador',
     icono: '⌨',
   },
   {
@@ -96,6 +121,7 @@ export const salas: Sala[] = [
     resumen: 'Dónde estás y a dónde puedes teletransportarte.',
     modulo: 'mapa-nave',
     entrada: 'demo.html',
+    nave: 'plano',
     icono: '⌗',
   },
   {
@@ -105,6 +131,7 @@ export const salas: Sala[] = [
     cubierta: 'Exterior',
     resumen: 'Sal de la nave y recorre el universo de La Malkevnia.',
     modulo: 'universo-3d',
+    nave: 'modo=universo',
     icono: '✦',
   },
   {
@@ -114,6 +141,7 @@ export const salas: Sala[] = [
     cubierta: 'Exterior',
     resumen: 'Toma los mandos: pilota La Malkevnia y aterriza en planetas.',
     modulo: 'vuelo-libre',
+    nave: 'modo=vuelo',
     icono: '➶',
   },
   {
@@ -127,6 +155,15 @@ export const salas: Sala[] = [
     icono: '◍',
   },
   {
+    slug: 'museos',
+    ruta: '/museos',
+    nombre: 'Museos de los hobbies',
+    cubierta: 'Exterior',
+    resumen: 'Aterriza en el planeta de cada afición y recorre su museo.',
+    modulo: 'planetas-hobby',
+    icono: '♁',
+  },
+  {
     slug: 'sala-de-maquinas',
     ruta: '/sala-de-maquinas',
     nombre: 'Sala de máquinas',
@@ -134,6 +171,7 @@ export const salas: Sala[] = [
     resumen: 'Estado del reactor: rendimiento, calidad gráfica y diagnóstico.',
     modulo: 'rendimiento',
     entrada: 'demo/index.html',
+    nave: 'sala=maquinas',
     icono: '⚙',
   },
   {

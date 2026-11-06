@@ -37,5 +37,13 @@ handle.unmount();
 ```
 Reglas para módulos: ES module, importar three como `'three'` (misma versión 0.160.0), no crear otro renderer ni otro bucle salvo modos a pantalla completa (como el universo), no capturar teclado global mientras no esté activo, todo el texto en español.
 
+## Ganchos para capas externas (versión unificada)
+- `window.MALKEVNIA_DATA = { films }` antes de cargar la página: sustituye la filmoteca de ejemplo del cine.
+- `window.MALKEVNIA_EXTRA = ['./capa.js', …]`: al terminar los montajes, `integracion.js` importa cada URL (relativa a la página) y llama a su `export default (N) => {}`.
+- `N` (lo que recibe cada capa) incluye: `THREE, scene, camera, renderer, player, rooms, interact, anim, addCol, showPanel, suspend, resume, teleport, openUniverse, useNearest, lock, TOUCH, $`, y además `captures` (array de funciones `(KeyboardEvent) => bool`; la primera que devuelve true se queda la tecla), `centerRay()`, `fadeTo(fn)`, `goRoom(id)`, `spawnOf(id)`, `layout`, `modules` (instancias montadas: mapa, controles, cielo, terminal, bitacora, libreria, kallax, cine, planetaProa), `mode(m, id)` y `loading(nombre, texto, ok)`.
+- Evento `malkevnia:mode` con `detail { mode: 'universo' | 'superficie' | 'vuelo' | 'nave', id }` al entrar y salir de cada modo a pantalla completa.
+- Eventos `malkevnia:start` (clic en Embarcar, con gesto de usuario), `malkevnia:room` (`detail { id, prev }`) y `malkevnia:modules` (`detail { failed }`).
+- `window.Malkevnia.modules` y `window.Malkevnia.layout` también quedan accesibles.
+
 ## Universo
-La mesa holográfica del puente hace `import('./universo.js')` y llama a `createUniverse({ canvas, onExit })` → `{ start, stop, dispose }`.
+La mesa holográfica del puente hace `import('./universo-3d/universo.js')` y llama a `createUniverse({ canvas, container, onExit, intro: false })`; el ordenador (`rumbo <planeta>`) abre el mismo universo en ese planeta. El sillón del capitán abre `modulos/vuelo-libre/vuelo-libre.js` y la lanzadera `modulos/planetas-hobby/planetas-hobby.js`.

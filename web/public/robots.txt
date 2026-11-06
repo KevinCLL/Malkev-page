@@ -1,4 +1,7 @@
 User-agent: *
 Allow: /
 Disallow: /consola
+Disallow: /admin
+Disallow: /api/
+Disallow: /modulos/
 Sitemap: https://malkevnia.com/sitemap.xml

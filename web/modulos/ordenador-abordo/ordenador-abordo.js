@@ -11,7 +11,7 @@
  * Sin dependencias. Ver README.md para la API completa.
  */
 
-const VERSION = '1.0.0';
+const VERSION = '1.1.0';
 
 /* ---------------------------------------------------------------- temas */
 
@@ -115,13 +115,16 @@ export function init(container, opts = {}) {
   const ctx = canvas.getContext('2d');
   const text = document.createElement('canvas');   // capa de texto (se repinta solo si cambia)
   const tctx = text.getContext('2d');
-  let fx = document.createElement('canvas');       // scanlines + viñeta (cacheado)
+  const fx = document.createElement('canvas');     // scanlines + viñeta (cacheado)
+  const glow = document.createElement('canvas');   // halo del fósforo (se recalcula solo con el texto)
+  const gctx = glow.getContext('2d');
   let W = 0, H = 0, dpr = 1, fontPx = 16, charW = 9, lineH = 20, cols = 60, bodyRows = 20, padX = 16, headerH = 30;
-  const fontFamily = opts.font || '"VT323", "IBM Plex Mono", "Cascadia Mono", Consolas, monospace';
   const effects = opts.effects !== false;
+  const canFilter = effects && 'filter' in gctx;
+  const fontFamily = opts.font || '"VT323", "IBM Plex Mono", "Cascadia Mono", Consolas, monospace';
   let textDirty = true;
 
-  let ta = null, ro = null;
+  let ta = null, ro = null, live = null, touchY = null;
   if (!headless) {
     if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
     canvas.style.cssText = 'display:block;width:100%;height:100%;';
@@ -139,6 +142,12 @@ export function init(container, opts = {}) {
     ta.addEventListener('focus', () => { st.focused = true; textDirty = true; });
     ta.addEventListener('blur', () => { st.focused = false; textDirty = true; });
     ta.addEventListener('wheel', onWheel, { passive: false });
+    ta.addEventListener('touchstart', onTouchStart, { passive: true });
+    ta.addEventListener('touchmove', onTouchMove, { passive: false });
+    live = document.createElement('div');
+    live.setAttribute('role', 'log'); live.setAttribute('aria-live', 'polite');
+    live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
+    container.appendChild(live);
     ro = new ResizeObserver(() => layout());
     ro.observe(container);
   }
@@ -154,7 +163,7 @@ export function init(container, opts = {}) {
       W = Math.round(cw * dpr); H = Math.round(ch * dpr);
       fontPx = Math.round((opts.fontSize || clamp(cw / 44, 15, 24)) * dpr);
     }
-    canvas.width = text.width = W; canvas.height = text.height = H;
+    canvas.width = text.width = glow.width = W; canvas.height = text.height = glow.height = H;
     tctx.font = `${fontPx}px ${fontFamily}`;
     charW = tctx.measureText('M').width || fontPx * 0.5;
     lineH = Math.round(fontPx * 1.12);
@@ -183,6 +192,12 @@ export function init(container, opts = {}) {
   function print(str = '') {
     for (const line of String(str).split('\n')) queue.push({ chars: parseMarkup(line) });
     st.scroll = 0;
+    if (live) {
+      const p = document.createElement('p');
+      p.textContent = String(str).replace(/\{[fdawole/]\}/g, '');
+      live.appendChild(p);
+      while (live.childNodes.length > 40) live.firstChild.remove();
+    }
   }
   const delay = (ms) => queue.push({ delay: ms });
   const later = (fn) => queue.push({ fn });
@@ -220,15 +235,19 @@ export function init(container, opts = {}) {
   const busy = () => !!typing || queue.length > 0;
 
   /* ------------------------------------------------------------ pintado */
+  // Parte una línea lógica en filas; las filas de continuación se sangran como la primera.
   function wrap(chars) {
-    if (!chars.length) return [[]];
+    if (!chars.length) return [{ c: [], ind: 0 }];
+    let lead = 0; while (lead < chars.length && chars[lead].ch === ' ') lead++;
+    const hang = lead < cols / 3 ? lead : 0;
     const rows = []; let i = 0; const n = chars.length;
     while (i < n) {
-      if (n - i <= cols) { rows.push(chars.slice(i)); break; }
+      const ind = rows.length ? hang : 0, w = cols - ind;
+      if (n - i <= w) { rows.push({ c: chars.slice(i), ind }); break; }
       let j = -1;
-      for (let k = i + cols; k > i; k--) if (chars[k] && chars[k].ch === ' ') { j = k; break; }
-      if (j > i) { rows.push(chars.slice(i, j + 1)); i = j + 1; }
-      else { rows.push(chars.slice(i, i + cols)); i += cols; }
+      for (let k = i + w; k > i; k--) if (chars[k] && chars[k].ch === ' ') { j = k; break; }
+      if (j > i) { rows.push({ c: chars.slice(i, j + 1), ind }); i = j + 1; }
+      else { rows.push({ c: chars.slice(i, i + w), ind }); i += w; }
     }
     return rows;
   }
@@ -254,7 +273,7 @@ export function init(container, opts = {}) {
     tctx.fillStyle = T.f; tctx.globalAlpha = 0.14; tctx.fillRect(padX * 0.5, padX * 0.5, W - padX, headerH - padX * 0.3); tctx.globalAlpha = 1;
     const hy = padX * 0.5 + (headerH - padX * 0.3) / 2;
     const now = new Date();
-    const left = parseMarkup(`{a}◆{/} LA MALKEVNIA {d}·{/} ORDENADOR DE A BORDO`);
+    const left = parseMarkup(`{a}◆{/} LA MALKEVNIA {d}·{/} MALK-OS ${VERSION}`);
     const right = parseMarkup(`{d}${room ? room.name.toUpperCase() : ''}  ·  ${now.toTimeString().slice(0, 5)}  ·  FE ${stardate(now)}{/}`);
     const hc = cols;
     if (left.length + right.length + 2 <= hc) {
@@ -267,14 +286,14 @@ export function init(container, opts = {}) {
     for (const l of buffer) {
       if (!l.rows) l.rows = wrap(l.chars);
       let left = l.shown;
-      for (const r of l.rows) { if (left <= 0 && l.shown < l.chars.length) break; all.push({ r, n: Math.min(r.length, Math.max(0, left)) }); left -= r.length; }
+      for (const r of l.rows) { if (left <= 0 && l.shown < l.chars.length) break; all.push({ r, n: Math.min(r.c.length, Math.max(0, left)) }); left -= r.c.length; }
     }
     const maxScroll = Math.max(0, all.length - bodyRows);
     st.scroll = clamp(st.scroll, 0, maxScroll);
     const start = Math.max(0, all.length - bodyRows - st.scroll);
     const view = all.slice(start, start + bodyRows);
     const by = headerH + lineH * 0.9;
-    view.forEach((v, i) => drawChars(v.r, padX, by + i * lineH, v.n));
+    view.forEach((v, i) => drawChars(v.r.c, padX + v.r.ind * charW, by + i * lineH, v.n));
     if (st.scroll > 0) {
       const tag = parseMarkup(`{w}▲ ${st.scroll} líneas más abajo · RePág/AvPág{/}`);
       drawChars(tag, padX + (cols - tag.length) * charW, by + (bodyRows - 1) * lineH);
@@ -292,6 +311,11 @@ export function init(container, opts = {}) {
     drawChars(vis, padX + prompt.length * charW, iy);
     curPos = { x: padX + (prompt.length + st.caret - off) * charW, y: iy };
     textDirty = false;
+    if (canFilter) {
+      gctx.clearRect(0, 0, W, H);
+      gctx.filter = `blur(${Math.max(2, fontPx * 0.28)}px)`;
+      gctx.drawImage(text, 0, 0); gctx.filter = 'none';
+    }
   }
   let curPos = { x: 0, y: 0 };
 
@@ -302,12 +326,9 @@ export function init(container, opts = {}) {
       bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
       bgGrad.addColorStop(0, T.glow); bgGrad.addColorStop(1, T.bg); bgKey = st.theme + W + 'x' + H;
     }
-    ctx.globalAlpha = 1; ctx.filter = 'none';
+    ctx.globalAlpha = 1;
     ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
-    if (effects && 'filter' in ctx) {
-      ctx.filter = `blur(${Math.max(2, fontPx * 0.28)}px)`; ctx.globalAlpha = 0.75;
-      ctx.drawImage(text, 0, 0); ctx.filter = 'none'; ctx.globalAlpha = 1;
-    }
+    if (canFilter) { ctx.globalAlpha = 0.75; ctx.drawImage(glow, 0, 0); ctx.globalAlpha = 1; }
     ctx.drawImage(text, 0, 0);
     // cursor
     const on = !busy() && (Math.floor(now / 530) % 2 === 0 || !st.focused);
@@ -359,6 +380,15 @@ export function init(container, opts = {}) {
   function onTaKey(e) {
     if (special(e)) { e.preventDefault(); return; }
     setTimeout(() => { if (!ta) return; st.caret = Array.from(ta.value.slice(0, ta.selectionStart)).length; textDirty = true; }, 0);
+  }
+  function onTouchStart(e) { touchY = e.touches.length === 1 ? e.touches[0].clientY : null; }
+  function onTouchMove(e) {
+    if (touchY == null || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - touchY, step = lineH / dpr;
+    if (Math.abs(dy) < step) return;
+    e.preventDefault();
+    const n = Math.trunc(dy / step); touchY += n * step;
+    st.scroll = Math.max(0, st.scroll + n); textDirty = true;
   }
   function onWheel(e) { e.preventDefault(); st.scroll += e.deltaY < 0 ? 3 : -3; if (st.scroll < 0) st.scroll = 0; textDirty = true; }
 
@@ -417,10 +447,14 @@ export function init(container, opts = {}) {
   const ALIAS = {};
   function def(names, spec) { const [main, ...al] = names; C[main] = spec; spec.name = main; for (const a of al) ALIAS[norm(a)] = main; }
 
-  function findRoom(q) {
+  function findRoom(q, loose = true) {
     const n = norm(q); if (!n) return null;
-    return rooms.find((r) => r.id === n) || rooms.find((r) => r._k.includes(n)) ||
-      rooms.find((r) => r._k.some((k) => k.split(/\W+/).includes(n))) || rooms.find((r) => r._k.some((k) => k.includes(n)));
+    const exact = rooms.find((r) => r.id === n) || rooms.find((r) => r._k.includes(n));
+    if (exact) return exact;
+    const words = rooms.filter((r) => r._k.some((k) => k.split(/[^a-z0-9]+/).includes(n)));
+    if (words.length === 1) return words[0];
+    if (words.length > 1) return null; // ambiguo ("sala"): que elija
+    return loose ? rooms.find((r) => r._k.some((k) => k.includes(n))) : null;
   }
   function findPlanet(q) { const n = norm(q); return planets.find((p) => norm(p.id) === n || norm(p.name) === n) || planets.find((p) => norm(p.name).includes(n)); }
 
@@ -440,7 +474,7 @@ export function init(container, opts = {}) {
   }
 
   const gameLine = (g) => `  {a}${clean(g.n)}{/} {d}— ${clean(g.d || '')}${g.j ? ` · pegatina ${g.j}` : ''}${g.p ? ` · pósit «${clean(g.p)}»` : ''}{/}`;
-  const postLine = (p) => `  {w}#${padL(p.id, 3)}{/} {d}${p.f}{/}  ${clean(p.t)}`;
+  const postLine = (p) => cols < 56 ? `  {w}#${padL(p.id, 3)}{/} ${clean(p.t)}` : `  {w}#${padL(p.id, 3)}{/} {d}${p.f}{/}  ${clean(p.t)}`;
 
   def(['ayuda', 'help', '?', 'comandos', 'h'], {
     group: 'Terminal', usage: 'ayuda [comando]', help: 'Muestra esta ayuda o la de un comando.',
@@ -484,7 +518,12 @@ export function init(container, opts = {}) {
       if (!args.length) return print('{w}¿A dónde, capitán?{/} {d}Prueba «salas» para ver el plano.{/}');
       const q = args.join(' ');
       if (['..', '~', '/'].includes(q)) return run('ir puente');
-      const r = findRoom(q);
+      let r = findRoom(q, false);
+      if (!r) {
+        const nq = norm(q), opts3 = rooms.filter((x) => x._k.some((k) => k.includes(nq)));
+        if (opts3.length > 1) return print(`{w}¿Cuál de estas?{/} ${opts3.map((x) => `{o}${x.id}{/}`).join(' {d}·{/} ')}`);
+        r = opts3[0];
+      }
       if (!r) return print(`{e}No hay ninguna sala «${clean(q)}» a bordo.{/} {d}Mira «salas».{/}`);
       if (r.id === st.room) return print(`{d}Ya estás en ${r.name}.{/}`);
       print(`{d}Fijando destino:{/} {a}${r.name}{/}`);
@@ -768,33 +807,39 @@ export function init(container, opts = {}) {
       return;
     }
     // ¿es una sala? "cine" → ir cine
-    const r = findRoom(raw);
-    if (r && norm(raw).length >= 3) return C.ir.run([raw]);
+    const r = findRoom(raw, false);
+    if (r && norm(raw).length >= 3 && !['sala', 'de', 'la', 'el'].includes(norm(raw))) return C.ir.run([raw]);
     const all = [...Object.keys(C).filter((k) => !C[k].hidden), ...Object.keys(ALIAS).filter((a) => !C[ALIAS[a]].hidden)];
     let best = null, bd = 9; for (const c of all) { const d = lev(norm(head), c); if (d < bd) { bd = d; best = c; } }
     print(`{e}Orden no reconocida: «${clean(head)}».{/}${best && bd <= 2 ? ` {d}¿Querías decir{/} {o}${best}{/}{d}?{/}` : ' {d}Escribe «ayuda».{/}'}`);
   }
 
   function complete() {
-    const v = st.input; const parts = v.split(/\s+/);
-    let opts2 = [], prefix = '';
-    if (parts.length <= 1) {
-      opts2 = [...Object.keys(C).filter((k) => !C[k].hidden), ...Object.keys(extra)]; prefix = '';
+    const v = st.input.replace(/^\s+/, '');
+    const sp = v.search(/\s/);
+    let cands, prefix, frag;
+    if (sp < 0) {
+      cands = [...Object.keys(C).filter((k) => !C[k].hidden), ...Object.keys(extra)];
+      prefix = ''; frag = v;
     } else {
-      const cmd = resolve(parts[0]); prefix = parts.slice(0, -1).join(' ') + ' ';
-      if (cmd === 'ir') opts2 = rooms.map((r) => r.id);
-      else if (cmd === 'rumbo') opts2 = planets.map((p) => p.id);
-      else if (cmd === 'tema') opts2 = Object.keys(THEMES);
-      else if (cmd === 'ayuda') opts2 = Object.keys(C).filter((k) => !C[k].hidden);
-      else if (cmd === 'donde' || cmd === 'juegos') opts2 = games.map((g) => g.n);
+      const cmd = resolve(v.slice(0, sp));
+      prefix = v.slice(0, sp) + ' '; frag = v.slice(sp).replace(/^\s+/, '');
+      if (cmd === 'ir') cands = rooms.map((r) => r.id);
+      else if (cmd === 'rumbo') cands = planets.map((p) => p.id);
+      else if (cmd === 'tema') cands = Object.keys(THEMES);
+      else if (cmd === 'ayuda') cands = Object.keys(C).filter((k) => !C[k].hidden);
+      else if (cmd === 'donde' || cmd === 'juegos') cands = games.map((g) => g.n);
+      else cands = [];
     }
-    const m = opts2.filter((o) => norm(o).startsWith(norm(parts.length <= 1 ? v : parts[parts.length - 1])));
+    const nf = norm(frag);
+    const m = [...new Set(cands)].filter((o) => norm(o).startsWith(nf));
     if (!m.length) return;
-    if (m.length === 1) return setInput(prefix + m[0] + (prefix ? '' : ' '));
+    if (m.length === 1) return setInput(prefix + m[0] + (sp < 0 ? ' ' : ''));
     let common = m[0];
-    for (const x of m) { let i = 0; while (i < common.length && i < x.length && norm(common[i]) === norm(x[i])) i++; common = common.slice(0, i); }
-    if (common.length > (parts.length <= 1 ? v : parts[parts.length - 1]).length) setInput(prefix + common);
-    else { print(`{a}${st.room}{/}{d} ▸{/} ${clean(v)}`); print('{d}' + m.slice(0, 24).join('   ') + (m.length > 24 ? '   …' : '') + '{/}'); }
+    for (const x of m) { let k = 0; while (k < common.length && k < x.length && norm(common[k]) === norm(x[k])) k++; common = common.slice(0, k); }
+    if (common.length > frag.length) return setInput(prefix + common);
+    print(`{a}${st.room}{/}{d} ▸{/} ${clean(st.input)}`);
+    print('{d}' + m.slice(0, 24).map(clean).join('   ') + (m.length > 24 ? `   … (${m.length})` : '') + '{/}');
   }
 
   function clear() { flush(); buffer.length = 0; st.scroll = 0; textDirty = true; }
@@ -844,7 +889,8 @@ export function init(container, opts = {}) {
     dispose() {
       st.disposed = true; cancelAnimationFrame(raf);
       if (ro) ro.disconnect();
-      if (ta) { ta.removeEventListener('input', onTaInput); ta.removeEventListener('keydown', onTaKey); ta.remove(); }
+      if (ta) { ta.removeEventListener('input', onTaInput); ta.removeEventListener('keydown', onTaKey); ta.remove(); ta = null; }
+      if (live) { live.remove(); live = null; }
       if (!headless && canvas.parentNode === container) canvas.remove();
     },
   };

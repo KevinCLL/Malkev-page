@@ -91,7 +91,7 @@ await Promise.race([Promise.all(['700 64px Orbitron', '400 28px "Exo 2"', 'itali
 
 const canvas = $('c');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
-renderer.setPixelRatio(Math.min(devicePixelRatio, 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.5 : 2)); renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
 const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05030c);
 const fovFor = a => a < 1 ? 88 : 70;
@@ -102,7 +102,7 @@ composer.addPass(new RenderPass(scene, camera));
 const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.55, 0.8); composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
-const sala = init({ scene, films: PELIS_EJEMPLO, onSelect: (f, i) => queueMicrotask(() => showFilm(f, i)), onModeChange: m => { $('proj').classList.toggle('on', m === 'proyeccion'); $('proj').textContent = m === 'proyeccion' ? 'ENCENDER LUCES' : 'PROYECCIÓN'; } });
+const sala = init({ scene, renderer, films: PELIS_EJEMPLO, onSelect: (f, i) => showFilm(f, i), onModeChange: m => { $('proj').classList.toggle('on', m === 'proyeccion'); $('proj').textContent = m === 'proyeccion' ? 'ENCENDER LUCES' : 'PROYECCIÓN'; } });
 const W = 9, D = 7.5;
 
 /* ficha de la película actual */
@@ -112,10 +112,15 @@ function showFilm(f, i) {
   const tc = $('thumb').getContext('2d'); tc.drawImage(sala.poster(i), 0, 0, 144, 216);
   document.querySelectorAll('#ol button').forEach((b, k) => b.classList.toggle('sel', k === i));
 }
-showFilm(sala.current, 0);
 
 /* cartelera */
-$('ol').innerHTML = sala.films.map((f, i) => `<li><button data-i="${i}"><i style="background:${f.color}"></i><span>${f.title}<small>${f.director} · ${f.year}</small></span><span>★${f.rating}</span></button></li>`).join('');
+// se construye con nodos (no innerHTML) porque los títulos vendrán de la base de datos
+sala.films.forEach((f, i) => {
+  const li = document.createElement('li'), b = document.createElement('button'), sw = document.createElement('i'), t = document.createElement('span'), sm = document.createElement('small'), r = document.createElement('span');
+  b.dataset.i = i; sw.style.background = f.color || '#5b3fa0'; t.textContent = f.title; sm.textContent = `${f.director} · ${f.year}`; t.append(sm); r.textContent = `★${f.rating}`;
+  b.append(sw, t, r); li.append(b); $('ol').append(li);
+});
+showFilm(sala.current, 0);
 $('ol').addEventListener('click', e => { const b = e.target.closest('button'); if (b) sala.select(+b.dataset.i); });
 const toggleList = (v = $('list').hidden) => { $('list').hidden = !v; $('film').hidden = v; $('cart').classList.toggle('on', v); };
 $('cart').onclick = () => toggleList(); $('closeList').onclick = () => toggleList(false);
@@ -125,12 +130,13 @@ let yaw = 0, pitch = -0.04; const pos = new THREE.Vector3(0, 1.65, D / 2 - 0.9);
 let goal = null; let seated = false;
 const views = {
   entrada: () => ({ p: new THREE.Vector3(-0.0, 1.65, D / 2 - 0.9), yaw: 0, pitch: -0.05 }),
-  butaca: () => { const s = sala.seats[Math.floor(sala.seats.length / 2) - Math.round(sala.seats.length / 6)] || sala.seats[0]; return { p: s.clone(), yaw: 0, pitch: Math.atan2(sala.screen.center.y - s.y, s.z - sala.screen.center.z) * 0.8 }; },
+  butaca: () => lookFrom(sala.seats[sala.bestSeat]),
 };
 function goTo(v, sit) { goal = { ...v, t: 0, from: pos.clone(), fy: yaw, fp: pitch }; seated = sit; $('seat').classList.toggle('on', sit); }
 $('seat').onclick = () => goTo(views.butaca(), true);
 $('walk').onclick = () => goTo(views.entrada(), false);
-function seatAt(eye) { const dz = eye.z - sala.screen.center.z, dx = eye.x - sala.screen.center.x; goTo({ p: eye.clone(), yaw: Math.atan2(dx, dz) * 0.9, pitch: Math.atan2(sala.screen.center.y - eye.y, dz) * 0.8 }, true); }
+function lookFrom(eye) { const c = sala.screen.center, dz = eye.z - c.z, dx = eye.x - c.x; return { p: eye.clone(), yaw: Math.atan2(dx, dz) * 0.9, pitch: Math.atan2(c.y - eye.y, Math.hypot(dx, dz)) * 0.8 }; }
+function seatAt(eye) { goTo(lookFrom(eye), true); }
 
 const keys = {};
 addEventListener('keydown', e => {

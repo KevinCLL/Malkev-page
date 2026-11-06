@@ -18,7 +18,8 @@ h1{font:700 clamp(26px,4.4vw,40px)/1.1 var(--f-display);letter-spacing:.03em;mar
 header p{margin:0;color:var(--muted);max-width:52ch}
 .stage{position:relative;border:1px solid var(--line);border-radius:20px;overflow:hidden;background:var(--hull);aspect-ratio:16/8;min-height:360px;max-width:100%}
 #view{position:absolute;inset:0;width:100%;height:100%;display:block}
-.hud{position:absolute;z-index:2}
+.hud{position:absolute;z-index:2;pointer-events:none}
+#openMap{pointer-events:auto}
 #room{top:16px;left:16px;padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);min-width:190px;max-width:calc(100% - 32px)}
 #room .lbl{font:600 10px var(--f-mono);letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
 #roomName{font:700 18px var(--f-display);letter-spacing:.04em;margin-top:3px}
@@ -26,6 +27,8 @@ header p{margin:0;color:var(--muted);max-width:52ch}
 #status{top:16px;right:16px;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .chip{font:600 11px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;padding:6px 10px;border-radius:999px;border:1px solid var(--line);background:var(--panel);color:var(--muted);white-space:nowrap}
 .chip b{color:var(--text);font-weight:600;letter-spacing:.04em;text-transform:none}
+.toggle{display:inline-flex;align-items:center;gap:8px;cursor:pointer;pointer-events:auto}
+.toggle input{accent-color:var(--accent);margin:0;width:14px;height:14px}
 #openMap{font:600 12px var(--f-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--text);background:rgba(181,155,255,.16);border:1px solid var(--accent);border-radius:999px;padding:8px 14px;cursor:pointer}
 #openMap:hover,#openMap:focus-visible{background:rgba(181,155,255,.3);outline:none}
 #mini{right:16px;bottom:16px;width:min(340px,46%)}
@@ -34,7 +37,7 @@ header p{margin:0;color:var(--muted);max-width:52ch}
 .grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.25fr);gap:20px}
 .card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;min-width:0}
 h2{font:700 17px var(--f-display);letter-spacing:.05em;margin:0 0 12px}
-#log{list-style:none;margin:0;padding:0;display:grid;gap:6px;min-height:13em;align-content:start}
+#log{list-style:none;margin:0;padding:0;display:grid;gap:6px;min-height:9.5em;align-content:start}
 #log li{display:flex;gap:12px;font-size:14px;color:var(--muted)}
 #log time{font:400 12px var(--f-mono);color:var(--accent);font-variant-numeric:tabular-nums;padding-top:2px}
 #log b{color:var(--text);font-weight:600}
@@ -51,8 +54,8 @@ code{font-family:var(--f-mono);font-size:.9em;color:var(--text)}
 
 <div class="wrap">
   <header>
-    <div><div class="eb">Plano de la nave · en tiempo real</div><h1>Cubierta principal</h1></div>
-    <p>El punto blanco eres tú. Va solo de sala en sala con el piloto automático, o tómalo con WASD. Abre el plano y toca una estancia para teletransportarte.</p>
+    <div><div class="eb">Plano de la nave · en tiempo real</div><h1>La Malkevnia</h1></div>
+    <p>El triángulo blanco eres tú: va solo de sala en sala con el piloto automático, o tómalo con WASD. Los puntos de color son visitantes simulados, como los que traerá el multijugador. Abre el plano y elige una estancia para teletransportarte.</p>
   </header>
 
   <section class="stage" aria-label="Vista desde la nave">
@@ -61,6 +64,7 @@ code{font-family:var(--f-mono);font-size:.9em;color:var(--text)}
     <div id="status" class="hud">
       <span class="chip" id="mode">Piloto automático</span>
       <span class="chip">Rumbo <b id="dest">—</b></span>
+      <label class="chip toggle"><input type="checkbox" id="visitors" checked> Visitantes simulados</label>
       <button id="openMap" type="button" aria-expanded="false">Abrir plano · M</button>
     </div>
     <div class="hud help"><b>W A S D</b> moverse · <b>← →</b> girar · <b>M</b> plano · <b>Esc</b> cerrar</div>
@@ -97,64 +101,81 @@ mapa.onTeleport(({ x, z, yaw }) =&gt; {
   player.x = x; player.z = z; player.yaw = yaw;
 });
 
+<span class="c">// visitantes del multijugador (yaw de la nave)</span>
+mapa.setOthers(mj.sample().map(p =&gt; ({ ...p, yaw: p.yaw + Math.PI })));
+
 <span class="c">// al salir</span>
 mapa.dispose();</pre>
-      <p>Usa el mismo <code>layout.json</code> que la nave: metros, yaw 0 mirando a −Z y la proa hacia +X.</p>
+      <p>Usa el mismo <code>layout.json</code> que la nave, ventanales incluidos: metros, yaw 0 mirando a −Z y la proa hacia +X.</p>
     </section>
   </div>
 </div>
 <script type="module">
 /*
  * mapa-nave.js · Plano de la nave en tiempo real para La Malkevnia
- * Módulo ES autocontenido (sin dependencias). Dibuja un minimapa SVG con la
- * posición del jugador y un plano ampliado donde se puede tocar una estancia
+ * Módulo ES autocontenido, sin dependencias. Dibuja en SVG un minimapa con la
+ * posición del jugador y abre un plano ampliado donde se toca una estancia
  * para teletransportarse.
  *
- * Coordenadas: las del mundo 3D, en el plano XZ. X crece hacia la derecha del
- * plano y Z hacia abajo. Yaw igual que la cámara de three.js con
- * rotation.order 'YXZ': yaw 0 mira hacia -Z y el vector "adelante" es
- * (-sin(yaw), -cos(yaw)).
+ * Coordenadas: las del mundo 3D, en el plano XZ, en metros. X crece hacia la
+ * proa (derecha del plano) y Z hacia abajo. El yaw es el de una cámara de
+ * three.js con rotation.order 'YXZ': yaw 0 mira a -Z, yaw -PI/2 mira a +X y
+ * el vector "adelante" es (-sin(yaw), -cos(yaw)).
  *
- * API: const mapa = init(container, layout, opciones)
- *   mapa.setPlayer(x, z, yaw)   cada frame o cuando cambie la posición
- *   mapa.onTeleport(cb)         cb({ roomId, room, x, z, yaw }); devuelve la baja
- *   mapa.dispose()              quita DOM, listeners y estilos
- * Más en README.md.
+ *   const mapa = init(container, layout, opciones)
+ *   mapa.setPlayer(x, z, yaw)    cada frame (si no cambia, no toca el DOM)
+ *   mapa.onTeleport(cb)          cb({ roomId, room, x, z, yaw, from, via }) → función de baja
+ *   mapa.dispose()               quita DOM, listeners, observadores y estilos
+ *
+ * API completa y guía de integración en README.md.
  */
 
 const NS = 'http://www.w3.org/2000/svg';
 const STYLE_ID = 'mapa-nave-css';
+const VERSION = '2.0.0';
 let styleRefs = 0;
+let uid = 0;
 
 const CSS = `
 .mn{--mn-bg:rgba(14,9,32,.84);--mn-line:rgba(176,150,255,.3);--mn-fg:#ece6ff;--mn-muted:#a99ccf;
-  --mn-accent:#b9a2ff;--mn-glow:#7fd6ff;--mn-player:#ffffff;--mn-hull:rgba(120,96,220,.10);
+  --mn-accent:#b9a2ff;--mn-glow:#7fd6ff;--mn-player:#ffffff;--mn-hull:rgba(120,96,220,.10);--mn-blur:6px;
   --mn-font:"Exo 2",system-ui,sans-serif;--mn-display:"Orbitron","Exo 2",system-ui,sans-serif;
   --mn-mono:"JetBrains Mono",ui-monospace,monospace;
-  color:var(--mn-fg);font-family:var(--mn-font);box-sizing:border-box;width:100%;user-select:none;-webkit-user-select:none}
+  color:var(--mn-fg);font-family:var(--mn-font);box-sizing:border-box;width:100%;user-select:none;-webkit-user-select:none;
+  pointer-events:auto;-webkit-tap-highlight-color:transparent}
 .mn *{box-sizing:border-box}
-.mn-frame{background:var(--mn-bg);border:1px solid var(--mn-line);border-radius:12px;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow:hidden}
-.mn--compact .mn-frame{cursor:pointer;padding:6px 8px 8px}
-.mn--compact .mn-frame:hover{border-color:var(--mn-accent)}
-.mn--compact .mn-frame:focus-visible{outline:2px solid var(--mn-accent);outline-offset:2px}
-.mn-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;font:600 10px/1.2 var(--mn-mono);letter-spacing:.2em;text-transform:uppercase;color:var(--mn-muted);padding:2px 2px 6px}
-.mn-bar b{color:var(--mn-fg);font-weight:600;letter-spacing:.08em;text-transform:none;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
-.mn-key{border:1px solid var(--mn-line);border-radius:4px;padding:1px 5px;font-size:9px;letter-spacing:.1em;color:var(--mn-muted);flex:none}
+.mn-frame{background:var(--mn-bg);border:1px solid var(--mn-line);border-radius:12px;backdrop-filter:blur(var(--mn-blur));-webkit-backdrop-filter:blur(var(--mn-blur));overflow:hidden}
+.mn--compact .mn-frame{cursor:pointer;padding:6px 8px 8px;touch-action:manipulation}
+.mn--compact.mn--bare .mn-frame{background:none;border:0;border-radius:0;backdrop-filter:none;-webkit-backdrop-filter:none;padding:0}
+@media (hover:hover){.mn--compact .mn-frame:hover{border-color:var(--mn-accent)}}
+.mn-frame:focus-visible{outline:2px solid var(--mn-accent);outline-offset:2px}
+.mn-bar{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:2px 2px 6px}
+.mn-bar b{color:var(--mn-fg);font:600 11px/1.2 var(--mn-mono);letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.mn-key{border:1px solid var(--mn-line);border-radius:4px;padding:1px 5px;font:600 9px/1.3 var(--mn-mono);letter-spacing:.1em;text-transform:uppercase;color:var(--mn-muted);flex:none}
 .mn-svg{display:block;width:100%;height:auto;overflow:visible}
-.mn-head{display:none}
+.mn-head,.mn-legend{display:none}
 .mn--expanded .mn-bar{display:none}
 .mn--expanded .mn-head{display:flex;flex-wrap:wrap;align-items:flex-end;justify-content:space-between;gap:10px 20px;padding:18px 20px 6px}
+.mn-headr{display:flex;align-items:center;gap:14px;flex-wrap:wrap}
 .mn-eyebrow{font:600 11px var(--mn-mono);letter-spacing:.28em;text-transform:uppercase;color:var(--mn-accent)}
 .mn-title{font:700 clamp(20px,3vw,28px)/1.1 var(--mn-display);letter-spacing:.03em;margin:6px 0 0;text-wrap:balance}
-.mn-hint{font:400 14px var(--mn-font);color:var(--mn-muted);margin:0}
-.mn-close{font:600 12px var(--mn-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mn-fg);background:transparent;border:1px solid var(--mn-line);border-radius:999px;padding:8px 14px;cursor:pointer}
+.mn-hint{font:400 14px/1.4 var(--mn-font);color:var(--mn-muted);margin:0}
+.mn-close{font:600 12px var(--mn-mono);letter-spacing:.12em;text-transform:uppercase;color:var(--mn-fg);background:transparent;border:1px solid var(--mn-line);border-radius:999px;padding:9px 16px;cursor:pointer;min-height:40px}
 .mn-close:hover,.mn-close:focus-visible{border-color:var(--mn-accent);outline:none;background:rgba(185,162,255,.12)}
 .mn--expanded .mn-frame{border-radius:18px;width:min(1100px,100%);max-height:100%;display:flex;flex-direction:column}
-.mn--expanded .mn-svgwrap{padding:6px 20px 20px;min-height:0;flex:1;display:flex;align-items:center;justify-content:center}
-.mn--expanded .mn-svg{max-height:calc(100vh - 170px);max-height:calc(100dvh - 170px)}
+.mn--expanded .mn-svgwrap{padding:6px 20px 4px;min-height:0;flex:1;display:flex;align-items:center;justify-content:center}
+.mn--expanded .mn-svg{max-height:calc(100vh - 210px);max-height:calc(100dvh - 210px)}
+.mn--expanded .mn-legend{display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;padding:4px 20px 16px;font:400 12px var(--mn-mono);color:var(--mn-muted)}
+.mn-legend span{display:inline-flex;align-items:center;gap:7px}
+.mn-legend i{display:inline-block;flex:none}
+.mn-lg-you{width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-bottom:10px solid var(--mn-player)}
+.mn-lg-door{width:14px;height:4px;border-radius:2px;background:var(--mn-accent);opacity:.7}
+.mn-lg-win{width:14px;height:4px;border-radius:2px;background:var(--mn-glow);box-shadow:0 0 6px var(--mn-glow)}
+.mn-lg-oth{width:9px;height:9px;border-radius:50%;background:#ff9ad5}
+.mn-lg-keys{margin-left:auto}
 .mn-overlay{position:fixed;inset:0;z-index:9999;display:flex;align-items:center;justify-content:center;
   padding:calc(16px + env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) calc(16px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
-  background:radial-gradient(ellipse at 50% 40%,rgba(40,24,90,.55),rgba(4,2,12,.86));animation:mn-in .22s ease-out}
+  background:radial-gradient(ellipse at 50% 40%,rgba(40,24,90,.55),rgba(4,2,12,.86));animation:mn-in .22s ease-out;overscroll-behavior:contain}
 .mn-overlay .mn{max-height:100%;display:flex;justify-content:center}
 @keyframes mn-in{from{opacity:0}to{opacity:1}}
 
@@ -162,13 +183,15 @@ const CSS = `
 .mn-hullin{fill:none;stroke:var(--mn-accent);stroke-opacity:.22;stroke-dasharray:calc(var(--mn-sw)*6) calc(var(--mn-sw)*5);stroke-width:var(--mn-sw)}
 .mn-engine{fill:rgba(120,96,220,.16);stroke:var(--mn-accent);stroke-opacity:.5;stroke-width:var(--mn-sw)}
 .mn-flame{fill:var(--mn-glow);opacity:.35;animation:mn-flame 2.4s ease-in-out infinite}
+.mn-flame:nth-child(3n+2){animation-delay:-.8s}.mn-flame:nth-child(3n+3){animation-delay:-1.6s}
 @keyframes mn-flame{50%{opacity:.12}}
 .mn-gridline{stroke:var(--mn-accent);stroke-opacity:.06;stroke-width:calc(var(--mn-sw)*.6)}
+.mn-win{fill:var(--mn-glow);fill-opacity:.75}
 .mn-room rect{fill:var(--c);fill-opacity:.11;stroke:var(--c);stroke-opacity:.5;stroke-width:var(--mn-sw);transition:fill-opacity .2s,stroke-opacity .2s}
 .mn-room--corridor rect{fill:#0b0720;fill-opacity:.7;stroke:var(--mn-accent);stroke-opacity:.25}
-.mn--expanded .mn-room{cursor:pointer;outline:none}
-.mn--expanded .mn-room:hover rect,.mn--expanded .mn-room:focus-visible rect{fill-opacity:.26;stroke-opacity:1}
-.mn--expanded .mn-room:focus-visible rect{stroke-width:calc(var(--mn-sw)*2.4)}
+.mn--expanded .mn-room[role=button]{cursor:pointer;outline:none}
+@media (hover:hover){.mn--expanded .mn-room[role=button]:hover rect{fill-opacity:.26;stroke-opacity:1}}
+.mn--expanded .mn-room:focus-visible rect{fill-opacity:.26;stroke-opacity:1;stroke-width:calc(var(--mn-sw)*2.6)}
 .mn-room--here rect{fill-opacity:.3;stroke-opacity:1;stroke-width:calc(var(--mn-sw)*1.8)}
 .mn-room--corridor.mn-room--here rect{fill:var(--mn-accent);fill-opacity:.12}
 .mn-door{fill:var(--mn-accent);fill-opacity:.55}
@@ -178,22 +201,31 @@ const CSS = `
 .mn-here{fill:var(--mn-glow);display:none}
 .mn-room--here .mn-here{display:inline}
 .mn-room--here .mn-sub{display:none}
-.mn--compact .mn-sub,.mn--compact .mn-here,.mn--compact .mn-name-long,.mn--compact .mn-room--corridor .mn-name{display:none}
+.mn-badge{display:none;pointer-events:none}
+.mn-badge rect{fill:#ff9ad5;fill-opacity:.16;stroke:#ff9ad5;stroke-opacity:.6;stroke-width:var(--mn-sw)}
+.mn-badge text{fill:#ffd2ec;font-family:var(--mn-mono);font-weight:600}
+.mn--expanded .mn-badge--on{display:inline}
+.mn--compact .mn-sub,.mn--compact .mn-here,.mn--compact .mn-name-long,.mn--compact .mn-room--corridor .mn-name,.mn--compact .mn-oname,.mn--compact .mn-hullin{display:none}
 .mn--expanded .mn-name-short{display:none}
 .mn--compact .mn-name{fill:var(--c)}
 .mn-trail circle{fill:var(--mn-player)}
-.mn-cone{fill:url(#mn-cone-grad)}
+.mn-other circle{stroke:#140c2c;stroke-width:calc(var(--mn-sw)*1)}
+.mn-other line{stroke-width:calc(var(--mn-sw)*1.6);stroke-linecap:round}
+.mn-oname{font-family:var(--mn-mono);font-weight:600;paint-order:stroke;stroke:#0b0720;stroke-width:calc(var(--mn-sw)*2.5);stroke-linejoin:round}
 .mn-dot{fill:var(--mn-player);stroke:#1a1038;stroke-width:calc(var(--mn-sw)*1.2)}
 .mn-halo{fill:none;stroke:var(--mn-player);stroke-opacity:.5;stroke-width:var(--mn-sw);transform-box:fill-box;transform-origin:center;animation:mn-halo 2.2s ease-out infinite}
 @keyframes mn-halo{from{transform:scale(1);opacity:.9}to{transform:scale(2.6);opacity:0}}
 .mn-pulse{fill:none;stroke:var(--mn-glow);stroke-width:calc(var(--mn-sw)*2);transform-box:fill-box;transform-origin:center;animation:mn-pulse .9s ease-out forwards}
 @keyframes mn-pulse{from{transform:scale(.2);opacity:1}to{transform:scale(3);opacity:0}}
-@media (prefers-reduced-motion:reduce){.mn-halo,.mn-flame,.mn-overlay{animation:none}.mn-pulse{animation-duration:.01s}}
+.mn-beam{fill:none;stroke:var(--mn-glow);stroke-width:calc(var(--mn-sw)*1.4);stroke-linecap:round;animation:mn-beam .9s ease-out forwards}
+@keyframes mn-beam{from{stroke-dashoffset:var(--len);opacity:1}to{stroke-dashoffset:0;opacity:0}}
+@media (prefers-reduced-motion:reduce){.mn-halo,.mn-flame,.mn-overlay,.mn-beam{animation:none}.mn-beam{opacity:0}.mn-pulse{animation-duration:.01s}.mn-room rect{transition:none}}
 `;
 
-function svg(tag, attrs = {}, parent) {
+/* ---------- utilidades ---------- */
+function svg(tag, attrs, parent) {
   const n = document.createElementNS(NS, tag);
-  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (attrs) for (const k in attrs) n.setAttribute(k, attrs[k]);
   if (parent) parent.appendChild(n);
   return n;
 }
@@ -204,23 +236,34 @@ function html(tag, cls, parent, text) {
   if (parent) parent.appendChild(n);
   return n;
 }
-const hex = c => typeof c === 'number' ? '#' + c.toString(16).padStart(6, '0') : (c || '#b9a2ff');
 const PALETTE = ['#b9a2ff', '#ff8ad8', '#ffc27a', '#7fd6ff', '#9b7bff', '#ffb36b', '#6affc8', '#d1a6ff'];
+const hex = c => typeof c === 'number' ? '#' + (c >>> 0).toString(16).padStart(6, '0').slice(-6) : String(c);
 const r2 = v => Math.round(v * 1000) / 1000;
+const num = v => typeof v === 'number' && Number.isFinite(v);
+const inRect = (r, x, z, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && z >= r.z - pad && z <= r.z + r.d + pad;
+const touches = (a, b, eps = 0.01) => a.x <= b.x + b.w + eps && b.x <= a.x + a.w + eps && a.z <= b.z + b.d + eps && b.z <= a.z + a.d + eps;
+const TAU = Math.PI * 2;
+const normYaw = y => ((y % TAU) + TAU + Math.PI) % TAU - Math.PI;
 
 /** Convierte una dirección (dx, dz) en yaw con la convención de three.js. */
 function yawFromDir(dx, dz) { return Math.atan2(-dx, -dz); }
 
+/** Color estable a partir de un id (para visitantes sin color propio). */
+function colorFromId(id) {
+  let h = 2166136261;
+  for (const ch of String(id)) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); }
+  return `hsl(${(h >>> 0) % 360} 85% 74%)`;
+}
+
 /**
- * Convierte el formato de rejilla de nave-3d (ROOMS con x0..x1 / z0..z1 en
- * casillas, inclusivos, y DOORS con lista de casillas) a un layout en metros.
+ * Convierte el formato de rejilla antiguo de nave-3d (ROOMS con x0..x1 / z0..z1
+ * en casillas, inclusivos, y DOORS con lista de casillas) a un layout en metros.
  */
 function fromGrid({ rooms, doors = [], tile = 1, name, deck } = {}) {
   return {
     name, deck,
     rooms: rooms.map(r => ({
-      id: r.id, name: r.name, sub: r.sub, short: r.short, color: hex(r.color), spawn: r.spawn,
-      kind: r.kind || (/^pasillo/i.test(r.id) || /^pasillo/i.test(r.name || '') ? 'corridor' : 'room'),
+      id: r.id, name: r.name, sub: r.sub, short: r.short, color: r.color, spawn: r.spawn, kind: r.kind,
       x: r.x0 * tile, z: r.z0 * tile, w: (r.x1 - r.x0 + 1) * tile, d: (r.z1 - r.z0 + 1) * tile,
     })),
     doors: doors.map((d, i) => {
@@ -231,371 +274,658 @@ function fromGrid({ rooms, doors = [], tile = 1, name, deck } = {}) {
   };
 }
 
-function shortName(n = '') {
-  return n.replace(/^Sala de (las? )?/i, '').replace(/^Puente de mando$/i, 'Puente').replace(/^Ordenador de a bordo$/i, 'Ordenador');
+/**
+ * Ventanales: acepta [{ x, z, w|width, d|depth }] o el texto de layout.json,
+ * p. ej. "proa x=55.5..57 z=1.5..22.5; laterales z=0..1.5 y z=22.5..24 x=45..54".
+ * En el texto, cada tramo separado por ';' combina todos sus rangos x con todos sus rangos z.
+ */
+function parseWindows(w) {
+  if (Array.isArray(w)) {
+    return w.map(o => ({ x: +o.x, z: +o.z, w: +(o.w ?? o.width), d: +(o.d ?? o.depth) }))
+      .filter(o => [o.x, o.z, o.w, o.d].every(Number.isFinite) && o.w > 0 && o.d > 0);
+  }
+  if (typeof w !== 'string') return [];
+  const n = '(-?\\d+(?:[.,]\\d+)?)';
+  const re = new RegExp(`\\b([xz])\\s*=\\s*${n}\\s*(?:\\.\\.|–|—)\\s*${n}`, 'gi');
+  const out = [];
+  for (const seg of w.split(';')) {
+    const xs = [], zs = [];
+    for (const m of seg.matchAll(re)) {
+      const a = parseFloat(m[2].replace(',', '.')), b = parseFloat(m[3].replace(',', '.'));
+      (m[1].toLowerCase() === 'x' ? xs : zs).push([Math.min(a, b), Math.max(a, b)]);
+    }
+    for (const [x0, x1] of xs) for (const [z0, z1] of zs) if (x1 > x0 && z1 > z0) out.push({ x: x0, z: z0, w: x1 - x0, d: z1 - z0 });
+  }
+  return out;
 }
-const inRect = (r, x, z, pad = 0) => x >= r.x - pad && x <= r.x + r.w + pad && z >= r.z - pad && z <= r.z + r.d + pad;
-const touches = (a, b, eps = 0.01) => a.x <= b.x + b.w + eps && b.x <= a.x + a.w + eps && a.z <= b.z + b.d + eps && b.z <= a.z + a.d + eps;
+
+function shortName(n = '') {
+  return n.replace(/^Sala de (las? |los? )?/i, '').replace(/^Puente de mando$/i, 'Puente').replace(/^Ordenador de a bordo$/i, 'Ordenador');
+}
 
 function normalize(layout) {
   if (!layout || !Array.isArray(layout.rooms) || !layout.rooms.length) throw new Error('mapa-nave: el layout necesita rooms[]');
-  // acepta w/d o width/depth (layout.json de nave-3d), y between:[a,b] en puertas
+  const seen = new Set();
+  // acepta w/d o width/depth (layout.json de nave-3d) y between:[a,b] en las puertas
   const rooms = layout.rooms.map((r, i) => {
-    const w = r.w ?? r.width, d = r.d ?? r.depth;
-    const corridor = r.kind ? r.kind === 'corridor' : /^pasillo|corridor/i.test(r.id + ' ' + (r.name || ''));
-    return { ...r, w, d, color: r.color != null ? hex(r.color) : PALETTE[i % PALETTE.length], kind: corridor ? 'corridor' : 'room',
-      short: r.short || shortName(r.name), cx: r.x + w / 2, cz: r.z + d / 2 };
+    const w = +(r.w ?? r.width), d = +(r.d ?? r.depth), x = +r.x, z = +r.z;
+    if (![x, z, w, d].every(Number.isFinite) || w <= 0 || d <= 0) throw new Error(`mapa-nave: la estancia "${r.id ?? i}" no tiene x, z, ancho y fondo válidos`);
+    const id = String(r.id ?? 'sala-' + i);
+    if (seen.has(id)) throw new Error(`mapa-nave: id de estancia repetido "${id}"`);
+    seen.add(id);
+    const name = r.name || id;
+    const corridor = r.kind ? r.kind === 'corridor' : /^(pasillo|corredor|corridor)/i.test(id) || /^(pasillo|corredor)/i.test(name);
+    return {
+      ...r, id, name, x, z, w, d, sub: r.sub || '',
+      color: r.color != null ? hex(r.color) : PALETTE[i % PALETTE.length],
+      kind: corridor ? 'corridor' : 'room', short: r.short || shortName(name), cx: x + w / 2, cz: z + d / 2,
+    };
   });
-  const doors = (layout.doors || []).map((d, i) => {
-    const w = d.w ?? d.width, dd = d.d ?? d.depth, [a, b] = d.between || [d.a, d.b];
-    return { id: d.id || 'puerta-' + i, ...d, a, b, w, d: dd, cx: d.x + w / 2, cz: d.z + dd / 2 };
-  });
+  const doors = (Array.isArray(layout.doors) ? layout.doors : []).map((dr, i) => {
+    const w = +(dr.w ?? dr.width), d = +(dr.d ?? dr.depth), [a, b] = Array.isArray(dr.between) ? dr.between : [dr.a, dr.b];
+    return { ...dr, id: dr.id || 'puerta-' + i, a, b, x: +dr.x, z: +dr.z, w, d, cx: +dr.x + w / 2, cz: +dr.z + d / 2 };
+  }).filter(d => [d.x, d.z, d.w, d.d].every(Number.isFinite) && d.w > 0 && d.d > 0);
+
   let x0 = Infinity, z0 = Infinity, x1 = -Infinity, z1 = -Infinity;
   for (const r of rooms) { x0 = Math.min(x0, r.x); z0 = Math.min(z0, r.z); x1 = Math.max(x1, r.x + r.w); z1 = Math.max(z1, r.z + r.d); }
-  const b = layout.bounds || (layout.ship ? { x0: layout.ship.x, z0: layout.ship.z, x1: layout.ship.x + layout.ship.width, z1: layout.ship.z + layout.ship.depth } : { x0, z0, x1, z1 });
-  const unit = Math.max(b.x1 - b.x0, b.z1 - b.z0) / 100; // 1 % del lado mayor
+  const sh = layout.ship, bb = layout.bounds;
+  // con `ship` o `bounds` el casco va por las paredes exteriores; si no, se deja un margen alrededor de las salas
+  const fromShip = !!(sh && [sh.x, sh.z, sh.width ?? sh.w, sh.depth ?? sh.d].every(v => Number.isFinite(+v)));
+  const b = fromShip ? { x0: +sh.x, z0: +sh.z, x1: +sh.x + +(sh.width ?? sh.w), z1: +sh.z + +(sh.depth ?? sh.d) }
+    : (bb && [bb.x0, bb.z0, bb.x1, bb.z1].every(num) ? { ...bb } : { x0, z0, x1, z1 });
+  const unit = Math.max(b.x1 - b.x0, b.z1 - b.z0) / 100; // 1 % del lado mayor: todo el dibujo escala con esto
 
-  // punto de aparición: justo dentro de la puerta principal, mirando hacia dentro
+  // punto de aparición: el del layout o, si falta, justo dentro de la puerta que da al pasillo, mirando hacia dentro
   for (const r of rooms) {
-    if (r.spawn) { r.spawn = { yaw: 0, ...r.spawn }; continue; }
+    if (r.spawn && num(+r.spawn.x) && num(+r.spawn.z)) { r.spawn = { x: +r.spawn.x, z: +r.spawn.z, yaw: num(+r.spawn.yaw) ? +r.spawn.yaw : 0 }; continue; }
     if (r.kind === 'corridor') { r.spawn = { x: r.cx, z: r.cz, yaw: r.w >= r.d ? yawFromDir(1, 0) : yawFromDir(0, 1) }; continue; }
     const own = doors.filter(d => d.a === r.id || d.b === r.id);
-    const cand = (own.length ? own : doors.filter(d => touches(d, r)));
-    const door = cand.find(d => { const o = rooms.find(q => q !== r && (q.id === d.a || q.id === d.b)); return o && o.kind === 'corridor'; }) || cand[0];
+    const cand = own.length ? own : doors.filter(d => touches(d, r));
+    const door = cand.find(d => { const o = rooms.find(q => q !== r && (q.id === d.a || q.id === d.b || touches(d, q))); return o && o.kind === 'corridor'; }) || cand[0];
     if (!door) { r.spawn = { x: r.cx, z: r.cz, yaw: 0 }; continue; }
     const alongZ = door.d > door.w; // la puerta se extiende en Z: se cruza en X
     const nx = alongZ ? Math.sign(r.cx - door.cx) || 1 : 0, nz = alongZ ? 0 : Math.sign(r.cz - door.cz) || 1;
     const step = (alongZ ? door.w : door.d) / 2 + Math.min(1.6, (alongZ ? r.w : r.d) * 0.3);
-    let sx = door.cx + nx * step, sz = door.cz + nz * step;
-    sx = Math.min(r.x + r.w - 0.3, Math.max(r.x + 0.3, sx)); sz = Math.min(r.z + r.d - 0.3, Math.max(r.z + 0.3, sz));
+    const sx = Math.min(r.x + r.w - 0.3, Math.max(r.x + 0.3, door.cx + nx * step));
+    const sz = Math.min(r.z + r.d - 0.3, Math.max(r.z + 0.3, door.cz + nz * step));
     r.spawn = { x: sx, z: sz, yaw: yawFromDir(nx, nz) };
   }
-  return { name: layout.name || 'Cubierta principal', deck: layout.deck || 'Plano de la nave', rooms, doors, bounds: b, unit, hull: layout.hull ?? 'auto', nose: layout.nose || '+x' };
+  return {
+    name: layout.name || 'Cubierta principal', deck: layout.deck || 'Plano de la nave',
+    rooms, doors, windows: parseWindows(layout.windows), bounds: b, unit, fromShip,
+    hull: layout.hull ?? 'auto', engines: layout.engines ?? 3,
+  };
 }
 
 /**
- * Crea el mapa dentro de `container`.
- * opciones: { mode:'compact'|'expanded', keyboard:true, toggleKey:'KeyM', trail:true,
- *             autoMove:false, closeOnTeleport:true, releasePointer:true, teleportCorridors:true,
- *             title, hint }
+ * Crea el mapa dentro de `container`. Ver README.md para todas las opciones.
  */
 function init(container, layout, opciones = {}) {
-  if (!container) throw new Error('mapa-nave: falta el contenedor');
-  const opt = { mode: 'compact', keyboard: true, toggleKey: 'KeyM', trail: true, autoMove: false, closeOnTeleport: true,
-    releasePointer: true, teleportCorridors: true, hint: 'Toca una estancia para teletransportarte.', ...opciones };
+  if (!container || typeof container.appendChild !== 'function') throw new Error('mapa-nave: falta el contenedor');
+  const COARSE = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches;
+  const opt = {
+    mode: 'compact', keyboard: true, toggleKey: 'KeyM', canToggle: null, trail: true, autoMove: false,
+    closeOnTeleport: true, closeDelay: 260, releasePointer: true, teleportCorridors: true, bare: false,
+    title: null, hint: null, noseLength: null, ...opciones,
+  };
   let L = normalize(layout);
+  const me = ++uid, gradId = `mn-cone-${me}`;
 
-  if (!styleRefs++) { const s = document.createElement('style'); s.id = STYLE_ID; s.textContent = CSS; document.head.appendChild(s); }
+  if (!styleRefs++ && !document.getElementById(STYLE_ID)) {
+    const s = document.createElement('style'); s.id = STYLE_ID; s.textContent = CSS; document.head.appendChild(s);
+  }
 
   const cbs = { teleport: new Set(), room: new Set(), toggle: new Set() };
-  const on = k => cb => { cbs[k].add(cb); return () => cbs[k].delete(cb); };
-  const emit = (k, v) => { for (const cb of [...cbs[k]]) { try { cb(v); } catch (e) { console.error('mapa-nave', e); } } };
+  const on = k => cb => { if (typeof cb !== 'function') return () => {}; cbs[k].add(cb); return () => cbs[k].delete(cb); };
+  const emit = (k, ...a) => { for (const cb of [...cbs[k]]) { try { cb(...a); } catch (e) { console.error('mapa-nave', e); } } };
+  const timers = new Set();
+  const later = (fn, ms) => { const t = setTimeout(() => { timers.delete(t); fn(); }, ms); timers.add(t); return t; };
 
-  const root = html('div', 'mn mn--compact');
+  /* ---------- DOM ---------- */
+  const root = html('div', 'mn mn--compact' + (opt.bare ? ' mn--bare' : ''));
+  root.dataset.mapaNave = VERSION;
   const frame = html('div', 'mn-frame', root);
   const head = html('div', 'mn-head', frame);
   const headTxt = html('div', '', head);
   const eyebrow = html('div', 'mn-eyebrow', headTxt);
   const title = html('h2', 'mn-title', headTxt);
-  const headRight = html('div', '', head);
-  headRight.style.cssText = 'display:flex;align-items:center;gap:14px;flex-wrap:wrap';
-  const hint = html('p', 'mn-hint', headRight, opt.hint);
-  const closeBtn = html('button', 'mn-close', headRight, 'Cerrar · Esc');
+  title.id = `mn-title-${me}`;
+  const headR = html('div', 'mn-headr', head);
+  html('p', 'mn-hint', headR, opt.hint ?? (COARSE ? 'Toca una estancia para teletransportarte.' : 'Haz clic en una estancia para teletransportarte.'));
+  const closeBtn = html('button', 'mn-close', headR, COARSE ? 'Cerrar' : 'Cerrar · Esc');
   closeBtn.type = 'button';
   const bar = html('div', 'mn-bar', frame);
-  const barLabel = html('span', '', bar); const barRoom = html('b', '', barLabel);
-  const barKey = html('span', 'mn-key', bar, opt.keyboard ? 'M · plano' : 'plano');
+  const barRoom = html('b', '', bar, '—');
+  html('span', 'mn-key', bar, opt.keyboard && !COARSE ? 'M · plano' : 'Plano');
   const wrap = html('div', 'mn-svgwrap', frame);
-  const sv = svg('svg', { class: 'mn-svg', role: 'img' }, wrap);
-  const defs = svg('defs', {}, sv);
-  const grad = svg('radialGradient', { id: 'mn-cone-grad', cx: '0', cy: '0', r: '1', gradientUnits: 'userSpaceOnUse' }, defs);
+  const sv = svg('svg', { class: 'mn-svg', focusable: 'false' }, wrap);
+  const legend = html('div', 'mn-legend', frame);
+  legend.innerHTML = '<span><i class="mn-lg-you"></i>Tú</span><span><i class="mn-lg-door"></i>Puerta</span><span><i class="mn-lg-win"></i>Ventanal</span>' +
+    '<span class="mn-lg-others" hidden><i class="mn-lg-oth"></i><b>0</b>&nbsp;visitantes</span>' +
+    (COARSE ? '' : '<span class="mn-lg-keys">Flechas para elegir · Intro para ir</span>');
+  const lgOthers = legend.querySelector('.mn-lg-others'), lgOthersN = lgOthers.querySelector('b');
+
+  const defs = svg('defs', null, sv);
+  const grad = svg('radialGradient', { id: gradId, cx: '0', cy: '0', r: '1', gradientUnits: 'userSpaceOnUse' }, defs);
   svg('stop', { offset: '0', 'stop-color': '#ffffff', 'stop-opacity': '.55' }, grad);
   svg('stop', { offset: '1', 'stop-color': '#ffffff', 'stop-opacity': '0' }, grad);
-  const gShip = svg('g', {}, sv), gGrid = svg('g', {}, sv), gRooms = svg('g', {}, sv), gDoors = svg('g', {}, sv);
-  const gTrail = svg('g', { class: 'mn-trail' }, sv), gFx = svg('g', {}, sv);
-  const gPlayer = svg('g', { class: 'mn-player' }, sv);
-  const gPlayerInner = svg('g', {}, gPlayer);
-  const cone = svg('path', { class: 'mn-cone' }, gPlayerInner);
-  const halo = svg('circle', { class: 'mn-halo' }, gPlayerInner);
-  const dot = svg('path', { class: 'mn-dot' }, gPlayerInner);
+  const gGrid = svg('g', null, sv), gShip = svg('g', null, sv), gWin = svg('g', null, sv), gRooms = svg('g', null, sv);
+  const gDoors = svg('g', null, sv), gBadges = svg('g', null, sv), gOthers = svg('g', null, sv);
+  const gTrail = svg('g', { class: 'mn-trail' }, sv), gFx = svg('g', null, sv);
+  const gPlayer = svg('g', { class: 'mn-player', visibility: 'hidden' }, sv);
+  const cone = svg('path', { fill: `url(#${gradId})` }, gPlayer);
+  const halo = svg('circle', { class: 'mn-halo' }, gPlayer);
+  const dot = svg('path', { class: 'mn-dot' }, gPlayer);
+  const TRAIL_N = 24;
+  const trailDots = Array.from({ length: TRAIL_N }, () => svg('circle', { visibility: 'hidden' }, gTrail));
 
-  let roomEls = new Map(), player = null, current = null, expanded = false, overlay = null, trail = [], lastFocus = null, disposed = false;
+  let roomEls = new Map(), badgeEls = new Map(), player = null, current = null, expanded = false, overlay = null;
+  let trail = [], lastFocus = null, disposed = false, closeTimer = null, fitRaf = 0, counts = {};
+  const others = new Map(); // id → { g, c, l, t, color }
 
+  /* ---------- dibujo ---------- */
   function build() {
     const { bounds: b, unit: u, rooms, doors } = L;
     sv.style.setProperty('--mn-sw', r2(u * 0.18));
-    const depth = b.z1 - b.z0, m = u * 3, nose = opt.noseLength ?? depth * 0.42, eng = u * 6;
-    const vx0 = b.x0 - m - eng - u * 2, vx1 = b.x1 + m + nose + u * 2, vz0 = b.z0 - m - u * 2, vz1 = b.z1 + m + u * 2;
+    const depth = b.z1 - b.z0, m = L.fromShip ? 0 : u * 3, nose = num(opt.noseLength) ? opt.noseLength : depth * 0.3, eng = u * 6;
+    const vx0 = b.x0 - m - eng * 1.4 - u * 2, vx1 = b.x1 + m + (L.hull ? nose : 0) + u * 2, vz0 = b.z0 - m - u * 2, vz1 = b.z1 + m + u * 2;
     sv.setAttribute('viewBox', [vx0, vz0, vx1 - vx0, vz1 - vz0].map(r2).join(' '));
-    sv.setAttribute('aria-label', `${L.deck}: ${L.name}. ${rooms.filter(r => r.kind !== 'corridor').map(r => r.name).join(', ')}.`);
     eyebrow.textContent = L.deck; title.textContent = opt.title || L.name;
-    for (const g of [gShip, gGrid, gRooms, gDoors]) g.replaceChildren();
+    for (const g of [gGrid, gShip, gWin, gRooms, gDoors, gBadges]) g.replaceChildren();
 
-    // casco
+    // rejilla tenue de fondo, cada 5 % del lado mayor
+    const step = u * 5;
+    for (let x = Math.ceil(vx0 / step) * step; x < vx1; x += step) svg('line', { class: 'mn-gridline', x1: r2(x), x2: r2(x), y1: r2(vz0), y2: r2(vz1) }, gGrid);
+    for (let z = Math.ceil(vz0 / step) * step; z < vz1; z += step) svg('line', { class: 'mn-gridline', y1: r2(z), y2: r2(z), x1: r2(vx0), x2: r2(vx1) }, gGrid);
+
+    // casco: popa redondeada, motores como la nave exterior (dos laterales y uno central más largo) y proa en punta
     if (L.hull) {
       const hx0 = b.x0 - m, hx1 = b.x1 + m, hz0 = b.z0 - m, hz1 = b.z1 + m, cz = (hz0 + hz1) / 2, rr = u * 7;
-      const d = typeof L.hull === 'string' && L.hull !== 'auto' ? L.hull :
-        `M${hx0 + rr} ${hz0} L${hx1} ${hz0} Q${hx1 + nose * 0.55} ${hz0} ${hx1 + nose} ${cz} Q${hx1 + nose * 0.55} ${hz1} ${hx1} ${hz1} L${hx0 + rr} ${hz1} Q${hx0} ${hz1} ${hx0} ${hz1 - rr} L${hx0} ${hz0 + rr} Q${hx0} ${hz0} ${hx0 + rr} ${hz0}Z`;
-      for (const s of [-1, 1]) {
-        const ez = cz + s * depth * 0.27, eh = depth * 0.2;
-        svg('rect', { class: 'mn-flame', x: r2(hx0 - eng - u * 1.6), y: r2(ez - eh * 0.32), width: r2(u * 2.2), height: r2(eh * 0.64), rx: r2(u) }, gShip);
-        svg('rect', { class: 'mn-engine', x: r2(hx0 - eng), y: r2(ez - eh / 2), width: r2(eng + u), height: r2(eh), rx: r2(u * 1.6) }, gShip);
+      const custom = typeof L.hull === 'string' && L.hull !== 'auto';
+      if (!custom && L.engines) {
+        const list = L.engines >= 3 ? [[-0.27, 1], [0.27, 1], [0, 1.4]] : L.engines === 2 ? [[-0.27, 1], [0.27, 1]] : [[0, 1.4]];
+        for (const [k, len] of list) {
+          const ez = cz + k * depth, eh = depth * (k ? 0.2 : 0.17), el = eng * len;
+          svg('rect', { class: 'mn-flame', x: r2(hx0 - el - u * 1.6), y: r2(ez - eh * 0.32), width: r2(u * 2.2), height: r2(eh * 0.64), rx: r2(u) }, gShip);
+          svg('rect', { class: 'mn-engine', x: r2(hx0 - el), y: r2(ez - eh / 2), width: r2(el + u), height: r2(eh), rx: r2(u * 1.6) }, gShip);
+        }
       }
+      const d = custom ? L.hull :
+        `M${r2(hx0 + rr)} ${r2(hz0)} L${r2(hx1)} ${r2(hz0)} Q${r2(hx1 + nose * 0.55)} ${r2(hz0)} ${r2(hx1 + nose)} ${r2(cz)} Q${r2(hx1 + nose * 0.55)} ${r2(hz1)} ${r2(hx1)} ${r2(hz1)} L${r2(hx0 + rr)} ${r2(hz1)} Q${r2(hx0)} ${r2(hz1)} ${r2(hx0)} ${r2(hz1 - rr)} L${r2(hx0)} ${r2(hz0 + rr)} Q${r2(hx0)} ${r2(hz0)} ${r2(hx0 + rr)} ${r2(hz0)}Z`;
       svg('path', { class: 'mn-hullshape', d }, gShip);
-      if (!(typeof L.hull === 'string' && L.hull !== 'auto')) {
+      if (!custom) {
         const i = u * 1.4;
-        svg('path', { class: 'mn-hullin', d: `M${hx0 + rr} ${hz0 + i} L${hx1} ${hz0 + i} Q${hx1 + nose * 0.5} ${hz0 + i} ${hx1 + nose - i * 2} ${cz} Q${hx1 + nose * 0.5} ${hz1 - i} ${hx1} ${hz1 - i} L${hx0 + rr} ${hz1 - i}` }, gShip);
+        svg('path', { class: 'mn-hullin', d: `M${r2(hx0 + rr)} ${r2(hz0 + i)} L${r2(hx1)} ${r2(hz0 + i)} Q${r2(hx1 + nose * 0.5)} ${r2(hz0 + i)} ${r2(hx1 + nose - i * 2)} ${r2(cz)} Q${r2(hx1 + nose * 0.5)} ${r2(hz1 - i)} ${r2(hx1)} ${r2(hz1 - i)} L${r2(hx0 + rr)} ${r2(hz1 - i)}` }, gShip);
       }
     }
-    // rejilla tenue
-    const step = u * 5;
-    for (let x = Math.ceil(vx0 / step) * step; x < vx1; x += step) svg('line', { class: 'mn-gridline', x1: r2(x), x2: r2(x), y1: vz0, y2: vz1 }, gGrid);
-    for (let z = Math.ceil(vz0 / step) * step; z < vz1; z += step) svg('line', { class: 'mn-gridline', y1: r2(z), y2: r2(z), x1: vx0, x2: vx1 }, gGrid);
+    // ventanales (mismos rectángulos que la nave 3D), dibujados como una franja luminosa centrada en el muro
+    for (const w of L.windows) {
+      const t = u * 0.8, alongZ = w.d > w.w;
+      svg('rect', alongZ ? { class: 'mn-win', x: r2(w.x + w.w / 2 - t / 2), y: r2(w.z), width: r2(t), height: r2(w.d), rx: r2(t / 2) }
+        : { class: 'mn-win', x: r2(w.x), y: r2(w.z + w.d / 2 - t / 2), width: r2(w.w), height: r2(t), rx: r2(t / 2) }, gWin);
+    }
 
-    // estancias (pasillos primero, debajo)
-    roomEls = new Map();
+    // estancias: pasillos primero, para que queden debajo
+    roomEls = new Map(); badgeEls = new Map();
     const sorted = [...rooms].sort((a, c) => (a.kind === 'corridor' ? 0 : 1) - (c.kind === 'corridor' ? 0 : 1));
     for (const r of sorted) {
       const corridor = r.kind === 'corridor', canTp = !corridor || opt.teleportCorridors;
       const g = svg('g', { class: 'mn-room' + (corridor ? ' mn-room--corridor' : ''), style: `--c:${r.color}`, 'data-room': r.id }, gRooms);
       const pad = u * 0.5;
       svg('rect', { x: r2(r.x + pad), y: r2(r.z + pad), width: r2(r.w - pad * 2), height: r2(r.d - pad * 2), rx: r2(u * 1.3) }, g);
-      const fs = Math.min(u * 3.1, r.w * 0.13, r.d * 0.22), fsSub = fs * 0.62;
+      const fs = Math.min(u * 3.1, r.w * 0.13, r.d * 0.22), fsSub = fs * 0.62, tx = r.x + u * 2.2, maxL = r.w - u * 4.4;
+      const text = (cls, x, y, size, str, max, center) => {
+        const t = svg('text', { class: cls, x: r2(x), y: r2(y), 'font-size': r2(size) }, g);
+        if (center) { t.setAttribute('text-anchor', 'middle'); t.setAttribute('dominant-baseline', 'central'); }
+        t.dataset.fs = r2(size); t.dataset.max = r2(max); t.textContent = str; return t;
+      };
       if (corridor) {
-        const t = svg('text', { class: 'mn-name', x: r2(r.cx), y: r2(r.cz), 'font-size': r2(Math.min(L.unit * 1.9, r.d * 0.36)), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g);
-        t.textContent = r.name;
+        text('mn-name', r.cx, r.cz, Math.min(u * 1.9, r.d * 0.36), r.name, r.w - u * 6, true);
       } else {
         const ty = r.cz - (fs + fsSub) * 0.25;
-        const tl = svg('text', { class: 'mn-name mn-name-long', x: r2(r.x + u * 2.2), y: r2(ty), 'font-size': r2(fs) }, g); tl.textContent = r.name;
-        const ts = svg('text', { class: 'mn-name mn-name-short', x: r2(r.cx), y: r2(r.cz), 'font-size': r2(Math.min(u * 4.4, r.w * 0.2)), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, g); ts.textContent = r.short;
-        if (r.sub) { const s = svg('text', { class: 'mn-sub', x: r2(r.x + u * 2.2), y: r2(ty + fs * 1.25), 'font-size': r2(fsSub) }, g); s.textContent = r.sub; }
-        const h = svg('text', { class: 'mn-here', x: r2(r.x + u * 2.2), y: r2(ty + fs * 1.25), 'font-size': r2(fsSub) }, g); h.textContent = 'Estás aquí';
+        text('mn-name mn-name-long', tx, ty, fs, r.name, maxL);
+        text('mn-name mn-name-short', r.cx, r.cz, Math.min(u * 4.4, r.w * 0.2), r.short, r.w - u * 2.4, true);
+        if (r.sub) text('mn-sub', tx, ty + fs * 1.25, fsSub, r.sub, maxL);
+        text('mn-here', tx, ty + fs * 1.25, fsSub, 'Estás aquí', maxL);
       }
       if (canTp) {
-        g.setAttribute('role', 'button'); g.setAttribute('tabindex', '-1');
-        g.setAttribute('aria-label', `Teletransportarse a ${r.name}`);
-        g.addEventListener('click', e => { if (expanded) { e.stopPropagation(); teleport(r.id); } });
-        g.addEventListener('keydown', e => { if (expanded && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); teleport(r.id); } });
+        g.dataset.tp = '1';
+        g.addEventListener('click', e => { if (expanded) { e.stopPropagation(); teleport(r.id, 'click'); } });
+        g.addEventListener('keydown', e => { if (expanded && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); teleport(r.id, 'key'); } });
       }
       roomEls.set(r.id, g);
+      // etiqueta de visitantes (multijugador), arriba a la derecha de la sala
+      const bh = u * 2.6, bw = u * 9.5, bx = r.x + r.w - pad - u * 0.8 - bw, by = r.z + pad + u * 0.8;
+      const bg = svg('g', { class: 'mn-badge' }, gBadges);
+      svg('rect', { x: r2(bx), y: r2(by), width: r2(bw), height: r2(bh), rx: r2(bh / 2) }, bg);
+      const bt = svg('text', { x: r2(bx + bw / 2), y: r2(by + bh / 2), 'font-size': r2(bh * 0.52), 'text-anchor': 'middle', 'dominant-baseline': 'central' }, bg);
+      bt.dataset.fs = r2(bh * 0.52); bt.dataset.max = r2(bw - u * 1.4);
+      badgeEls.set(r.id, { g: bg, t: bt });
     }
     for (const d of doors) {
       const t = u * 0.9, alongZ = d.d > d.w;
-      svg('rect', alongZ ? { class: 'mn-door', x: r2(d.cx - t / 2), y: r2(d.z + u * 0.4), width: r2(t), height: r2(d.d - u * 0.8), rx: r2(t / 2) }
-        : { class: 'mn-door', x: r2(d.x + u * 0.4), y: r2(d.cz - t / 2), width: r2(d.w - u * 0.8), height: r2(t), rx: r2(t / 2) }, gDoors);
+      svg('rect', alongZ ? { class: 'mn-door', x: r2(d.cx - t / 2), y: r2(d.z + u * 0.4), width: r2(t), height: r2(Math.max(t, d.d - u * 0.8)), rx: r2(t / 2) }
+        : { class: 'mn-door', x: r2(d.x + u * 0.4), y: r2(d.cz - t / 2), width: r2(Math.max(t, d.w - u * 0.8)), height: r2(t), rx: r2(t / 2) }, gDoors);
     }
-    sizePlayer();
-    if (current) roomEls.get(current.id)?.classList.add('mn-room--here');
-    requestAnimationFrame(fit);
+    applyA11y(); sizeMarkers(); applyCounts();
+    if (current) markHere(current, true);
+    scheduleFit();
   }
 
-  // encoge los nombres que no caben en su estancia
+  // encoge el cuerpo de letra de los nombres que no caben en su estancia (necesita que el SVG esté pintado)
   function fit() {
-    if (disposed) return;
+    fitRaf = 0;
+    if (disposed || !root.isConnected || !root.getClientRects().length) return;
+    for (const t of sv.querySelectorAll('text[data-max]')) {
+      t.setAttribute('font-size', t.dataset.fs);
+      let len = 0; try { len = t.getComputedTextLength(); } catch { /* no pintado */ }
+      const max = +t.dataset.max;
+      if (len > max && max > 0) t.setAttribute('font-size', r2(t.dataset.fs * max / len * 0.98));
+    }
+  }
+  function scheduleFit() { if (!fitRaf && !disposed) fitRaf = requestAnimationFrame(fit); }
+
+  function sizeMarkers() {
+    const u = L.unit * (expanded ? 1 : 1.7), R = u * 1.25, C = u * 9, a = Math.PI / 5.5;
+    dot.setAttribute('d', `M0 ${r2(-R * 1.6)} L${r2(R * 1.15)} ${r2(R)} L0 ${r2(R * 0.45)} L${r2(-R * 1.15)} ${r2(R)}Z`);
+    halo.setAttribute('r', r2(R * 1.1));
+    cone.setAttribute('d', `M0 0 L${r2(-Math.sin(a) * C)} ${r2(-Math.cos(a) * C)} A${r2(C)} ${r2(C)} 0 0 1 ${r2(Math.sin(a) * C)} ${r2(-Math.cos(a) * C)}Z`);
+    grad.setAttribute('r', r2(C));
+    for (const c of trailDots) c.setAttribute('r', r2(L.unit * (expanded ? 0.45 : 0.7)));
+    for (const o of others.values()) sizeOther(o);
+  }
+
+  /* ---------- accesibilidad ---------- */
+  function applyA11y() {
+    const names = L.rooms.filter(r => r.kind !== 'corridor').map(r => r.name).join(', ');
+    if (expanded) {
+      frame.removeAttribute('role'); frame.removeAttribute('tabindex'); frame.removeAttribute('aria-label');
+      sv.removeAttribute('aria-hidden'); sv.setAttribute('role', 'group'); sv.setAttribute('aria-labelledby', title.id);
+    } else {
+      frame.setAttribute('role', 'button'); frame.setAttribute('tabindex', '0');
+      frame.setAttribute('aria-label', `Abrir el plano de la nave. ${current ? 'Estás en ' + current.name + '.' : ''}`.trim());
+      sv.setAttribute('aria-hidden', 'true'); sv.removeAttribute('role'); sv.removeAttribute('aria-labelledby');
+    }
     for (const [id, g] of roomEls) {
       const r = L.rooms.find(q => q.id === id);
-      for (const t of g.querySelectorAll('text')) {
-        if (!t.dataset.fs) t.dataset.fs = t.getAttribute('font-size');
-        t.setAttribute('font-size', t.dataset.fs);
-        let len = 0; try { len = t.getComputedTextLength(); } catch { }
-        const max = r.w - L.unit * (t.getAttribute('text-anchor') === 'middle' ? 2.4 : 4.4);
-        if (len > max && max > 0) t.setAttribute('font-size', r2(t.dataset.fs * max / len));
-      }
+      if (expanded && g.dataset.tp) {
+        g.setAttribute('role', 'button'); g.setAttribute('tabindex', '0');
+        g.setAttribute('aria-label', `${r.name}${r.sub ? ', ' + r.sub : ''}${counts[id] ? `, ${counts[id]} ${counts[id] === 1 ? 'visitante' : 'visitantes'}` : ''}. Teletransportarse.`);
+      } else { g.removeAttribute('role'); g.removeAttribute('tabindex'); g.removeAttribute('aria-label'); }
+      if (current && current.id === id) g.setAttribute('aria-current', 'location'); else g.removeAttribute('aria-current');
     }
+    sv.setAttribute('aria-description', `${L.deck}: ${L.name}. ${names}.`);
   }
 
-  function sizePlayer() {
-    const u = L.unit * (expanded ? 1 : 1.7), R = u * 1.25, C = u * 9;
-    dot.setAttribute('d', `M0 ${-R * 1.6} L${R * 1.15} ${R} L0 ${R * 0.45} L${-R * 1.15} ${R}Z`);
-    halo.setAttribute('r', r2(R * 1.1));
-    const a = Math.PI / 5.5;
-    cone.setAttribute('d', `M0 0 L${r2(-Math.sin(a) * C)} ${r2(-Math.cos(a) * C)} A${C} ${C} 0 0 1 ${r2(Math.sin(a) * C)} ${r2(-Math.cos(a) * C)}Z`);
-    grad.setAttribute('r', r2(C));
-    for (const c of gTrail.children) c.setAttribute('r', r2(L.unit * (expanded ? 0.45 : 0.7)));
-  }
-
+  /* ---------- jugador ---------- */
   function roomAt(x, z) {
+    if (!num(x) || !num(z)) return null;
     let hit = null;
     for (const r of L.rooms) if (inRect(r, x, z) && (!hit || hit.kind === 'corridor')) hit = r;
     return hit;
   }
+  function markHere(r, on) { const g = r && roomEls.get(r.id); if (g) { g.classList.toggle('mn-room--here', on); if (on) g.setAttribute('aria-current', 'location'); else g.removeAttribute('aria-current'); } }
 
-  function setPlayer(x, z, yaw = player?.yaw ?? 0) {
-    if (disposed || !Number.isFinite(x) || !Number.isFinite(z)) return;
+  function setPlayer(x, z, yaw) {
+    if (disposed || !num(x) || !num(z)) return;
+    if (!num(yaw)) yaw = player ? player.yaw : 0;
+    if (player && player.x === x && player.z === z && player.yaw === yaw) return; // nada que hacer este frame
     const jump = player && Math.hypot(x - player.x, z - player.z) > L.unit * 12;
+    const first = !player;
     player = { x, z, yaw };
-    gPlayer.setAttribute('transform', `translate(${r2(x)} ${r2(z)}) rotate(${r2(-yaw * 180 / Math.PI)})`);
+    gPlayer.setAttribute('transform', `translate(${r2(x)} ${r2(z)}) rotate(${r2(-normYaw(yaw) * 180 / Math.PI)})`);
+    if (first) gPlayer.removeAttribute('visibility');
     if (opt.trail) {
       if (jump) trail = [];
       const last = trail[trail.length - 1];
       if (!last || Math.hypot(x - last.x, z - last.z) > L.unit * 1.6) {
-        trail.push({ x, z }); if (trail.length > 26) trail.shift();
-        gTrail.replaceChildren(...trail.slice(0, -1).map((p, i, a) => svg('circle', { cx: r2(p.x), cy: r2(p.z), r: r2(L.unit * (expanded ? 0.45 : 0.7)), 'fill-opacity': r2(0.05 + 0.4 * (i / a.length)) })));
-      }
+        trail.push({ x, z }); if (trail.length > TRAIL_N + 1) trail.shift();
+        drawTrail();
+      } else if (jump) drawTrail();
     }
-    const r = roomAt(x, z);
-    if (r !== current && (r || !current || !inRect(current, x, z, L.unit))) {
+    // en una puerta o rozando el borde se mantiene la estancia anterior: sin parpadeos de "en tránsito"
+    let r = roomAt(x, z);
+    if (!r && current && (inRect(current, x, z, L.unit) || L.doors.some(d => inRect(d, x, z, L.unit * 0.3)))) r = current;
+    if (r !== current) {
       const prev = current;
-      if (prev) roomEls.get(prev.id)?.classList.remove('mn-room--here');
-      current = r;
-      if (r) roomEls.get(r.id)?.classList.add('mn-room--here');
+      markHere(prev, false); current = r; markHere(r, true);
       barRoom.textContent = r ? r.name : 'En tránsito';
-      emit('room', { room: r, prev });
+      if (!expanded) frame.setAttribute('aria-label', `Abrir el plano de la nave. ${r ? 'Estás en ' + r.name + '.' : ''}`.trim());
+      emit('room', { room: r ? { ...r } : null, prev: prev ? { ...prev } : null });
+    }
+  }
+  function drawTrail() {
+    const pts = trail.slice(0, -1), n = pts.length;
+    trailDots.forEach((c, i) => {
+      const p = pts[i];
+      if (!p) { c.setAttribute('visibility', 'hidden'); return; }
+      c.setAttribute('cx', r2(p.x)); c.setAttribute('cy', r2(p.z));
+      c.setAttribute('fill-opacity', r2(0.05 + 0.4 * (i / Math.max(1, n))));
+      c.removeAttribute('visibility');
+    });
+  }
+
+  /* ---------- otros visitantes (multijugador) ---------- */
+  function sizeOther(o) {
+    const u = L.unit * (expanded ? 1 : 1.5);
+    o.c.setAttribute('r', r2(u * 0.95));
+    o.l.setAttribute('y2', r2(-u * 2.1));
+    o.t.setAttribute('font-size', r2(L.unit * 1.7)); o.t.setAttribute('y', r2(-L.unit * 1.2));
+  }
+  function setOthers(list, { yawOffset = 0 } = {}) {
+    if (disposed) return;
+    const alive = new Set();
+    for (const p of Array.isArray(list) ? list : []) {
+      if (!p || p.id == null || !num(+p.x) || !num(+p.z)) continue;
+      const id = String(p.id); alive.add(id);
+      let o = others.get(id);
+      const color = p.color ? hex(p.color) : colorFromId(id);
+      if (!o) {
+        const g = svg('g', { class: 'mn-other' }, gOthers);
+        const ring = svg('g', null, g);
+        const l = svg('line', { x1: 0, y1: 0, x2: 0 }, ring);
+        const c = svg('circle', { cx: 0, cy: 0 }, ring);
+        const t = svg('text', { class: 'mn-oname', x: r2(L.unit * 1.6) }, g);
+        const tt = svg('title', null, g);
+        o = { g, ring, c, l, t, tt, color: null, name: '', x: 0, z: 0 };
+        others.set(id, o); sizeOther(o);
+      }
+      if (o.color !== color) { o.color = color; o.c.style.fill = color; o.l.style.stroke = color; o.t.style.fill = color; }
+      const name = String(p.name || 'Visitante');
+      if (o.name !== name) { o.name = name; o.t.textContent = name; o.tt.textContent = name; }
+      o.x = +p.x; o.z = +p.z;
+      o.g.setAttribute('transform', `translate(${r2(o.x)} ${r2(o.z)})`);
+      const yw = num(+p.yaw) ? +p.yaw + yawOffset : null;
+      if (yw == null) o.l.setAttribute('visibility', 'hidden');
+      else { o.l.removeAttribute('visibility'); o.ring.setAttribute('transform', `rotate(${r2(-normYaw(yw) * 180 / Math.PI)})`); }
+    }
+    for (const [id, o] of others) if (!alive.has(id)) { o.g.remove(); others.delete(id); }
+    placeLabels();
+    lgOthersN.textContent = others.size;
+    lgOthers.hidden = others.size === 0;
+    lgOthers.lastChild.textContent = ' ' + (others.size === 1 ? 'visitante' : 'visitantes');
+  }
+  // nombres de los visitantes sin solaparse: a la derecha, si no cabe a la izquierda, y si tampoco, solo el punto
+  function placeLabels() {
+    if (!expanded) return;
+    const u = L.unit, fs = u * 1.7, placed = [];
+    if (player) placed.push({ x0: player.x - u * 1.6, x1: player.x + u * 1.6, z0: player.z - u * 2, z1: player.z + u * 1.4 });
+    const over = a => placed.some(b => a.x0 < b.x1 && b.x0 < a.x1 && a.z0 < b.z1 && b.z0 < a.z1);
+    const list = [...others.values()].sort((a, b) => (a.name < b.name ? -1 : 1));
+    for (const o of list) {
+      if (list.length > 40) { o.t.setAttribute('visibility', 'hidden'); continue; }
+      const w = o.name.length * fs * 0.62, z0 = o.z - u * 1.2 - fs * 0.8, z1 = o.z - u * 1.2 + fs * 0.2;
+      const right = { x0: o.x + u * 1.6, x1: o.x + u * 1.6 + w, z0, z1 }, left = { x0: o.x - u * 1.6 - w, x1: o.x - u * 1.6, z0, z1 };
+      const spot = !over(right) ? right : !over(left) ? left : null;
+      if (!spot) { o.t.setAttribute('visibility', 'hidden'); continue; }
+      placed.push(spot);
+      o.t.removeAttribute('visibility');
+      o.t.setAttribute('x', r2(spot === right ? u * 1.6 : -u * 1.6));
+      o.t.setAttribute('text-anchor', spot === right ? 'start' : 'end');
+    }
+  }
+  function setRoomCounts(c) {
+    counts = {};
+    if (c && typeof c === 'object') for (const k in c) { const n = Math.max(0, Math.floor(+c[k] || 0)); if (n) counts[k] = n; }
+    applyCounts(); if (expanded) { applyA11y(); scheduleFit(); }
+  }
+  function applyCounts() {
+    for (const [id, b] of badgeEls) {
+      const n = counts[id] || 0;
+      b.g.classList.toggle('mn-badge--on', n > 0);
+      b.t.textContent = n ? `${n} ${n === 1 ? 'visitante' : 'visitantes'}` : '';
     }
   }
 
-  function pulse(x, z) {
-    const c = svg('circle', { class: 'mn-pulse', cx: r2(x), cy: r2(z), r: r2(L.unit * 2.2) }, gFx);
-    setTimeout(() => c.remove(), 950);
+  /* ---------- teletransporte ---------- */
+  function fx(from, to) {
+    const u = L.unit;
+    const c = svg('circle', { class: 'mn-pulse', cx: r2(to.x), cy: r2(to.z), r: r2(u * 2.2) }, gFx);
+    later(() => c.remove(), 950);
+    if (from && Math.hypot(to.x - from.x, to.z - from.z) > u * 3) {
+      const mx = (from.x + to.x) / 2, mz = (from.z + to.z) / 2, dx = to.x - from.x, dz = to.z - from.z, k = 0.22;
+      const d = `M${r2(from.x)} ${r2(from.z)} Q${r2(mx - dz * k)} ${r2(mz + dx * k)} ${r2(to.x)} ${r2(to.z)}`;
+      const p = svg('path', { class: 'mn-beam', d }, gFx);
+      let len = 0; try { len = p.getTotalLength(); } catch { len = Math.hypot(dx, dz) * 1.1; }
+      p.style.setProperty('--len', r2(len)); p.style.strokeDasharray = r2(len);
+      later(() => p.remove(), 950);
+    }
   }
-
-  function teleport(id) {
+  function teleport(id, via = 'api') {
+    if (disposed) return false;
     const r = L.rooms.find(q => q.id === id);
     if (!r) return false;
-    const ev = { roomId: r.id, room: r, x: r.spawn.x, z: r.spawn.z, yaw: r.spawn.yaw };
-    pulse(ev.x, ev.z);
+    const from = player ? { ...player } : null;
+    const ev = { roomId: r.id, room: { ...r, spawn: { ...r.spawn } }, x: r.spawn.x, z: r.spawn.z, yaw: r.spawn.yaw, from, via };
+    fx(from, ev);
     if (opt.autoMove) setPlayer(ev.x, ev.z, ev.yaw);
     emit('teleport', ev);
-    if (opt.closeOnTeleport && expanded) setTimeout(() => collapse(), 260);
+    if (opt.closeOnTeleport && expanded) { clearTimeout(closeTimer); closeTimer = later(() => collapse('teleport'), Math.max(0, +opt.closeDelay || 0)); }
     return true;
   }
 
-  function setRoomFocusable(v) { for (const g of roomEls.values()) if (g.hasAttribute('role')) g.setAttribute('tabindex', v ? '0' : '-1'); }
+  /* ---------- plano ampliado ---------- */
+  function focusables() { return [...roomEls.values()].filter(g => g.getAttribute('tabindex') === '0').concat(closeBtn); }
+  function moveFocus(dx, dz) {
+    const el = document.activeElement?.closest?.('.mn-room');
+    const from = (el && L.rooms.find(r => r.id === el.dataset.room)) || current || L.rooms[0];
+    let best = null, bs = Infinity;
+    for (const r of L.rooms) {
+      const g = roomEls.get(r.id);
+      if (r === from || !g || g.getAttribute('tabindex') !== '0') continue;
+      const vx = r.cx - from.cx, vz = r.cz - from.cz, along = vx * dx + vz * dz;
+      if (along <= 0.01) continue;
+      const s = along + Math.abs(vx * dz - vz * dx) * 2;
+      if (s < bs) { bs = s; best = g; }
+    }
+    best?.focus({ preventScroll: true });
+  }
+  function onOverlayKey(e) {
+    if (e.isComposing) return;
+    const dirs = { ArrowUp: [0, -1], ArrowDown: [0, 1], ArrowLeft: [-1, 0], ArrowRight: [1, 0] };
+    if (e.key === 'Escape') { e.preventDefault(); e.stopPropagation(); collapse('escape'); return; }
+    if (e.code === opt.toggleKey && opt.keyboard && !e.ctrlKey && !e.metaKey && !e.altKey) { e.preventDefault(); e.stopPropagation(); if (!e.repeat) collapse('key'); return; }
+    if (dirs[e.key]) { e.preventDefault(); e.stopPropagation(); moveFocus(...dirs[e.key]); return; }
+    if (e.key === 'Tab') {
+      const f = focusables(); if (!f.length) return;
+      const i = f.indexOf(document.activeElement);
+      e.preventDefault(); e.stopPropagation();
+      f[(i + (e.shiftKey ? -1 : 1) + f.length) % f.length].focus({ preventScroll: true });
+      return;
+    }
+    e.stopPropagation(); // el resto de teclas no llega al juego mientras el plano está abierto
+  }
 
-  function expand() {
+  function expand(via = 'api') {
     if (expanded || disposed) return;
     expanded = true; lastFocus = document.activeElement;
-    if (opt.releasePointer && document.pointerLockElement) try { document.exitPointerLock(); } catch { }
     overlay = html('div', 'mn-overlay');
-    overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-label', `${L.deck}: ${L.name}`);
-    overlay.addEventListener('click', e => { if (e.target === overlay) collapse(); });
+    overlay.setAttribute('role', 'dialog'); overlay.setAttribute('aria-modal', 'true'); overlay.setAttribute('aria-labelledby', title.id);
+    overlay.addEventListener('click', e => { if (e.target === overlay) collapse('backdrop'); });
+    overlay.addEventListener('keydown', onOverlayKey);
     root.classList.replace('mn--compact', 'mn--expanded');
-    frame.removeAttribute('tabindex'); frame.removeAttribute('role');
     overlay.appendChild(root); document.body.appendChild(overlay);
-    setRoomFocusable(true); sizePlayer(); fit(); requestAnimationFrame(fit);
-    (current && roomEls.get(current.id)?.hasAttribute('role') ? roomEls.get(current.id) : closeBtn).focus({ preventScroll: true });
-    emit('toggle', true);
+    applyA11y(); sizeMarkers(); placeLabels(); fit();
+    const tgt = current && roomEls.get(current.id)?.getAttribute('tabindex') === '0' ? roomEls.get(current.id) : closeBtn;
+    tgt.focus({ preventScroll: true });
+    emit('toggle', true, { via });
+    // después de avisar: así el host ya está en modo modal cuando llega el pointerlockchange
+    if (opt.releasePointer && document.pointerLockElement) try { document.exitPointerLock(); } catch { /* sin pointer lock */ }
   }
-  function collapse() {
+  function collapse(via = 'api') {
     if (!expanded) return;
-    expanded = false;
+    expanded = false; clearTimeout(closeTimer); closeTimer = null;
     root.classList.replace('mn--expanded', 'mn--compact');
-    setRoomFocusable(false); setCompactA11y();
-    container.appendChild(root); overlay?.remove(); overlay = null;
-    sizePlayer(); requestAnimationFrame(fit);
-    if (lastFocus && lastFocus.focus && document.contains(lastFocus)) lastFocus.focus({ preventScroll: true });
-    emit('toggle', false);
+    if (container.isConnected && !disposed) container.appendChild(root); else root.remove();
+    overlay?.remove(); overlay = null;
+    applyA11y(); sizeMarkers(); scheduleFit();
+    if (via !== 'dispose' && lastFocus && typeof lastFocus.focus === 'function' && lastFocus.isConnected && lastFocus !== document.body) {
+      try { lastFocus.focus({ preventScroll: true }); } catch { /* nada */ }
+    }
+    lastFocus = null;
+    emit('toggle', false, { via });
   }
-  const toggle = () => (expanded ? collapse() : expand());
+  const toggle = (via = 'api') => (expanded ? collapse(via) : expand(via));
 
-  function setCompactA11y() { frame.setAttribute('tabindex', '0'); frame.setAttribute('role', 'button'); frame.setAttribute('aria-label', 'Abrir el plano de la nave'); }
-
-  const onFrameClick = () => { if (!expanded) expand(); };
-  const onFrameKey = e => { if (!expanded && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); expand(); } };
+  // ¿se ve el minimapa y está encima? (oculto con display:none, tapado por el universo o un panel → la M no hace nada)
+  function isShown() {
+    if (!root.isConnected) return false;
+    const rects = root.getClientRects();
+    if (!rects.length) return false;
+    const r = frame.getBoundingClientRect(), cx = r.left + r.width / 2, cy = r.top + r.height / 2;
+    if (r.width < 2 || r.height < 2 || getComputedStyle(root).visibility === 'hidden') return false;
+    if (cx < 0 || cy < 0 || cx > innerWidth || cy > innerHeight) return true;
+    const hit = document.elementFromPoint(cx, cy);
+    return !hit || root.contains(hit);
+  }
+  const typing = t => t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName));
   const onKey = e => {
-    if (e.key === 'Escape' && expanded) { e.preventDefault(); collapse(); return; }
-    if (!opt.keyboard || e.code !== opt.toggleKey || e.repeat || e.ctrlKey || e.metaKey || e.altKey) return;
-    const t = e.target; if (t && (t.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(t.tagName))) return;
-    e.preventDefault(); toggle();
+    if (disposed || e.defaultPrevented || e.isComposing) return;
+    if (expanded) { if (e.key === 'Escape') { e.preventDefault(); collapse('escape'); } else if (e.code === opt.toggleKey && opt.keyboard && !e.repeat && !e.ctrlKey && !e.metaKey && !e.altKey && !typing(e.target)) { e.preventDefault(); collapse('key'); } return; }
+    if (!opt.keyboard || e.code !== opt.toggleKey || e.repeat || e.ctrlKey || e.metaKey || e.altKey || typing(e.target)) return;
+    if (!isShown()) return;
+    if (typeof opt.canToggle === 'function') { let ok = true; try { ok = opt.canToggle(e) !== false; } catch { ok = false; } if (!ok) return; }
+    e.preventDefault(); expand('key');
   };
+  const onFrameClick = () => { if (!expanded) expand('click'); };
+  const onFrameKey = e => { if (!expanded && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); e.stopPropagation(); expand('key'); } };
   frame.addEventListener('click', onFrameClick);
   frame.addEventListener('keydown', onFrameKey);
-  closeBtn.addEventListener('click', e => { e.stopPropagation(); collapse(); });
+  closeBtn.addEventListener('click', e => { e.stopPropagation(); collapse('close'); });
   window.addEventListener('keydown', onKey);
+  const ro = typeof ResizeObserver === 'function' ? new ResizeObserver(scheduleFit) : null;
+  ro?.observe(root);
+  const fontsDone = () => scheduleFit();
+  document.fonts?.ready?.then(fontsDone).catch(() => {});
+  document.fonts?.addEventListener?.('loadingdone', fontsDone);
 
-  setCompactA11y();
-    barRoom.textContent = '—';
   container.appendChild(root);
   build();
-  if (opt.mode === 'expanded') expand();
+  if (opt.mode === 'expanded') expand('api');
 
   return {
+    version: VERSION,
     setPlayer,
+    setOthers,
+    setRoomCounts,
     onTeleport: on('teleport'),
     onRoomChange: on('room'),
     onToggle: on('toggle'),
-    teleportTo: teleport,
-    expand, collapse, toggle,
+    teleportTo: id => teleport(id, 'api'),
+    expand: () => expand('api'), collapse: () => collapse('api'), toggle: () => toggle('api'),
     isExpanded: () => expanded,
-    roomAt,
-    getRoom: id => L.rooms.find(r => r.id === id) || null,
+    roomAt: (x, z) => { const r = roomAt(x, z); return r ? { ...r } : null; },
+    currentRoom: () => (current ? { ...current } : null),
+    getRoom: id => { const r = L.rooms.find(q => q.id === id); return r ? { ...r, spawn: { ...r.spawn } } : null; },
     getLayout: () => L,
-    setLayout(next) { L = normalize(next); current = null; trail = []; gTrail.replaceChildren(); build(); if (player) setPlayer(player.x, player.z, player.yaw); },
+    setLayout(next) {
+      if (disposed) return;
+      L = normalize(next);
+      if (current) { current = null; barRoom.textContent = '—'; }
+      trail = []; drawTrail();
+      build();
+      if (player) { const p = player; player = null; setPlayer(p.x, p.z, p.yaw); }
+    },
     dispose() {
-      if (disposed) return; disposed = true;
+      if (disposed) return;
+      if (expanded) collapse('dispose');
+      disposed = true;
       window.removeEventListener('keydown', onKey);
-      overlay?.remove(); root.remove();
+      document.fonts?.removeEventListener?.('loadingdone', fontsDone);
+      ro?.disconnect();
+      if (fitRaf) cancelAnimationFrame(fitRaf);
+      for (const t of timers) clearTimeout(t); timers.clear();
+      overlay?.remove(); root.remove(); others.clear();
       for (const k in cbs) cbs[k].clear();
-      if (!--styleRefs) document.getElementById(STYLE_ID)?.remove();
+      if (--styleRefs <= 0) { styleRefs = 0; document.getElementById(STYLE_ID)?.remove(); }
     },
   };
 }
 
 
 
-/* ---------- Demo: piloto automático + mandos manuales ---------- */
-const LAYOUT = {"units": "metros", "tile": 1.5, "ship": {"x": 0, "z": 0, "width": 57.0, "depth": 24.0}, "yaw": "yaw=0 mira a -Z; yaw=-PI/2 mira a +X (proa). Forward=(-sin yaw,0,-cos yaw). Proa hacia +X.", "rooms": [{"id": "pasillo", "name": "Pasillo central", "x": 10.5, "z": 10.5, "width": 33.0, "depth": 3.0, "spawn": {"x": 21, "z": 12, "yaw": -1.5708}}, {"id": "maquinas", "name": "Sala de máquinas", "x": 1.5, "z": 1.5, "width": 9.0, "depth": 21.0, "spawn": {"x": 9.3, "z": 12, "yaw": 1.5708}}, {"id": "recreativa", "name": "Sala recreativa", "x": 12.0, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 16.5, "z": 8.0, "yaw": 0.0}}, {"id": "proyeccion", "name": "Sala de proyección", "x": 22.5, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 27.0, "z": 8.0, "yaw": 0.0}}, {"id": "bitacora", "name": "Bitácora", "x": 33.0, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 37.5, "z": 8.0, "yaw": 0.0}}, {"id": "juegos", "name": "Sala de juegos", "x": 12.0, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 16.5, "z": 16.0, "yaw": 3.14159}}, {"id": "biblioteca", "name": "Biblioteca", "x": 22.5, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 27.0, "z": 16.0, "yaw": 3.14159}}, {"id": "ordenador", "name": "Ordenador de a bordo", "x": 33.0, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 37.5, "z": 16.0, "yaw": 3.14159}}, {"id": "puente", "name": "Puente de mando", "x": 43.5, "z": 1.5, "width": 12.0, "depth": 21.0, "spawn": {"x": 44.4, "z": 12, "yaw": -1.5708}}], "doors": [{"between": ["maquinas", "pasillo"], "x": 10.5, "z": 10.5, "width": 1.5, "depth": 3.0}, {"between": ["pasillo", "puente"], "x": 42.0, "z": 10.5, "width": 1.5, "depth": 3.0}, {"between": ["recreativa", "pasillo"], "x": 15.0, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["proyeccion", "pasillo"], "x": 25.5, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["bitacora", "pasillo"], "x": 36.0, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "juegos"], "x": 15.0, "z": 13.5, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "biblioteca"], "x": 25.5, "z": 13.5, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "ordenador"], "x": 36.0, "z": 13.5, "width": 3.0, "depth": 1.5}], "windows": "proa x=55.5..57 z=1.5..22.5; laterales del puente z=0..1.5 y z=22.5..24 x=45..54; recreativa z=0..1.5 x=13.5..19.5; biblioteca z=22.5..24 x=24..30"};
+/* ---------- Demo: piloto automático, mandos manuales y visitantes simulados ---------- */
+const LAYOUT = {"units": "metros", "tile": 1.5, "ship": {"x": 0, "z": 0, "width": 57.0, "depth": 24.0}, "yaw": "yaw=0 mira a -Z; yaw=-PI/2 mira a +X (proa). Forward=(-sin yaw,0,-cos yaw). Proa hacia +X.", "rooms": [{"id": "pasillo", "name": "Pasillo central", "x": 10.5, "z": 10.5, "width": 33.0, "depth": 3.0, "spawn": {"x": 21, "z": 12, "yaw": -1.5708}}, {"id": "maquinas", "name": "Sala de máquinas", "x": 1.5, "z": 1.5, "width": 9.0, "depth": 21.0, "spawn": {"x": 9.3, "z": 12, "yaw": 1.5708}}, {"id": "recreativa", "name": "Sala recreativa", "x": 12.0, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 16.5, "z": 8.6, "yaw": 0.0}}, {"id": "proyeccion", "name": "Sala de proyección", "x": 22.5, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 27.0, "z": 8.0, "yaw": 0.0}}, {"id": "bitacora", "name": "Bitácora", "x": 33.0, "z": 1.5, "width": 9.0, "depth": 7.5, "spawn": {"x": 37.5, "z": 8.0, "yaw": 0.0}}, {"id": "juegos", "name": "Sala de juegos", "x": 12.0, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 16.5, "z": 16.0, "yaw": 3.14159}}, {"id": "biblioteca", "name": "Biblioteca", "x": 22.5, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 27.0, "z": 16.0, "yaw": 3.14159}}, {"id": "ordenador", "name": "Ordenador de a bordo", "x": 33.0, "z": 15.0, "width": 9.0, "depth": 7.5, "spawn": {"x": 37.5, "z": 16.0, "yaw": 3.14159}}, {"id": "puente", "name": "Puente de mando", "x": 43.5, "z": 1.5, "width": 12.0, "depth": 21.0, "spawn": {"x": 44.4, "z": 12, "yaw": -1.5708}}], "doors": [{"between": ["maquinas", "pasillo"], "x": 10.5, "z": 10.5, "width": 1.5, "depth": 3.0}, {"between": ["pasillo", "puente"], "x": 42.0, "z": 10.5, "width": 1.5, "depth": 3.0}, {"between": ["recreativa", "pasillo"], "x": 15.0, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["proyeccion", "pasillo"], "x": 25.5, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["bitacora", "pasillo"], "x": 36.0, "z": 9.0, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "juegos"], "x": 15.0, "z": 13.5, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "biblioteca"], "x": 25.5, "z": 13.5, "width": 3.0, "depth": 1.5}, {"between": ["pasillo", "ordenador"], "x": 36.0, "z": 13.5, "width": 3.0, "depth": 1.5}], "windows": "proa x=55.5..57 z=1.5..22.5; laterales del puente z=0..1.5 y z=22.5..24 x=45..54; recreativa z=0..1.5 x=13.5..19.5; biblioteca z=22.5..24 x=24..30"};
 const EXTRA = {
-  pasillo:    { sub: 'Cubierta principal' },
-  maquinas:   { sub: 'Reactor y soporte vital', color: '#8f7bff' },
-  recreativa: { sub: 'Videojuegos', color: '#ff6ad5' },
-  proyeccion: { sub: 'Películas y series', color: '#b48cff' },
-  bitacora:   { sub: 'El diario de a bordo', color: '#ffc27a' },
-  juegos:     { sub: 'Juegos de mesa · Kallax', color: '#9b7bff' },
-  biblioteca: { sub: 'Libros y manga', color: '#ffb36b' },
-  ordenador:  { sub: 'Consola del capitán', color: '#6affc8' },
-  puente:     { sub: 'Rumbo y navegación', color: '#7fd6ff' },
+  pasillo:    { sub: 'Cubierta principal', short: 'Pasillo' },
+  maquinas:   { sub: 'Reactor y soporte vital', color: '#8f7bff', short: 'Máquinas' },
+  recreativa: { sub: 'Videojuegos', color: '#ff6ad5', short: 'Recreativa' },
+  proyeccion: { sub: 'Películas y series', color: '#b48cff', short: 'Cine' },
+  bitacora:   { sub: 'El diario de a bordo', color: '#ffc27a', short: 'Bitácora' },
+  juegos:     { sub: 'Juegos de mesa · Kallax', color: '#9b7bff', short: 'Juegos' },
+  biblioteca: { sub: 'Libros y manga', color: '#ffb36b', short: 'Biblioteca' },
+  ordenador:  { sub: 'Consola del capitán', color: '#6affc8', short: 'Ordenador' },
+  puente:     { sub: 'Rumbo y navegación', color: '#7fd6ff', short: 'Puente' },
 };
 LAYOUT.rooms = LAYOUT.rooms.map(r => ({ ...r, ...EXTRA[r.id] }));
-LAYOUT.name = 'Cubierta principal';
-LAYOUT.deck = 'Plano de La Malkevnia';
 
 const $ = id => document.getElementById(id);
-const mapa = init($('mini'), LAYOUT, { title: 'Cubierta principal' });
+const mapa = init($('mini'), { ...LAYOUT, name: 'La Malkevnia', deck: 'Cubierta principal' });
 const L = mapa.getLayout();
 const corridor = L.rooms.find(r => r.kind === 'corridor');
-const player = { x: 44.4, z: 12, yaw: -Math.PI / 2 };
-const RAD = 0.32;
+const RAD = 0.32, SPEED = 3.4;
+const rand = (a, b) => a + Math.random() * (b - a);
+const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
 
-const walk = (x, z) => [...L.rooms, ...L.doors].some(r => x >= r.x + RAD && x <= r.x + r.w - RAD && z >= r.z + RAD && z <= r.z + r.d - RAD)
+// suelo transitable: salas y pasillo (con el radio del jugador) más los huecos de las puertas
+const walk = (x, z) => L.rooms.some(r => x >= r.x + RAD && x <= r.x + r.w - RAD && z >= r.z + RAD && z <= r.z + r.d - RAD)
   || L.doors.some(d => x >= d.x && x <= d.x + d.w && z >= d.z && z <= d.z + d.d);
-
-function doorOf(r) { return L.doors.find(d => (d.a === r.id || d.b === r.id) && (d.a === corridor.id || d.b === corridor.id)); }
-function anchor(d) {
-  return { x: Math.min(corridor.x + corridor.w - 1, Math.max(corridor.x + 1, d.cx)), z: corridor.cz };
-}
-function inner(r) {
+const doorOf = r => L.doors.find(d => (d.a === r.id || d.b === r.id) && (d.a === corridor.id || d.b === corridor.id));
+const anchor = d => ({ x: Math.min(corridor.x + corridor.w - 1, Math.max(corridor.x + 1, d.cx)), z: corridor.cz });
+function inside(r) {
   const d = doorOf(r); if (!d) return { x: r.cx, z: r.cz };
-  const t = 0.42; return { x: d.cx + (r.cx - d.cx) * t * 1.6, z: d.cz + (r.cz - d.cz) * t * 1.6 };
+  const k = rand(.45, .75); // un punto entre la puerta y el centro, para no chocar con el mobiliario central
+  return { x: d.cx + (r.cx - d.cx) * k + rand(-1, 1) * (d.d > d.w ? 0 : 1), z: d.cz + (r.cz - d.cz) * k + rand(-1, 1) * (d.d > d.w ? 1 : 0) };
 }
 function route(from, to) {
   const pts = [];
   if (from && from.kind !== 'corridor') { const d = doorOf(from); if (d) pts.push({ x: d.cx, z: d.cz }, anchor(d)); }
-  if (to.kind === 'corridor') { pts.push({ x: to.cx + (Math.random() - .5) * to.w * .6, z: to.cz }); return pts; }
-  const d = doorOf(to); pts.push(anchor(d), { x: d.cx, z: d.cz }, inner(to));
+  if (to.kind === 'corridor') { pts.push({ x: to.cx + rand(-.3, .3) * to.w, z: to.cz + rand(-.6, .6) }); return pts; }
+  const d = doorOf(to); pts.push(anchor(d), { x: d.cx, z: d.cz }, inside(to));
   return pts;
 }
 
-let path = [], wait = 1.2, target = null, manualT = 0, auto = true;
+class Walker {
+  constructor(x, z, yaw, speed = SPEED) { Object.assign(this, { x, z, yaw, speed, path: [], wait: rand(.8, 2), look: rand(0, 6), target: null }); }
+  goTo(room) { this.target = room; this.path = route(mapa.roomAt(this.x, this.z), room); }
+  pick(exclude) {
+    const here = mapa.roomAt(this.x, this.z);
+    const opts = L.rooms.filter(r => r.kind !== 'corridor' && r.id !== here?.id && r.id !== exclude);
+    this.goTo(opts[Math.floor(Math.random() * opts.length)]);
+  }
+  step(dt) {
+    if (this.path.length) {
+      const p = this.path[0], dx = p.x - this.x, dz = p.z - this.z, dist = Math.hypot(dx, dz), sp = this.speed * dt;
+      this.yaw += angDiff(this.yaw, Math.atan2(-dx, -dz)) * Math.min(1, dt * 7);
+      if (dist <= sp) { this.x = p.x; this.z = p.z; this.path.shift(); if (!this.path.length) { this.wait = rand(2.4, 4.2); this.look = 0; } }
+      else { this.x += dx / dist * sp; this.z += dz / dist * sp; }
+      return false;
+    }
+    this.wait -= dt; this.look += dt; this.yaw += Math.sin(this.look * 1.3) * dt * .9;
+    return this.wait <= 0;
+  }
+}
+
+const me = new Walker(44.4, 12, -Math.PI / 2);
+const visitors = [
+  { id: 'v1', name: 'Viajera', color: '#ff9ad5', w: new Walker(16.5, 5, 0, 2.6) },
+  { id: 'v2', name: 'Polizón', color: '#9dffd9', w: new Walker(27, 19, Math.PI, 2.2) },
+  { id: 'v3', name: 'Cartógrafo', color: '#ffd38a', w: new Walker(6, 12, 1.5, 2.4) },
+];
+let auto = true, manualT = 0, visitorsOn = true;
+
 const keys = {};
-addEventListener('keydown', e => { if (/^(Key[WASD]|Arrow)/.test(e.code) && !mapa.isExpanded() && !e.target.closest('input,textarea')) { keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); } });
+addEventListener('keydown', e => {
+  if (mapa.isExpanded() || e.target.closest?.('input,textarea,[contenteditable]')) return;
+  if (/^(Key[WASD]|Arrow(Up|Down|Left|Right))$/.test(e.code)) { keys[e.code] = true; if (e.code.startsWith('Arrow')) e.preventDefault(); }
+});
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 
-function pickNext() {
-  const here = mapa.roomAt(player.x, player.z);
-  const opts = L.rooms.filter(r => r.kind !== 'corridor' && r !== here);
-  target = opts[Math.floor(Math.random() * opts.length)];
-  path = route(here, target);
-  $('dest').textContent = target.name;
-}
-
 mapa.onTeleport(ev => {
-  player.x = ev.x; player.z = ev.z; player.yaw = ev.yaw;
-  path = []; wait = 2.2; target = ev.room; $('dest').textContent = '—';
   flash(ev.room.color);
+  setTimeout(() => { me.x = ev.x; me.z = ev.z; me.yaw = ev.yaw; me.path = []; me.wait = 2.6; $('dest').textContent = '—'; mapa.setPlayer(me.x, me.z, me.yaw); }, 160);
   log(`Teletransporte a <b>${ev.room.name}</b>`);
-  mapa.setPlayer(player.x, player.z, player.yaw);
 });
 mapa.onRoomChange(({ room }) => {
   $('roomName').textContent = room ? room.name : 'En tránsito';
@@ -603,75 +933,81 @@ mapa.onRoomChange(({ room }) => {
   tint = room ? room.color : '#b9a2ff';
   if (room && room.kind !== 'corridor') log(`Entras en <b>${room.name}</b>`);
 });
-mapa.onToggle(open => { $('openMap').setAttribute('aria-expanded', open); });
+mapa.onToggle((open, { via }) => {
+  $('openMap').setAttribute('aria-expanded', String(open));
+  if (open) for (const k in keys) keys[k] = false;
+  if (!open && via === 'escape') log('Plano cerrado con Esc');
+});
 $('openMap').addEventListener('click', () => mapa.expand());
+$('visitors').addEventListener('change', e => { visitorsOn = e.target.checked; pushVisitors(); });
 for (const b of document.querySelectorAll('[data-tp]')) b.addEventListener('click', () => mapa.teleportTo(b.dataset.tp));
 
+function pushVisitors() {
+  const list = visitorsOn ? visitors.map(v => ({ id: v.id, name: v.name, color: v.color, x: v.w.x, z: v.w.z, yaw: v.w.yaw })) : [];
+  mapa.setOthers(list);
+  const counts = {};
+  for (const v of list) { const r = mapa.roomAt(v.x, v.z); if (r) counts[r.id] = (counts[r.id] || 0) + 1; }
+  mapa.setRoomCounts(counts);
+}
+
 function log(h) {
-  const li = document.createElement('li');
-  const t = new Date(); li.innerHTML = `<time>${String(t.getHours()).padStart(2, '0')}:${String(t.getMinutes()).padStart(2, '0')}:${String(t.getSeconds()).padStart(2, '0')}</time><span>${h}</span>`;
+  const li = document.createElement('li'), t = new Date(), p = n => String(n).padStart(2, '0');
+  li.innerHTML = `<time>${p(t.getHours())}:${p(t.getMinutes())}:${p(t.getSeconds())}</time><span>${h}</span>`;
   const ul = $('log'); ul.prepend(li); while (ul.children.length > 7) ul.lastChild.remove();
 }
 
-const angDiff = (a, b) => { let d = b - a; while (d > Math.PI) d -= 2 * Math.PI; while (d < -Math.PI) d += 2 * Math.PI; return d; };
-let last = performance.now(), lookT = 0;
-function step(now) {
+let last = performance.now(), visT = 0;
+function frame(now) {
   const dt = Math.min(.05, (now - last) / 1000); last = now;
   let f = 0, s = 0;
   if (keys.KeyW || keys.ArrowUp) f += 1; if (keys.KeyS || keys.ArrowDown) f -= 1;
   if (keys.KeyD) s += 1; if (keys.KeyA) s -= 1;
-  const turn = (keys.ArrowRight ? -1 : 0) + (keys.ArrowLeft ? 1 : 0);
+  const turn = (keys.ArrowLeft ? 1 : 0) - (keys.ArrowRight ? 1 : 0);
   if (f || s || turn) {
-    manualT = 5; if (auto) { auto = false; path = []; $('mode').textContent = 'Mandos manuales'; $('dest').textContent = '—'; }
-    player.yaw += turn * 2.2 * dt;
-    const len = Math.hypot(f, s) || 1, sp = 3.4 * dt, sn = Math.sin(player.yaw), cs = Math.cos(player.yaw);
+    manualT = 5;
+    if (auto) { auto = false; me.path = []; $('mode').textContent = 'Mandos manuales'; $('dest').textContent = '—'; }
+    me.yaw += turn * 2.2 * dt;
+    const len = Math.hypot(f, s) || 1, sp = SPEED * dt, sn = Math.sin(me.yaw), cs = Math.cos(me.yaw);
     const mx = (-sn * f + cs * s) / len * sp, mz = (-cs * f - sn * s) / len * sp;
-    if (walk(player.x + mx, player.z)) player.x += mx;
-    if (walk(player.x, player.z + mz)) player.z += mz;
+    if (walk(me.x + mx, me.z)) me.x += mx;
+    if (walk(me.x, me.z + mz)) me.z += mz;
   } else if (!auto) {
-    manualT -= dt; if (manualT <= 0) { auto = true; wait = .4; $('mode').textContent = 'Piloto automático'; }
-  } else if (path.length) {
-    const p = path[0], dx = p.x - player.x, dz = p.z - player.z, dist = Math.hypot(dx, dz);
-    const want = Math.atan2(-dx, -dz);
-    player.yaw += angDiff(player.yaw, want) * Math.min(1, dt * 7);
-    const sp = 3.4 * dt;
-    if (dist <= sp) { player.x = p.x; player.z = p.z; path.shift(); if (!path.length) { wait = 2.6 + Math.random() * 1.5; lookT = 0; } }
-    else { player.x += dx / dist * sp; player.z += dz / dist * sp; }
-  } else {
-    wait -= dt; lookT += dt; player.yaw += Math.sin(lookT * 1.3) * dt * .9;
-    if (wait <= 0) pickNext();
-  }
-  mapa.setPlayer(player.x, player.z, player.yaw);
+    if ((manualT -= dt) <= 0) { auto = true; me.wait = .4; $('mode').textContent = 'Piloto automático'; }
+  } else if (me.step(dt)) { me.pick(); $('dest').textContent = me.target.name; }
+  mapa.setPlayer(me.x, me.z, me.yaw);
+
+  for (const v of visitors) if (v.w.step(dt)) v.w.pick();
+  if ((visT += dt) > 1 / 20) { visT = 0; pushVisitors(); } // como un servidor real: unas 20 actualizaciones por segundo
   drawStars(dt);
-  requestAnimationFrame(step);
+  requestAnimationFrame(frame);
 }
 
-/* ventanal: estrellas que se mueven según el rumbo */
+/* ventanal: estrellas que se desplazan al girar */
 const cv = $('view'), g = cv.getContext('2d');
-let W = 0, H = 0, tint = '#7fd6ff', flashA = 0, flashC = '#fff';
+let W = 0, H = 0, tint = '#7fd6ff', flashA = 0, flashC = '#fff', lastYaw = me.yaw;
 const stars = Array.from({ length: 260 }, () => ({ x: Math.random(), y: Math.random(), z: Math.random() * .9 + .1 }));
-function resize() { const r = cv.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = Math.round(r.width * dpr); H = cv.height = Math.round(r.height * dpr); }
+function resize() { const r = cv.getBoundingClientRect(), dpr = Math.min(devicePixelRatio || 1, 2); W = cv.width = Math.max(1, Math.round(r.width * dpr)); H = cv.height = Math.max(1, Math.round(r.height * dpr)); }
 new ResizeObserver(resize).observe(cv); resize();
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
-let lastYaw = player.yaw;
 function flash(c) { flashA = 1; flashC = c; }
 function drawStars(dt) {
-  const dy = angDiff(lastYaw, player.yaw); lastYaw = player.yaw;
+  const dy = angDiff(lastYaw, me.yaw); lastYaw = me.yaw;
   g.fillStyle = '#07050f'; g.fillRect(0, 0, W, H);
   const grd = g.createRadialGradient(W * .7, H * .35, 0, W * .7, H * .35, Math.max(W, H) * .8);
   grd.addColorStop(0, tint + '33'); grd.addColorStop(1, '#07050f00'); g.fillStyle = grd; g.fillRect(0, 0, W, H);
+  const k = W / 900 + .6;
   for (const st of stars) {
     if (!reduce) { st.x += (dy * .25 + dt * .004) * st.z; st.x = (st.x % 1 + 1) % 1; }
-    const r = st.z * 1.6 * (W / 900 + .6);
     g.globalAlpha = .25 + st.z * .7; g.fillStyle = st.z > .85 ? '#d9ccff' : '#ffffff';
-    g.beginPath(); g.arc(st.x * W, st.y * H, r, 0, 7); g.fill();
+    g.beginPath(); g.arc(st.x * W, st.y * H, st.z * 1.6 * k, 0, 7); g.fill();
   }
   g.globalAlpha = 1;
   if (flashA > 0) { g.globalAlpha = flashA * .5; g.fillStyle = flashC; g.fillRect(0, 0, W, H); g.globalAlpha = 1; flashA = Math.max(0, flashA - dt * 1.8); }
 }
 
-mapa.setPlayer(player.x, player.z, player.yaw);
+mapa.setPlayer(me.x, me.z, me.yaw);
+pushVisitors();
 log('Sistemas del plano en línea');
-requestAnimationFrame(step);
+requestAnimationFrame(frame);
 
 </script>

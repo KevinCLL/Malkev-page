@@ -1,14 +1,16 @@
 /**
- * controles-moviles.js · Malkevnia
+ * controles-moviles.js · Malkevnia · v2
  * Controles táctiles para escenas en primera persona (la nave) y de vuelo libre (el universo).
  *
- *  - Joystick virtual flotante: aparece donde apoyas el pulgar en la zona izquierda.
- *  - Mirar arrastrando: cualquier dedo fuera de la zona del joystick (o sobre ella si el joystick ya está ocupado).
- *  - Giroscopio opcional: gira el móvil para mirar. Usa la velocidad de giro (devicemotion.rotationRate),
- *    así que funciona igual en vertical y en horizontal y se suma al arrastre sin "pelearse" con él.
- *  - Botones opcionales a la derecha (acción, subir, bajar...).
+ *  - Joystick virtual flotante: aparece donde apoyas el pulgar en la zona izquierda y te sigue
+ *    si te pasas del borde, así nunca "pierdes" el mando.
+ *  - Mirar arrastrando: cualquier dedo fuera de la zona del joystick (o dentro, si el joystick ya está ocupado).
+ *  - Giroscopio opcional: gira el móvil para mirar. Usa la velocidad de giro (devicemotion.rotationRate)
+ *    proyectada sobre la vertical real (gravedad), así que girar sobre ti mismo es "rumbo" puro
+ *    sostengas el móvil como lo sostengas, en vertical o en horizontal. Se suma al arrastre.
+ *  - Botones opcionales a la derecha (usar, saltar, subir, bajar...), con vibración corta en Android.
  *
- * Sin dependencias. Módulo ES. Ver README.md para la API completa.
+ * Sin dependencias. Módulo ES. API estable desde v1; ver README.md.
  */
 
 const DEG = Math.PI / 180;
@@ -16,13 +18,12 @@ const DEG = Math.PI / 180;
 /** true si el dispositivo tiene pantalla táctil como entrada principal. */
 export function isTouchDevice() {
   if (typeof window === 'undefined') return false;
-  const coarse = window.matchMedia?.('(pointer: coarse)').matches;
-  const anyCoarse = window.matchMedia?.('(any-pointer: coarse)').matches;
-  const hover = window.matchMedia?.('(hover: hover)').matches;
-  return !!(coarse || (anyCoarse && !hover) || (navigator.maxTouchPoints > 0 && !hover));
+  const mq = q => window.matchMedia?.(q).matches;
+  const hover = mq('(hover: hover)');
+  return !!(mq('(pointer: coarse)') || (mq('(any-pointer: coarse)') && !hover) || (navigator.maxTouchPoints > 0 && !hover));
 }
 
-/** true si el navegador expone el giroscopio (no garantiza que haya permiso). */
+/** true si el navegador expone el giroscopio (no garantiza que haya sensor ni permiso). */
 export function hasGyro() {
   return typeof window !== 'undefined' && 'DeviceMotionEvent' in window;
 }
@@ -35,12 +36,14 @@ const DEFAULTS = {
   joystickZone: 0.45,    // fracción del ancho (desde la izquierda) que lanza el joystick
   joystickRadius: 56,    // px de recorrido máximo del pomo
   deadZone: 0.12,        // fracción del radio que se ignora
+  followThumb: true,     // el joystick se desplaza con el pulgar si este se sale del borde
   lookSensitivity: 0.005,// rad por px arrastrado
   gyroSensitivity: 1,    // multiplicador de la velocidad de giro
   invertY: false,        // invierte el eje vertical de mirar (arrastre y giroscopio)
-  tapMaxMs: 220, tapMaxPx: 10,
-  buttons: [],           // [{ id, label, onPress, onRelease, hold }]
-  ui: true,              // dibuja joystick y botones
+  tapMaxMs: 250, tapMaxPx: 10,
+  buttons: [],           // [{ id, label, ariaLabel, onPress, onRelease }]
+  haptics: true,         // vibración corta al pulsar un botón (donde el navegador lo permita)
+  ui: 'auto',            // 'auto': dibuja joystick y botones solo en táctiles (o tras el primer toque); true: siempre; false: nunca
   zIndex: 20,
 };
 
@@ -51,60 +54,70 @@ const DEFAULTS = {
 export function init(el, options = {}) {
   const o = { ...DEFAULTS, ...options };
   const move = { x: 0, y: 0 };
-  let enabled = true, gyroState = 'off', lastGyroT = 0, gyroWatchdog = 0;
+  let enabled = true, disposed = false;
   const joy = { id: null, x0: 0, y0: 0 };
-  const looks = new Map(); // pointerId -> { x, y, t, x0, y0 }
+  const looks = new Map(); // pointerId -> { x, y, x0, y0, t }
 
   const prevTouchAction = el.style.touchAction;
   el.style.touchAction = 'none';
   el.style.webkitUserSelect = el.style.userSelect = 'none';
+  el.style.webkitTouchCallout = 'none';
 
   /* ---------- UI ---------- */
   let root = null, base = null, knob = null, ghost = null, btnBox = null;
   if (o.ui) {
+    const R = o.joystickRadius;
     root = document.createElement('div');
     root.className = 'cm-root';
     root.innerHTML = `<style>
       .cm-root{position:fixed;inset:0;pointer-events:none;z-index:${o.zIndex};
-        --cm-c:var(--cm-color,#b9a3ff);--cm-bg:var(--cm-fill,rgba(40,24,80,.35))}
-      .cm-base,.cm-ghost{position:absolute;width:${o.joystickRadius * 2}px;height:${o.joystickRadius * 2}px;margin:-${o.joystickRadius}px 0 0 -${o.joystickRadius}px;
-        border-radius:50%;border:1.5px solid var(--cm-c);background:var(--cm-bg);box-shadow:0 0 18px rgba(150,110,255,.25) inset}
-      .cm-ghost{left:calc(env(safe-area-inset-left,0px) + ${o.joystickRadius + 28}px);bottom:calc(env(safe-area-inset-bottom,0px) + ${o.joystickRadius + 28}px);top:auto;margin:0 0 -${o.joystickRadius}px -${o.joystickRadius}px;opacity:.35;transition:opacity .25s}
-      .cm-base{opacity:0;transition:opacity .15s}
+        --cm-c:var(--cm-color,#b9a3ff);--cm-bg:var(--cm-fill,rgba(40,24,80,.35));--cm-ink:var(--cm-text,#efe9ff)}
+      .cm-root.cm-idle{display:none}
+      .cm-base,.cm-ghost{position:absolute;width:${R * 2}px;height:${R * 2}px;border-radius:50%;
+        border:1.5px solid var(--cm-c);background:var(--cm-bg);box-shadow:0 0 18px rgba(150,110,255,.25) inset}
+      .cm-ghost{left:calc(env(safe-area-inset-left,0px) + 28px);bottom:calc(env(safe-area-inset-bottom,0px) + 28px);opacity:.35;transition:opacity .25s}
+      .cm-base{left:0;top:0;margin:-${R}px 0 0 -${R}px;opacity:0;transition:opacity .15s;will-change:transform}
       .cm-base.on{opacity:1}
-      .cm-knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;
+      .cm-knob{position:absolute;left:50%;top:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;will-change:transform;
         background:radial-gradient(circle at 35% 30%,#e9e0ff,var(--cm-c) 60%,#6b4fd8);box-shadow:0 0 14px rgba(185,163,255,.6)}
       .cm-btns{position:absolute;right:calc(env(safe-area-inset-right,0px) + 18px);bottom:calc(env(safe-area-inset-bottom,0px) + 22px);
-        display:flex;flex-direction:column-reverse;gap:12px;align-items:flex-end;pointer-events:none}
+        display:flex;flex-direction:column-reverse;gap:12px;align-items:flex-end}
       .cm-btn{pointer-events:auto;touch-action:none;min-width:64px;height:64px;padding:0 14px;border-radius:32px;border:1.5px solid var(--cm-c);
-        background:var(--cm-bg);color:#efe9ff;font:600 12px/1 ui-monospace,"JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;
-        -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none}
+        background:var(--cm-bg);color:var(--cm-ink);font:600 12px/1 ui-monospace,"JetBrains Mono",monospace;letter-spacing:.08em;text-transform:uppercase;
+        -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
       .cm-btn.down{background:var(--cm-c);color:#160c33}
-      .cm-hide .cm-ghost,.cm-hide .cm-base,.cm-hide .cm-btns{display:none}
+      .cm-btn:focus-visible{outline:2px solid var(--cm-c);outline-offset:3px}
+      .cm-off .cm-ghost,.cm-off .cm-base,.cm-off .cm-btns{display:none}
+      @media (prefers-reduced-motion:reduce){.cm-ghost,.cm-base{transition:none}}
     </style><div class="cm-ghost"></div><div class="cm-base"><div class="cm-knob"></div></div><div class="cm-btns"></div>`;
+    if (o.ui === 'auto' && !isTouchDevice()) root.classList.add('cm-idle');
     document.body.appendChild(root);
     base = root.querySelector('.cm-base');
     knob = root.querySelector('.cm-knob');
     ghost = root.querySelector('.cm-ghost');
     btnBox = root.querySelector('.cm-btns');
   }
+  const wake = () => root?.classList.remove('cm-idle'); // equipos híbridos: aparece al primer toque
 
   /* ---------- Joystick y mirar ---------- */
+  const round = v => Math.round(v * 1000) / 1000;
   function setMove(x, y) {
     if (x === move.x && y === move.y) return;
     move.x = x; move.y = y;
     o.onMove?.(x, y);
   }
+  function placeBase() { if (base) base.style.transform = `translate(${joy.x0}px,${joy.y0}px)`; }
+  function resetJoyUI() { if (base) { base.classList.remove('on'); knob.style.transform = ''; ghost.style.opacity = ''; } }
 
   function onDown(e) {
     if (!enabled || e.pointerType === 'mouse') return;
     e.preventDefault();
+    wake();
     try { el.setPointerCapture(e.pointerId); } catch {}
     const r = el.getBoundingClientRect();
-    const inJoyZone = e.clientX - r.left < r.width * o.joystickZone;
-    if (inJoyZone && joy.id === null) {
+    if (e.clientX - r.left < r.width * o.joystickZone && joy.id === null) {
       joy.id = e.pointerId; joy.x0 = e.clientX; joy.y0 = e.clientY;
-      if (base) { base.style.left = e.clientX + 'px'; base.style.top = e.clientY + 'px'; base.classList.add('on'); ghost.style.opacity = 0; knob.style.transform = ''; }
+      if (base) { placeBase(); base.classList.add('on'); ghost.style.opacity = 0; knob.style.transform = ''; }
     } else {
       looks.set(e.pointerId, { x: e.clientX, y: e.clientY, x0: e.clientX, y0: e.clientY, t: performance.now() });
     }
@@ -114,14 +127,18 @@ export function init(el, options = {}) {
     if (!enabled) return;
     if (e.pointerId === joy.id) {
       e.preventDefault();
-      let dx = e.clientX - joy.x0, dy = e.clientY - joy.y0;
-      const R = o.joystickRadius, len = Math.hypot(dx, dy);
-      if (len > R) { dx *= R / len; dy *= R / len; }
+      const R = o.joystickRadius;
+      let dx = e.clientX - joy.x0, dy = e.clientY - joy.y0, len = Math.hypot(dx, dy);
+      if (len > R) {
+        if (o.followThumb) { // arrastra el centro para que el pomo se quede en el borde, bajo el pulgar
+          joy.x0 = e.clientX - dx * R / len; joy.y0 = e.clientY - dy * R / len; placeBase();
+        }
+        dx *= R / len; dy *= R / len; len = R;
+      }
       if (knob) knob.style.transform = `translate(${dx}px,${dy}px)`;
-      const n = Math.min(len, R) / R;
+      const n = len / R;
       if (n < o.deadZone) return setMove(0, 0);
-      // reescala para que el borde de la zona muerta valga 0 y el borde exterior 1
-      const k = (n - o.deadZone) / (1 - o.deadZone) / (n || 1);
+      const k = (n - o.deadZone) / (1 - o.deadZone) / n; // el borde de la zona muerta vale 0 y el exterior 1
       setMove(round(dx / R * k), round(-dy / R * k));
       return;
     }
@@ -130,22 +147,17 @@ export function init(el, options = {}) {
     e.preventDefault();
     const dx = e.clientX - l.x, dy = e.clientY - l.y;
     l.x = e.clientX; l.y = e.clientY;
-    o.onLook?.(-dx * o.lookSensitivity, (o.invertY ? dy : -dy) * o.lookSensitivity);
+    if (dx || dy) o.onLook?.(-dx * o.lookSensitivity, (o.invertY ? dy : -dy) * o.lookSensitivity);
   }
 
   function onUp(e) {
-    if (e.pointerId === joy.id) {
-      joy.id = null; setMove(0, 0);
-      if (base) { base.classList.remove('on'); knob.style.transform = ''; ghost.style.opacity = ''; }
-      return;
-    }
+    if (e.pointerId === joy.id) { joy.id = null; setMove(0, 0); resetJoyUI(); return; }
     const l = looks.get(e.pointerId);
     if (!l) return;
     looks.delete(e.pointerId);
-    if (e.type === 'pointerup' && performance.now() - l.t < o.tapMaxMs && Math.hypot(e.clientX - l.x0, e.clientY - l.y0) < o.tapMaxPx) o.onTap?.(e.clientX, e.clientY);
+    if (e.type === 'pointerup' && enabled && performance.now() - l.t < o.tapMaxMs && Math.hypot(e.clientX - l.x0, e.clientY - l.y0) < o.tapMaxPx) o.onTap?.(e.clientX, e.clientY);
   }
 
-  const round = v => Math.round(v * 1000) / 1000;
   const noCtx = e => e.preventDefault();
   const noGesture = e => e.preventDefault(); // evita el zoom con pellizco de Safari
 
@@ -157,10 +169,10 @@ export function init(el, options = {}) {
   el.addEventListener('contextmenu', noCtx);
   document.addEventListener('gesturestart', noGesture, { passive: false });
 
+  const btnReleases = new Set();
   function releaseAll() {
-    joy.id = null; looks.clear(); setMove(0, 0);
-    if (base) { base.classList.remove('on'); knob.style.transform = ''; ghost.style.opacity = ''; }
-    btnBox?.querySelectorAll('.cm-btn.down').forEach(b => b.dispatchEvent(new Event('pointercancel')));
+    joy.id = null; looks.clear(); setMove(0, 0); resetJoyUI();
+    for (const r of [...btnReleases]) r();
   }
   const onVis = () => { if (document.hidden) releaseAll(); };
   document.addEventListener('visibilitychange', onVis);
@@ -168,6 +180,7 @@ export function init(el, options = {}) {
 
   /* ---------- Botones ---------- */
   function setButtons(list) {
+    for (const r of [...btnReleases]) r(); // suelta lo que estuviera pulsado antes de cambiar
     if (!btnBox) return;
     btnBox.textContent = '';
     for (const b of list || []) {
@@ -175,27 +188,49 @@ export function init(el, options = {}) {
       n.type = 'button'; n.className = 'cm-btn'; n.textContent = b.label; if (b.id) n.dataset.id = b.id;
       n.setAttribute('aria-label', b.ariaLabel || b.label);
       let down = false;
-      const press = e => { e.preventDefault(); e.stopPropagation(); if (!enabled || down) return; down = true; n.classList.add('down'); try { n.setPointerCapture(e.pointerId); } catch {} b.onPress?.(); };
-      const release = e => { if (!down) return; down = false; n.classList.remove('down'); b.onRelease?.(); };
+      const release = () => { if (!down) return; down = false; btnReleases.delete(release); n.classList.remove('down'); b.onRelease?.(); };
+      const press = e => {
+        e.preventDefault(); e.stopPropagation();
+        if (!enabled || down) return;
+        down = true; btnReleases.add(release); n.classList.add('down');
+        try { n.setPointerCapture(e.pointerId); } catch {}
+        if (o.haptics) try { navigator.vibrate?.(8); } catch {}
+        b.onPress?.();
+      };
       n.addEventListener('pointerdown', press);
       n.addEventListener('pointerup', release);
       n.addEventListener('pointercancel', release);
       n.addEventListener('lostpointercapture', release);
       n.addEventListener('contextmenu', noCtx);
-      // teclado / lector de pantalla
-      n.addEventListener('click', e => { if (e.detail === 0) { b.onPress?.(); b.onRelease?.(); } });
+      n.addEventListener('click', e => { if (e.detail === 0 && enabled) { b.onPress?.(); b.onRelease?.(); } }); // teclado y lectores de pantalla
       btnBox.appendChild(n);
     }
   }
   setButtons(o.buttons);
 
   /* ---------- Giroscopio ---------- */
+  let gyroState = 'off', lastGyroT = 0, watchdog = 0, pending = null, settle = null;
+  const grav = { x: 0, y: 0, z: 0, ok: false };
+  // Signo de la gravedad: la spec dice que, con el móvil de pie, y ≈ +9,8; iOS la da con el signo contrario.
+  // Partimos de lo esperado por plataforma y lo confirmamos con los datos cuando el móvil está claramente de pie.
+  const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  let gravSign = IOS ? -1 : 1;
   function setGyro(s) { if (gyroState !== s) { gyroState = s; o.onGyroChange?.(s); } }
 
   function screenAngle() {
     const a = screen.orientation?.angle ?? window.orientation ?? 0;
     return ((a % 360) + 360) % 360;
   }
+  // ejes "arriba" y "derecha" de la pantalla, en coordenadas del dispositivo, según la rotación de la pantalla
+  const AXES = {
+    0:   { up: [0, 1, 0],  right: [1, 0, 0] },
+    90:  { up: [1, 0, 0],  right: [0, -1, 0] },
+    180: { up: [0, -1, 0], right: [-1, 0, 0] },
+    270: { up: [-1, 0, 0], right: [0, 1, 0] },
+  };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const DZ = 0.6 * DEG; // ignora el temblor de la mano (rad/s)
+  const soft = v => Math.abs(v) < DZ ? 0 : v - Math.sign(v) * DZ;
 
   function onMotion(e) {
     const rr = e.rotationRate;
@@ -203,25 +238,43 @@ export function init(el, options = {}) {
     const now = performance.now();
     const dt = lastGyroT ? Math.min((now - lastGyroT) / 1000, 0.1) : 0;
     lastGyroT = now;
-    if (gyroState !== 'on') { clearTimeout(gyroWatchdog); setGyro('on'); }
-    if (!dt || !enabled) return;
-    const bx = (rr.beta || 0) * DEG, gy = (rr.gamma || 0) * DEG; // giro alrededor de los ejes x e y del dispositivo
-    let yaw, pitch;
-    switch (screenAngle()) {
-      case 90:  yaw = bx;  pitch = -gy; break;
-      case 180: yaw = -gy; pitch = -bx; break;
-      case 270: yaw = -bx; pitch = gy;  break;
-      default:  yaw = gy;  pitch = bx;
+    if (gyroState !== 'on') { setGyro('on'); settle?.('on'); }
+
+    const ax = AXES[screenAngle()] || AXES[0];
+    // gravedad filtrada: dice dónde está la vertical real respecto al móvil
+    const g = e.accelerationIncludingGravity;
+    if (g && g.x != null) {
+      const a = grav.ok ? 0.15 : 1;
+      grav.x += (g.x - grav.x) * a; grav.y += (g.y - grav.y) * a; grav.z += (g.z - grav.z) * a; grav.ok = true;
+      const gl = Math.hypot(grav.x, grav.y, grav.z), s = dot([grav.x, grav.y, grav.z], ax.up) / (gl || 1);
+      if (gl > 4 && Math.abs(s) > 0.6) gravSign = Math.sign(s); // móvil claramente de pie: la parte de arriba es "arriba"
     }
+    if (!dt || !enabled) return;
+
+    // velocidad angular en ejes del dispositivo (spec: alpha = z, beta = x, gamma = y), en rad/s
+    const w = [(rr.beta || 0) * DEG, (rr.gamma || 0) * DEG, (rr.alpha || 0) * DEG];
+    let up = ax.up, right = ax.right;
+    const gl = Math.hypot(grav.x, grav.y, grav.z);
+    if (grav.ok && gl > 4) {
+      up = [gravSign * grav.x / gl, gravSign * grav.y / gl, gravSign * grav.z / gl];
+      // derecha = (hacia dentro de la pantalla) × arriba = (-z) × up; no depende de cómo esté rotada la pantalla
+      const rl = Math.hypot(up[0], up[1]);
+      if (rl > 0.25) right = [up[1] / rl, -up[0] / rl, 0];
+    }
+    const yaw = soft(dot(w, up)), pitch = soft(dot(w, right));
+    if (!yaw && !pitch) return;
     const k = o.gyroSensitivity * dt;
     o.onLook?.(yaw * k, (o.invertY ? -pitch : pitch) * k);
   }
 
   /**
    * Activa el giroscopio. En iOS hay que llamarlo desde un toque del usuario (pide permiso).
-   * Resuelve con 'on' | 'denied' | 'unavailable'.
+   * Resuelve con 'on' | 'denied' | 'unavailable' (u 'off' si se apaga antes de saberlo).
    */
   async function enableGyro() {
+    if (disposed) return 'off';
+    if (gyroState === 'on') return 'on';
+    if (pending) return pending;
     if (!hasGyro()) { setGyro('unavailable'); return 'unavailable'; }
     try {
       const req = window.DeviceMotionEvent.requestPermission;
@@ -236,36 +289,39 @@ export function init(el, options = {}) {
       const s = e?.name === 'NotAllowedError' ? 'denied' : 'unavailable';
       setGyro(s); return s;
     }
-    lastGyroT = 0;
-    window.addEventListener('devicemotion', onMotion);
-    // si en 1,5 s no llega ningún dato, no hay sensor (escritorio) o el navegador lo bloquea (iframes)
-    return new Promise(resolve => {
-      const start = performance.now();
-      const check = () => {
-        if (gyroState === 'on') return resolve('on');
-        if (performance.now() - start > 1500) { window.removeEventListener('devicemotion', onMotion); setGyro('unavailable'); return resolve('unavailable'); }
-        gyroWatchdog = setTimeout(check, 100);
-      };
-      check();
+    if (disposed) return 'off';
+    if (gyroState === 'on') return 'on';
+    lastGyroT = 0; grav.ok = false;
+    pending = new Promise(resolve => {
+      settle = r => { clearTimeout(watchdog); settle = null; pending = null; resolve(r); };
+      // si en 1,5 s no llega ningún dato, no hay sensor (escritorio) o el navegador lo bloquea (iframes)
+      watchdog = setTimeout(() => {
+        window.removeEventListener('devicemotion', onMotion);
+        setGyro('unavailable'); settle?.('unavailable');
+      }, 1500);
     });
+    window.addEventListener('devicemotion', onMotion);
+    return pending;
   }
 
   function disableGyro() {
-    clearTimeout(gyroWatchdog);
+    clearTimeout(watchdog);
     window.removeEventListener('devicemotion', onMotion);
-    lastGyroT = 0;
+    lastGyroT = 0; grav.ok = false;
     setGyro('off');
+    settle?.('off');
   }
 
   /* ---------- Ciclo de vida ---------- */
   function setEnabled(v) {
     enabled = !!v;
     if (!enabled) releaseAll();
-    root?.classList.toggle('cm-hide', !enabled);
+    root?.classList.toggle('cm-off', !enabled);
   }
 
   function dispose() {
-    disableGyro(); releaseAll();
+    if (disposed) return;
+    disableGyro(); releaseAll(); disposed = true;
     el.removeEventListener('pointerdown', onDown);
     el.removeEventListener('pointermove', onMovePtr);
     el.removeEventListener('pointerup', onUp);

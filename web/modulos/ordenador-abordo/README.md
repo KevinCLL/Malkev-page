@@ -1,6 +1,6 @@
 # Ordenador de a bordo · módulo
 
-Terminal retro (look CRT, fósforo púrpura) de La Malkevnia. Se dibuja **entera en un `<canvas>` 2D**, así que sirve igual como página normal o como textura de una pantalla dentro de la nave 3D. Sin dependencias.
+Terminal retro (look CRT, fósforo púrpura) de La Malkevnia. Versión 1.1.0. Se dibuja **entera en un `<canvas>` 2D**, así que sirve igual como página normal o como textura de una pantalla dentro de la nave 3D. Sin dependencias.
 
 | Fichero | Qué es |
 |---|---|
@@ -23,7 +23,7 @@ const term = init(document.getElementById('pantalla'), {
 term.dispose();
 ```
 
-El contenedor necesita tamaño (alto y ancho). El módulo mete dentro un `<canvas>` y un `<textarea>` invisible encima que recoge el teclado (incluidas tildes y teclas muertas del teclado español, y el teclado del móvil al tocar la pantalla).
+El contenedor necesita tamaño (alto y ancho). El módulo mete dentro un `<canvas>`, un `<textarea>` invisible encima que recoge el teclado (incluidas tildes y teclas muertas del teclado español, y el teclado del móvil al tocar la pantalla) y una región `role="log"` oculta que repite la salida en texto para lectores de pantalla. Se desplaza con rueda, RePág/AvPág o arrastrando el dedo.
 
 Fuente: usa `VT323` si la página la carga (Google Fonts: `family=VT323`); si no, cae a una monoespaciada del sistema. Se re-mide sola cuando la fuente termina de cargar.
 
@@ -102,6 +102,11 @@ addEventListener('keydown', (e) => { if (sentado && term.key(e)) e.preventDefaul
 Teclas: Tab completa (órdenes, salas, planetas, temas, juegos), ↑↓ historial, RePág/AvPág o rueda para desplazar, Esc borra la línea o salta la animación, Ctrl+L limpia, Ctrl+C cancela.
 
 Huevos de pascua (no salen en la ayuda): `hola`, `sudo`, `xyzzy`, `42`, `salir`, `rm`, `café`, `gato`, `ping`, `música`, `abre las compuertas`, `autodestrucción`, `matrix`, `gracias`, `dormir`.
+
+## Cambios
+
+- **1.1.0**: el halo del fósforo se calcula solo cuando cambia el texto (antes, un desenfoque por fotograma); las líneas largas se parten con sangría; desplazamiento táctil; salida accesible para lectores de pantalla; `ir sala` pregunta cuál en vez de adivinar; Tab completa nombres de juego con espacios; la bitácora se compacta en pantallas estrechas. La API no cambia.
+- **1.0.0**: primera versión.
 
 ## Regenerar
 

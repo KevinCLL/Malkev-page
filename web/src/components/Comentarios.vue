@@ -32,8 +32,22 @@ const enviando = ref(false);
 const aviso = ref<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
 
 const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
-const raices = computed(() => lista.value.filter((c) => !c.parent_id));
-const respuestas = (id: number) => lista.value.filter((c) => c.parent_id === id);
+/**
+ * Hilos de un nivel: cada comentario cuelga de su raíz, aunque responda a una respuesta
+ * (el panel deja contestar a cualquiera). Si su padre no es visible, pasa a ser raíz.
+ */
+const porId = computed(() => new Map(lista.value.map((c) => [c.id, c])));
+function raizDe(c: Comentario): number {
+  let actual = c;
+  const vistos = new Set<number>();
+  while (actual.parent_id && porId.value.has(actual.parent_id) && !vistos.has(actual.id)) {
+    vistos.add(actual.id);
+    actual = porId.value.get(actual.parent_id)!;
+  }
+  return actual.id;
+}
+const raices = computed(() => lista.value.filter((c) => raizDe(c) === c.id));
+const respuestas = (id: number) => lista.value.filter((c) => c.id !== id && raizDe(c) === id);
 const webSegura = (u: string | null) => (u && /^https?:\/\//i.test(u) ? u : null);
 
 async function cargar() {
@@ -105,7 +119,8 @@ onMounted(cargar);
             <li v-for="r in respuestas(c.id)" :key="r.id">
               <article class="comentario" :class="{ capitan: r.is_captain }">
                 <header>
-                  <strong>{{ r.author }}</strong>
+                  <a v-if="webSegura(r.website)" :href="webSegura(r.website)!" rel="nofollow ugc noopener" target="_blank">{{ r.author }}</a>
+                  <strong v-else>{{ r.author }}</strong>
                   <span v-if="r.is_captain" class="insignia">capitán</span>
                   <time :datetime="r.created_at">{{ fmt.format(new Date(r.created_at)) }}</time>
                 </header>

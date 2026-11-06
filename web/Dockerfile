@@ -9,6 +9,9 @@ COPY web/package.json web/package-lock.json ./
 RUN npm ci
 
 FROM deps AS build
+# Dominio para URLs canónicas, feed y sitemap: se fija al construir.
+ARG SITE_URL=https://malkevnia.com
+ENV SITE_URL=$SITE_URL
 COPY web/ ./
 # Imágenes, audio y PDF que enlazan los posts antiguos (malkevnia.com/assets/...)
 COPY assets ./public/assets

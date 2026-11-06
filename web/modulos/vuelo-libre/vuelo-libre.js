@@ -131,14 +131,14 @@ void main(){
   vec3 Hh=normalize(L+V); lit+=vec3(1.,.95,.85)*pow(max(dot(N,Hh),0.),rough)*spec*smoothstep(0.,.2,nl);
   float fres=pow(1.-max(dot(N,V),0.),3.); lit+=uAtm*fres*smoothstep(-.25,.5,nl)*.5;
   float alt=max(length(cameraPosition-uCenter)-uR,0.); float haze=smoothstep(uR*.02,0.,alt)*smoothstep(uR*.003,uR*.12,camD);
-  lit=mix(lit,uAtm*(.08+diff*.55),haze*.55);
+  lit=mix(lit,uAtm*(.06+diff*.45),haze*.28);
   gl_FragColor=vec4(lit+emis,1.);
 }`;
 
 const FS_CLOUDS = /* glsl */`
 #include <common>
 #include <logdepthbuf_pars_fragment>
-uniform vec3 uSun,uCenter; uniform float uTime,uSeed,uCov;
+uniform vec3 uSun,uCenter; uniform float uTime,uSeed,uCov,uFade;
 varying vec3 vObj; varying vec3 vW; varying vec3 vN;
 ${NOISE}
 void main(){
@@ -146,7 +146,7 @@ void main(){
   vec3 p=normalize(vObj); vec3 N=normalize(vW-uCenter); vec3 L=normalize(uSun-vW);
   float c=fbm(p*3.+vec3(uTime*.005,uSeed,0.),6); c=smoothstep(.05-uCov,.55-uCov,c);
   float diff=smoothstep(-.1,.6,dot(N,L));
-  gl_FragColor=vec4(vec3(1.)*(.03+diff),c*.85);
+  gl_FragColor=vec4(vec3(1.)*(.03+diff),c*.85*uFade);
 }`;
 
 const VS_ATM = /* glsl */`
@@ -323,7 +323,7 @@ function glowTexture(inner = 'rgba(255,255,255,1)', outer = 'rgba(255,255,255,0)
 function buildShip() {
   const g = new THREE.Group();
   const hull = new THREE.MeshStandardMaterial({ color: 0xdcd5f7, metalness: .6, roughness: .32 });
-  const dark = new THREE.MeshStandardMaterial({ color: 0x3a2d6e, metalness: .65, roughness: .4 });
+  const dark = new THREE.MeshStandardMaterial({ color: 0x6a58b0, metalness: .55, roughness: .38 });
   const trim = new THREE.MeshStandardMaterial({ color: 0x241a46, metalness: .5, roughness: .55 });
   const accent = new THREE.MeshStandardMaterial({ color: 0x120a24, emissive: 0xb59bff, emissiveIntensity: 1.8 });
   const cyan = new THREE.MeshStandardMaterial({ color: 0x0a1420, emissive: 0x7fd6ff, emissiveIntensity: 1.6 });
@@ -414,7 +414,7 @@ function buildPlanet(def, i, quality) {
   let clouds = null;
   if (type <= 2) {
     const cm = new THREE.ShaderMaterial({ vertexShader: VS_WORLD, fragmentShader: FS_CLOUDS, transparent: true, depthWrite: false,
-      uniforms: { uSun: { value: SUN_POS }, uCenter: { value: center }, uTime: { value: 0 }, uSeed: { value: seed % 11 }, uCov: { value: type === 2 ? -.12 : 0 } } });
+      uniforms: { uSun: { value: SUN_POS }, uCenter: { value: center }, uTime: { value: 0 }, uSeed: { value: seed % 11 }, uCov: { value: type === 2 ? -.12 : 0 }, uFade: { value: 1 } } });
     clouds = new THREE.Mesh(new THREE.SphereGeometry(R * 1.012, segs, segs / 2), cm); tilt.add(clouds);
   }
   const am = new THREE.ShaderMaterial({ vertexShader: VS_ATM, fragmentShader: FS_ATM, side: THREE.BackSide, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending,
@@ -463,8 +463,8 @@ function buildMuseum(def, atm, R, type) {
   const dome = new THREE.Mesh(new THREE.SphereGeometry(10, 40, 20, 0, Math.PI * 2, 0, Math.PI / 2), domeMat); dome.position.set(30, h - 1.6, -6); m.add(dome);
   const domeRing = new THREE.Mesh(new THREE.TorusGeometry(10.05, .3, 8, 64), light); domeRing.rotation.x = Math.PI / 2; domeRing.position.set(30, h - .4, -6); m.add(domeRing);
   const bridge = new THREE.Mesh(new THREE.BoxGeometry(8, .5, 3), metal); bridge.position.set(18.5, h - .3, -3); bridge.rotation.y = .3; m.add(bridge);
-  const tower = new THREE.Mesh(new THREE.CylinderGeometry(.5, .9, 24, 10), metal); tower.position.set(-16, h + 11, 10); m.add(tower);
-  const beacon = new THREE.Mesh(new THREE.SphereGeometry(.9, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3, 5) })); beacon.position.set(-16, h + 23.5, 10); m.add(beacon);
+  const tower = new THREE.Mesh(new THREE.CylinderGeometry(.45, .8, 24, 10), new THREE.MeshStandardMaterial({ color: 0x8a7cc4, metalness: .6, roughness: .35 })); tower.position.set(44, h + 11, -16); m.add(tower);
+  const beacon = new THREE.Mesh(new THREE.SphereGeometry(.9, 12, 8), new THREE.MeshBasicMaterial({ color: new THREE.Color(4, 3, 5) })); beacon.position.set(44, h + 23.5, -16); m.add(beacon);
   const sign = textSprite(['MUSEO · ' + (def.tema || '').toUpperCase(), def.museo || def.nombre], '#' + accent.getHexString());
   sign.scale.set(26, 8.1, 1); sign.position.set(30, h + 16, -6); m.add(sign);
   // pilar de luz visible desde órbita
@@ -626,14 +626,14 @@ export function init(canvasOrOpts, maybeOpts = {}) {
 
   /* --- render --- */
   const renderer = new THREE.WebGLRenderer({ canvas, antialias: quality !== 'baja', logarithmicDepthBuffer: true, powerPreference: 'high-performance' });
-  const PR = Math.min(window.devicePixelRatio || 1, quality === 'alta' ? 2 : 1.25);
+  const PR = Math.min(window.devicePixelRatio || 1, quality === 'alta' ? 1.75 : 1.25);
   renderer.setPixelRatio(PR);
   renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
   const scene = new THREE.Scene();
   const camera = new THREE.PerspectiveCamera(68, 1, .25, 4e6);
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), .85, .55, .72);
+  const bloom = new UnrealBloomPass(new THREE.Vector2(256, 256), .7, .5, .78);
   if (quality !== 'baja') composer.addPass(bloom);
   composer.addPass(new OutputPass());
 
@@ -679,6 +679,25 @@ export function init(canvasOrOpts, maybeOpts = {}) {
   const S = buildShip();
   const ship = new THREE.Group(); const shipVis = new THREE.Group(); shipVis.add(S.group); ship.add(shipVis); scene.add(ship);
   const engineLight = new THREE.PointLight(0x9c7bff, 40, 30, 2); engineLight.position.set(0, 0, 5); ship.add(engineLight);
+
+  /* --- túnel de salto --- */
+  const tunnelMat = new THREE.ShaderMaterial({ vertexShader: VS_SIMPLE, transparent: true, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.BackSide,
+    uniforms: { uTime: { value: 0 }, uI: { value: 0 } },
+    fragmentShader: `#include <common>
+#include <logdepthbuf_pars_fragment>
+uniform float uTime,uI; varying vec2 vUv;
+float h(float n){return fract(sin(n)*43758.5453);}
+void main(){
+#include <logdepthbuf_fragment>
+  float col=floor(vUv.x*180.); float r=h(col); float sp=.6+r*1.4;
+  float y=fract(vUv.y*(2.+r*3.)+uTime*sp*1.6+r*7.); float streak=smoothstep(.0,.05,y)*smoothstep(.55,.05,y);
+  float lane=step(.55,r)*smoothstep(.5,.2,abs(fract(vUv.x*180.)-.5));
+  float fade=smoothstep(0.,.25,vUv.y)*smoothstep(1.,.6,vUv.y);
+  vec3 c=mix(vec3(.55,.35,1.),vec3(.6,.9,1.),h(col+3.));
+  float a=streak*lane*fade*uI; gl_FragColor=vec4(c*a*2.4,a);
+}` });
+  const tunnel = new THREE.Mesh(new THREE.CylinderGeometry(55, 30, 2600, 64, 1, true).rotateX(Math.PI / 2), tunnelMat);
+  tunnel.position.z = -900; tunnel.visible = false; tunnel.frustumCulled = false; tunnel.renderOrder = 4; ship.add(tunnel);
 
   /* --- polvo espacial (sensación de velocidad) --- */
   const DUST = quality === 'baja' ? 260 : 520, BOX = 700;
@@ -863,7 +882,8 @@ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d)*vL*vL*.45; gl_Frag
     return true;
   }
   const _m = new THREE.Matrix4(), _q = new THREE.Quaternion(), _v = V(), _w = V(), _u = V();
-  function lookQuat(fwd, up, out = new THREE.Quaternion()) { _m.lookAt(V(), fwd.clone().negate(), up); return out.setFromRotationMatrix(_m); }
+  // orientación de la nave (morro = -Z) mirando hacia fwd con 'up' como vertical
+  function lookQuat(fwd, up, out = new THREE.Quaternion()) { _m.lookAt(V(), fwd, up); return out.setFromRotationMatrix(_m); }
   function stepLanding(dt) {
     const s = st.seq; s.t += dt; const p = s.p;
     if (s.phase === 'aprox') {
@@ -986,7 +1006,7 @@ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d)*vL*vL*.45; gl_Frag
       const p = st.landed || st.seq.p; const n = siteNormal(p, _w); const S0 = siteWorld(p, _u);
       const a = st.time * .07; const t1 = st.seq?.f || V(1, 0, 0); const t2 = n.clone().cross(t1).normalize();
       const dir = t1.clone().multiplyScalar(-Math.cos(a)).addScaledVector(t2, Math.sin(a));
-      const want = S0.clone().addScaledVector(n, 16).addScaledVector(dir, 46);
+      const want = S0.clone().addScaledVector(n, 21).addScaledVector(dir, 44);
       camera.position.lerp(want, damp(st.state === 'aterrizado' ? 1.2 : 1.8, dt));
       // no atravesar el suelo
       const cd = camera.position.clone().sub(p.center); if (cd.length() < p.R + 4) camera.position.copy(p.center).addScaledVector(cd.normalize(), p.R + 4);
@@ -1001,6 +1021,19 @@ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d)*vL*vL*.45; gl_Frag
     } else {
       S.canopy.visible = true;
       const cine = st.state === 'aterrizaje' || st.state === 'despegue';
+      const cp = cine ? (st.landed || st.seq?.p) : null;
+      if (cp) {
+        // cámara de aproximación: detrás y por encima respecto a la vertical del planeta, con el horizonte a la vista
+        const radial = ship.position.clone().sub(cp.center).normalize();
+        const fwd = V(0, 0, -1).applyQuaternion(q); const fl = fwd.clone().addScaledVector(radial, -fwd.dot(radial)); if (fl.lengthSq() < 1e-4) fl.copy(fwd); fl.normalize();
+        const want = fl.clone().multiplyScalar(-26).addScaledVector(radial, 9);
+        camRel.lerp(want, damp(1.6, dt)); camera.position.copy(ship.position).add(camRel);
+        const look = ship.position.clone().addScaledVector(fl, 14).addScaledVector(radial, -5);
+        _m.lookAt(camera.position, look, radial); camQ.slerp(_q.setFromRotationMatrix(_m), damp(2.5, dt));
+        camera.quaternion.copy(camQ); camera.fov += (60 - camera.fov) * damp(3, dt); camera.updateProjectionMatrix(); st.shake *= Math.exp(-3 * dt);
+        if (st.shake > .001 && !reduceMotion) { const s = st.shake * .35; camera.position.add(V((Math.random() - .5) * s, (Math.random() - .5) * s, (Math.random() - .5) * s)); }
+        return;
+      }
       const back = cine ? 24 : 15 + st.boost * 4 + spd01 * 3, height = cine ? 6 : 3.6 + st.boost * .4;
       const want = V(-st.stick.x * 1.2, height - st.stick.y * .8, back).applyQuaternion(q);
       camRel.lerp(want, damp(cine ? 2 : 5, dt));
@@ -1019,6 +1052,7 @@ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d)*vL*vL*.45; gl_Frag
     const t = st.time;
     sky.position.copy(camera.position);
     starMat.uniforms.uTime.value = t; sun.material.uniforms.uTime.value = t;
+    const wv = Math.max(st.warpVis, 0); tunnel.visible = wv > .02; tunnelMat.uniforms.uI.value = wv; tunnelMat.uniforms.uTime.value = t;
     // nave: alabeo visual, luces
     const bankT = st.state === 'vuelo' ? clamp(st.ang.y * .55 - st.ang.z * 0, -.8, .8) : 0;
     shipVis.rotation.z += (bankT - shipVis.rotation.z) * damp(4, dt);
@@ -1038,6 +1072,7 @@ float d=length(gl_PointCoord-.5); float a=smoothstep(.5,0.,d)*vL*vL*.45; gl_Frag
       if (p.spinOn && !near) p.spin.rotation.y += p.rotSpeed * dt;
       p.mat.uniforms.uTime.value = t; if (p.clouds) { p.clouds.material.uniforms.uTime.value = t; if (p.spinOn && !near) p.clouds.rotation.y += p.rotSpeed * 1.3 * dt; }
       const cd = camera.position.distanceTo(p.center); p.atmo.material.uniforms.uInside.value = smooth(p.R * 1.13, p.R * 1.02, cd);
+      if (p.clouds) p.clouds.material.uniforms.uFade.value = smooth(p.R * 1.02, p.R * 1.05, cd); // bajo las nubes no taparlas
       const mu = p.museum.userData; mu.beamMat.uniforms.uTime.value = t; mu.beamMat.uniforms.uFade.value = smooth(p.R * .6, p.R * 1.6, ship.position.distanceTo(p.center) - p.R) * .9 + .1;
       mu.beacon.visible = (t + p.R) % 1.6 < .9;
     }

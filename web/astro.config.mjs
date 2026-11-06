@@ -4,8 +4,8 @@ import { loadEnv } from 'vite';
 import node from '@astrojs/node';
 import vue from '@astrojs/vue';
 
-// En desarrollo, /api/v1 (comentarios) se reenvía a la API del catálogo, igual que hará
-// el proxy del servidor en producción.
+// En desarrollo, /api/v1 (comentarios) y /admin (panel) se reenvían al catálogo, igual
+// que hará el proxy del servidor en producción.
 const { CATALOGO_API_URL } = loadEnv(process.env.NODE_ENV ?? 'development', process.cwd(), '');
 const catalogo = CATALOGO_API_URL ? new URL(CATALOGO_API_URL).origin : null;
 
@@ -18,7 +18,9 @@ export default defineConfig({
   integrations: [vue()],
   trailingSlash: 'ignore',
   server: { host: true, port: 4321 },
-  vite: catalogo ? { server: { proxy: { '/api/v1': { target: catalogo, changeOrigin: true } } } } : {},
+  vite: catalogo
+    ? { server: { proxy: { '/api/v1': { target: catalogo, changeOrigin: true }, '/admin': { target: catalogo, changeOrigin: true } } } }
+    : {},
   // Secretos que se leen al arrancar el servidor (nunca se meten en el build).
   // En local salen de .env; en Docker, de las variables del contenedor.
   env: {

@@ -27,8 +27,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #prompt kbd{display:inline-block;border:1px solid var(--accent);border-radius:4px;padding:0 6px;margin-right:8px;color:var(--glow)}
 #help{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));font:400 11px var(--f-mono);color:var(--muted);letter-spacing:.04em;line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
 #help b{color:var(--text);font-weight:600}
-.screen{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 40%,rgba(60,36,120,.55),rgba(7,5,15,.92) 70%);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.card{max-width:520px;width:100%;text-align:left;display:grid;gap:18px}
+.screen{position:fixed;inset:0;z-index:20;display:grid;place-items:start center;overflow-y:auto;padding-block:24px;background:radial-gradient(ellipse at 50% 40%,rgba(60,36,120,.55),rgba(7,5,15,.92) 70%);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{max-width:520px;width:100%;text-align:left;display:grid;gap:18px;margin-block:auto}
 .card .eb{font:600 11px var(--f-mono);letter-spacing:.3em;color:var(--muted);text-transform:uppercase}
 .card h1{font:700 clamp(34px,8vw,60px)/1 var(--f-display);letter-spacing:.06em;margin:0;text-wrap:balance;background:linear-gradient(180deg,#fff,#b9a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
 .card p{margin:0;font-size:16px;line-height:1.55;color:var(--muted);max-width:60ch}
@@ -38,6 +38,8 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 .btn:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
 .btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);box-shadow:none}
 .row{display:flex;gap:10px;flex-wrap:wrap}
+#hint,.mode-hint{left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:8px 14px;background:var(--panel);border:1px solid var(--line);border-radius:999px;font:500 12px var(--f-mono);color:var(--muted);white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+#loadStatus{font:500 12px var(--f-mono);letter-spacing:.06em;color:var(--muted);min-height:1.4em}
 #panel .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
 #panel h2{font:700 22px var(--f-display);letter-spacing:.05em;margin:0}
 #joy{left:calc(24px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(18,12,36,.4)}
@@ -45,7 +47,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #act{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px));pointer-events:auto;width:84px;height:84px;border-radius:50%;padding:0;font-size:11px}
 #sound{pointer-events:auto;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:8px 14px;font-size:11px}
 #uniWrap{position:fixed;inset:0;z-index:30;background:#000}#uniWrap canvas{width:100%;height:100%;display:block}
-#mini .mapa{width:300px}@media (max-width:640px){#mini .mapa{width:190px}}
+#mini .mapa{width:340px}@media (max-width:640px){#mini .mapa{width:200px}}
 #termIn{position:fixed;left:-9999px;top:0;opacity:0;width:1px;height:1px}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40;transition:opacity .6s}
 .touch #help,.touch #cross{display:none}
@@ -68,18 +70,20 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
   <div class="card">
     <div class="eb">Nave de exploración · Tripulación 1</div>
     <h1>LA MALKEVNIA</h1>
-    <p>Bienvenido a bordo, capitán. La cubierta principal está presurizada y en silencio. Recorre los compartimentos: el puente, la sala de juegos con las Kallax, la biblioteca, la sala de proyección… Aún están vacíos, esperando su carga.</p>
+    <p>Bienvenido a bordo, capitán. La cubierta principal está presurizada y en calma. Tus Kallax esperan en la sala de juegos, tus libros y mangas en la biblioteca y el diario de a bordo en la bitácora. Desde el puente puedes trazar rumbo por el universo, tomar los mandos o bajar en lanzadera a los planetas de tus aficiones.</p>
     <dl id="ctrls">
       <dt>WASD / flechas</dt><dd>Caminar (Shift para correr)</dd>
       <dt>Ratón</dt><dd>Mirar alrededor</dd>
-      <dt>E</dt><dd>Usar consolas y terminales</dd>
-      <dt>M</dt><dd>Mostrar u ocultar el plano</dd>
+      <dt>E</dt><dd>Usar: coger cajas y libros, sentarse, consolas</dd>
+      <dt>M</dt><dd>Plano de la nave (toca una sala para ir)</dd>
+      <dt>Esc</dt><dd>Pausa y ajustes de calidad</dd>
     </dl>
     <div class="row"><button class="btn" id="go">EMBARCAR</button></div>
+    <div id="loadStatus" aria-live="polite">Encendiendo sistemas de a bordo…</div>
   </div>
 </div>
 <div id="pause" class="screen" hidden>
-  <div class="card"><div class="eb">Sistemas en espera</div><h1 style="font-size:40px">PAUSA</h1><div class="row"><button class="btn" id="resume">CONTINUAR</button></div></div>
+  <div class="card"><div class="eb">Sistemas en espera</div><h1 style="font-size:40px">PAUSA</h1><div class="row"><button class="btn" id="resume">CONTINUAR</button></div><div id="ajustes"></div></div>
 </div>
 <div id="panel" class="screen" hidden>
   <div class="card"><div class="eb" id="pEb">Terminal</div><h2 id="pTitle"></h2><p id="pText"></p><div class="row" id="pBtns"><button class="btn" id="pClose">CERRAR</button></div></div>
@@ -98,7 +102,9 @@ import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 const $ = id => document.getElementById(id);
 await Promise.race([Promise.all(['700 78px Orbitron','400 40px "JetBrains Mono"','600 9px "JetBrains Mono"'].map(f => document.fonts.load(f))).catch(() => {}), new Promise(r => setTimeout(r, 2500))]);
-const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+let RP = null, rpInfo = null;
+try { RP = await import('./modulos/rendimiento/rendimiento.js'); rpInfo = RP.detect(); } catch (e) { console.warn('rendimiento', e); }
+const TOUCH = matchMedia('(pointer: coarse)').matches || (navigator.maxTouchPoints > 0 && !matchMedia('(hover: hover)').matches);
 if (TOUCH) document.documentElement.classList.add('touch');
 
 /* ---------- Plano de la nave (rejilla) ---------- */
@@ -143,7 +149,7 @@ for (const d of DOORS) { for (const [x, z] of d.tiles) { grid[z][x] = DOOR; door
 
 /* ---------- Render ---------- */
 const canvas = $('c');
-const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: RP ? RP.PRESETS[rpInfo.recomendado].antialias : true, powerPreference: 'high-performance' });
 renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.25 : 1.6));
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -153,11 +159,11 @@ scene.background = new THREE.Color(0x05030c);
 const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 3000);
 camera.rotation.order = 'YXZ';
 
-let composer = null;
-if (!TOUCH) {
+let composer = null, bloom = null;
+if (!TOUCH || RP) {
   composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
-  composer.addPass(new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.5, 0.82));
+  composer.addPass(bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.5, 0.82));
   composer.addPass(new OutputPass());
 }
 
@@ -286,6 +292,17 @@ for (const d of DOORS) {
     stripe.position.set(d.axis === 'x' ? -s * S / 2 + s * .08 : 0, 0, d.axis === 'z' ? -s * S / 2 + s * .08 : 0); p.add(stripe);
     p.userData.s = s; return p;
   });
+  // marco luminoso en las dos caras: se ve desde lejos qué puerta lleva a qué sala
+  {
+    const fm = glow(col, .9), w = d.tiles.length * S, along = d.axis === 'x';
+    const post = new THREE.BoxGeometry(along ? .06 : S + .02, DOOR_H, along ? S + .02 : .06);
+    const lintel = new THREE.BoxGeometry(along ? w : S + .02, .06, along ? S + .02 : w);
+    for (const sgn of [-1, 1]) {
+      const pp = new THREE.Mesh(post, fm);
+      pp.position.set(along ? d.cx + sgn * (w / 2 - .03) : d.cx, DOOR_H / 2, along ? d.cz : d.cz + sgn * (w / 2 - .03)); scene.add(pp);
+    }
+    const li = new THREE.Mesh(lintel, fm); li.position.set(d.cx, DOOR_H + .03, d.cz); scene.add(li);
+  }
   // carteles sobre la puerta, uno por cada lado
   const y = (DOOR_H + H) / 2;
   const ra = R[d.a], rbm = R[d.b];
@@ -307,16 +324,25 @@ scene.add(new THREE.AmbientLight(0x6050a0, .35));
 function roomLight(id, x, z, intensity = 22, mix = .55) {
   const c = new THREE.Color(R[id].color).lerp(new THREE.Color(0xffffff), mix);
   const l = new THREE.PointLight(c, intensity, 0, 1.6); l.position.set(x, H - .35, z); scene.add(l);
-  const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, .04, 1.2), glow(c, .5)); panel.position.set(x, H - .02, z); scene.add(panel);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, .04, 1.2), glow(c, .36)); panel.position.set(x, H - .02, z); scene.add(panel);
   return l;
 }
 for (const r of ROOMS) {
   if (r.id === 'pasillo' || r.id === 'puente' || r.id === 'maquinas') continue;
   const b = rb(r.id); roomLight(r.id, b.cx, b.cz);
 }
-{ const b = rb('pasillo'); for (const x of [14, 26, 38]) roomLight('pasillo', x, b.cz, 12, .4); }
+{ const b = rb('pasillo'); for (const x of [19, 34]) roomLight('pasillo', x, b.cz, 14, .4); }
 { const b = rb('puente'); roomLight('puente', b.cx - 2, b.cz - 4.5, 16, .5); roomLight('puente', b.cx - 2, b.cz + 4.5, 16, .5); }
-{ const b = rb('maquinas'); roomLight('maquinas', b.cx, b.cz - 6, 14, .3); roomLight('maquinas', b.cx, b.cz + 6, 14, .3); }
+{ const b = rb('maquinas'); roomLight('maquinas', b.cx, b.cz - 6, 10, .3); }   // el núcleo del reactor ilumina el resto
+// cuadernas del pasillo: arcos estructurales cada pocos metros (no delante de las puertas)
+{
+  const b = rb('pasillo'), ribM = M.metal;
+  const side = new THREE.BoxGeometry(.18, H, .14), top = new THREE.BoxGeometry(.18, .16, b.z1 - b.z0);
+  for (const x of [12, 21, 24, 30, 33, 42]) {
+    for (const z of [b.z0 + .07, b.z1 - .07]) { const m = new THREE.Mesh(side, ribM); m.position.set(x, H / 2, z); scene.add(m); }
+    const t = new THREE.Mesh(top, ribM); t.position.set(x, H - .08, b.cz); scene.add(t);
+  }
+}
 // guías luminosas del pasillo
 {
   const b = rb('pasillo'), len = b.x1 - b.x0 + 2 * S;
@@ -334,13 +360,15 @@ function stars(n, size, color) {
   }
   g.setAttribute('position', new THREE.BufferAttribute(p, 3));
   const pts = new THREE.Points(g, new THREE.PointsMaterial({ size, color, sizeAttenuation: false, transparent: true, opacity: .9, depthWrite: false, toneMapped: false }));
+  pts.userData.rendimiento = { particulas: true };
   scene.add(pts); starLayers.push(pts); return pts;
 }
 stars(5000, 1.4, 0xd8d0ff); stars(1200, 2.4, 0xffffff); stars(400, 3.2, 0xb9a6ff);
+const nebulas = [];
 const nebTex = tex(256, 256, (g, w, h) => { const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(160,110,255,.55)'); r.addColorStop(.4, 'rgba(90,50,180,.22)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
 for (const [x, y, z, s, c] of [[900, 120, -500, 900, 0xb48cff], [700, -200, 600, 700, 0x6fa8ff], [-600, 250, -700, 800, 0xff6ad5], [200, 400, -900, 600, 0x8f7bff]]) {
   const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebTex, color: c, transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending }));
-  sp.position.set(x, y, z); sp.scale.set(s, s, 1); scene.add(sp);
+  sp.position.set(x, y, z); sp.scale.set(s, s, 1); scene.add(sp); nebulas.push(sp);
 }
 const planet = new THREE.Mesh(new THREE.SphereGeometry(140, 64, 48), new THREE.ShaderMaterial({
   uniforms: { t: { value: 0 } },
@@ -378,7 +406,18 @@ const panelMsg = (eb, title, text) => () => showPanel(eb, title, text);
   const hx = b.cx - 2.6, hz = b.cz;
   const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, .9, 40), M.metal); base.position.set(hx, .45, hz); scene.add(base);
   addCol(hx - 1.05, hz - 1.05, hx + 1.05, hz + 1.05);
-  const top = new THREE.Mesh(new THREE.CylinderGeometry(.95, .95, .03, 40), glow(0x4f8fd0, .5)); top.position.set(hx, .92, hz); scene.add(top);
+  const chart = tex(512, 512, (g, w, h) => {
+    const c = w / 2; g.fillStyle = '#060a1c'; g.fillRect(0, 0, w, h);
+    const rg = g.createRadialGradient(c, c, 0, c, c, c); rg.addColorStop(0, 'rgba(90,140,255,.35)'); rg.addColorStop(1, 'rgba(20,30,80,0)'); g.fillStyle = rg; g.fillRect(0, 0, w, h);
+    g.strokeStyle = 'rgba(127,214,255,.55)'; g.lineWidth = 2;
+    for (let r = 60; r < c; r += 55) { g.beginPath(); g.arc(c, c, r, 0, Math.PI * 2); g.stroke(); }
+    g.strokeStyle = 'rgba(127,214,255,.25)'; for (let a = 0; a < 12; a++) { g.beginPath(); g.moveTo(c, c); g.lineTo(c + Math.cos(a * Math.PI / 6) * c, c + Math.sin(a * Math.PI / 6) * c); g.stroke(); }
+    for (let i = 0; i < 260; i++) { const a = Math.random() * 7, r = Math.sqrt(Math.random()) * (c - 8); g.fillStyle = Math.random() < .15 ? '#ffc27a' : '#cfe8ff'; g.fillRect(c + Math.cos(a) * r, c + Math.sin(a) * r, Math.random() < .1 ? 4 : 2, Math.random() < .1 ? 4 : 2); }
+    g.strokeStyle = '#7fd6ff'; g.lineWidth = 6; g.beginPath(); g.arc(c, c, c - 4, 0, Math.PI * 2); g.stroke();
+  });
+  const top = new THREE.Mesh(new THREE.CircleGeometry(.95, 48), new THREE.MeshBasicMaterial({ map: chart, toneMapped: false, color: 0xbfd8ff }));
+  top.rotation.x = -Math.PI / 2; top.position.set(hx, .905, hz); scene.add(top);
+  anim.push(t => { top.rotation.z = t * .05; });
   const holo = new THREE.Group(); holo.position.set(hx, 1.55, hz); scene.add(holo);
   const hm = new THREE.MeshBasicMaterial({ color: 0x9fe0ff, wireframe: true, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
   holo.add(new THREE.Mesh(new THREE.IcosahedronGeometry(.32, 2), hm));
@@ -470,13 +509,13 @@ function kallax(x, z, rotY) {
 }
 {
   const b = rb('juegos');
-  kallax(b.cx - .76, b.z1 - .22, Math.PI); kallax(b.cx + .76, b.z1 - .22, Math.PI);
-  addCol(b.cx - 1.55, b.z1 - .45, b.cx + 1.55, b.z1);
+  // las Kallax reales (5×5, con las cajas) las monta el módulo kallax-3d; estas vacías quedan como reserva
+  if (!window.__sinKallaxProvisional) { const k1 = kallax(b.cx - .76, b.z1 - .22, Math.PI), k2 = kallax(b.cx + .76, b.z1 - .22, Math.PI); k1.name = k2.name = 'kallax-provisional'; }
+  addCol(b.cx - 1.9, b.z1 - .45, b.cx + 1.9, b.z1);
   // mesa de juego con sillas
   box(1.8, .74, 1.1, b.cx, 0, b.cz - .4, M.wood);
   const felt = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .9), new THREE.MeshStandardMaterial({ color: 0x3a2470, roughness: 1 })); felt.rotation.x = -Math.PI / 2; felt.position.set(b.cx, .742, b.cz - .4); scene.add(felt);
   for (const [dx, dz] of [[-.5, -.9], [.5, -.9], [-.5, .1], [.5, .1]]) box(.45, .45, .45, b.cx + dx, 0, b.cz - .4 + dz, M.fabric, false);
-  const lamp = new THREE.PointLight(0xffd9a0, 6, 0, 1.8); lamp.position.set(b.cx, 2.0, b.cz - .4); scene.add(lamp);
   const shade = new THREE.Mesh(new THREE.ConeGeometry(.35, .25, 24, 1, true), glow(0xffd9a0, .8)); shade.position.set(b.cx, 2.1, b.cz - .4); scene.add(shade);
   interact.push({ x: b.cx, z: b.z1 - 1.2, r: 2.0, label: 'Revisar las Kallax', run: panelMsg('Sala de juegos', 'Las Kallax', 'Dos Kallax 4×4 vacías, listas para recibir las cajas de tu colección de juegos de mesa.') });
 }
@@ -494,7 +533,6 @@ function kallax(x, z, rotY) {
   }
   // sillón de lectura junto al mirador
   box(.9, .45, .9, b.cx + .8, 0, b.z1 - 1.4, M.fabric); box(.9, .5, .18, b.cx + .8, .45, b.z1 - 1.88, M.fabric, false);
-  const lamp = new THREE.PointLight(0xffb36b, 5, 0, 1.8); lamp.position.set(b.cx - .4, 1.6, b.z1 - 1.4); scene.add(lamp);
   box(.05, 1.5, .05, b.cx - .4, 0, b.z1 - 1.4, M.metal, false);
   const bulb = new THREE.Mesh(new THREE.SphereGeometry(.12, 16, 12), glow(0xffc896, 1.6)); bulb.position.set(b.cx - .4, 1.55, b.z1 - 1.4); scene.add(bulb);
   interact.push({ x: b.cx, z: b.cz - .5, r: 2.0, label: 'Consultar la biblioteca', run: panelMsg('Biblioteca', 'Libros y manga', 'Estanterías vacías. Aquí irán tus libros y mangas, con lomos generados a partir de las portadas.') });
@@ -546,24 +584,37 @@ addEventListener('keydown', e => {
   if (inUniverse) return;
   if (keyCapture && keyCapture(e)) return;
   keys[e.code] = true;
-  if (!running || modal) { if (!$('panel').hidden && (e.code === 'Escape' || e.code === 'KeyE')) closePanel(); return; }
+  if (!running || modal || paused) { if (!$('panel').hidden && (e.code === 'Escape' || e.code === 'KeyE')) closePanel(); return; }
   if (e.code === 'KeyE') useNearest();
   if (e.code === 'KeyM' && !mapa) $('mini').hidden = !$('mini').hidden;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
 function look(dx, dy, k = .0022) { player.yaw -= dx * k; player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch - dy * k)); }
-document.addEventListener('mousemove', e => { if (inUniverse || modal) return; if (locked) look(e.movementX, e.movementY); else if (dragLook && e.buttons & 1) look(e.movementX, e.movementY, .004); });
+document.addEventListener('mousemove', e => { if (inUniverse || modal || paused || !running) return; if (locked) look(e.movementX, e.movementY); else if (e.buttons & 1 && e.target === canvas) look(e.movementX, e.movementY, .004); });
 document.addEventListener('pointerlockchange', () => {
+  lockPending = false;
   locked = document.pointerLockElement === canvas;
-  if (!locked && running && !modal && !inUniverse && !dragLook) { paused = true; $('pause').hidden = false; }
+  if (locked && dragLook) { dragLook = false; $('help').innerHTML = HELP; }
+  if (!locked && running && !modal && !inUniverse) { paused = true; $('pause').hidden = false; }
 });
-async function lock() {
-  if (TOUCH) return;
-  try { await canvas.requestPointerLock(); } catch { dragLook = true; $('help').innerHTML = '<b>WASD</b> moverse · <b>Shift</b> correr · <b>Arrastra</b> para mirar · <b>E</b> usar · <b>M</b> plano'; }
+// Pointer lock: si el visor no lo permite tras un clic de verdad, se pasa a "arrastrar para mirar".
+// Un fallo sin gesto del usuario (p. ej. tras Esc) no cuenta: se reintenta en el siguiente clic.
+// Arrastrar con el botón izquierdo siempre sirve para mirar, así que un fallo no deja al jugador sin control.
+const HELP = $('help').innerHTML;
+let lockFromClick = false, lockPending = false;
+function lockFailed() {
+  lockPending = false;
+  if (!lockFromClick || dragLook) return;
+  dragLook = true; $('help').innerHTML = '<b>WASD</b> moverse · <b>Shift</b> correr · <b>Arrastra</b> para mirar · <b>E</b> usar · <b>M</b> plano';
 }
-document.addEventListener('pointerlockerror', () => { dragLook = true; });
-canvas.addEventListener('click', () => { if (running && !locked && !dragLook && !TOUCH) lock(); });
+function lock(fromClick = false) {
+  if (TOUCH || locked || lockPending || !running) return;
+  lockFromClick = fromClick; lockPending = true;
+  try { const p = canvas.requestPointerLock(); if (p && p.catch) p.catch(lockFailed); } catch { lockFailed(); }
+}
+document.addEventListener('pointerlockerror', lockFailed);
+canvas.addEventListener('click', () => { if (running && !locked && !modal && !paused && !TOUCH) lock(true); });
 
 // táctil: joystick a la izquierda, mirar arrastrando a la derecha
 const joy = { id: null, x0: 0, y0: 0, vx: 0, vy: 0 }, lookT = { id: null, x: 0, y: 0 };
@@ -598,9 +649,9 @@ function showPanel(eb, title, text, extra) {
   if (extra) $('pBtns').prepend(extra);
   $('panel').hidden = false; if (locked) document.exitPointerLock(); mobileCtl?.setEnabled(false); $('pClose').focus();
 }
-function closePanel() { $('panel').hidden = true; modal = false; for (const k in keys) keys[k] = false; mobileCtl?.setEnabled(true); lock(); }
-$('pClose').addEventListener('click', closePanel);
-$('resume').addEventListener('click', () => { $('pause').hidden = true; paused = false; lock(); });
+function closePanel(fromClick = false) { $('panel').hidden = true; modal = false; for (const k in keys) keys[k] = false; mobileCtl?.setEnabled(true); lock(fromClick); }
+$('pClose').addEventListener('click', () => closePanel(true));
+$('resume').addEventListener('click', () => { $('pause').hidden = true; paused = false; lock(true); });
 
 let nearest = null;
 function useNearest() { if (nearest && !modal) nearest.run(); }
@@ -617,12 +668,14 @@ async function openUniverse(planetId) {
   $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
   inUniverse = true; if (locked) document.exitPointerLock();
   for (const k in keys) keys[k] = false;
+  dispatchEvent(new CustomEvent('malkevnia:mode', { detail: { mode: 'universo', id: planetId || null } }));
   mobileCtl?.setEnabled(false); window.AudioNave?.setMuted(true);
   const wrap = document.createElement('div'); wrap.id = 'uniWrap'; const c = document.createElement('canvas'); wrap.appendChild(c); document.body.appendChild(wrap);
   const exit = async () => {
     $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
     try { uni?.stop?.(); uni?.dispose?.(); } catch {}
     uni = null; wrap.remove(); inUniverse = false; clock.getDelta(); $('fade').style.opacity = 0;
+    dispatchEvent(new CustomEvent('malkevnia:mode', { detail: { mode: 'nave', id: lastRoom?.id || null } }));
     mobileCtl?.setEnabled(true); if (audioOn) window.AudioNave?.setMuted(false); lock();
   };
   try {
@@ -630,7 +683,7 @@ async function openUniverse(planetId) {
     await uni.ready; uni.start();
     if (planetId) uni.goToPlanet(planetId); else uni.launch?.();
   }
-  catch (err) { console.error(err); wrap.remove(); inUniverse = false; mobileCtl?.setEnabled(true); showPanel('Navegación', 'Fallo en el salto', 'El módulo de navegación no respondió. Inténtalo de nuevo más tarde.'); }
+  catch (err) { console.error(err); wrap.remove(); inUniverse = false; mobileCtl?.setEnabled(true); dispatchEvent(new CustomEvent('malkevnia:mode', { detail: { mode: 'nave', id: lastRoom?.id || null } })); showPanel('Navegación', 'Fallo en el salto', 'El módulo de navegación no respondió. Inténtalo de nuevo más tarde.'); }
   $('fade').style.opacity = 0;
 }
 
@@ -638,7 +691,12 @@ async function openUniverse(planetId) {
 let audio = null;
 let audioOn = false;
 $('sound').addEventListener('click', () => {
-  if (window.AudioNave) { audioOn = !audioOn; window.AudioNave.setMuted(!audioOn); $('sound').textContent = 'Sonido: ' + (audioOn ? 'sí' : 'no'); return; }
+  const A = window.AudioNave;
+  if (A) {
+    if (!A.getState?.().running) { audioOn = true; A.init({ room: lastRoom?.id || 'puente' }).then(() => A.setMuted(false)).catch(e => console.warn(e)); }
+    else { audioOn = !audioOn; A.setMuted(!audioOn); }
+    $('sound').textContent = 'Sonido: ' + (audioOn ? 'sí' : 'no'); return;
+  }
   if (!audio) {
     const ac = new AudioContext(), out = ac.createGain(); out.gain.value = .0; out.connect(ac.destination);
     const len = ac.sampleRate * 4, buf = ac.createBuffer(1, len, ac.sampleRate), ch = buf.getChannelData(0); let l = 0;
@@ -679,7 +737,7 @@ function tick() {
   if (inUniverse) return;
   const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
   // movimiento
-  if (running && !paused && !modal) {
+  if (running && !paused && !modal && !player.seated) {
     let f = 0, s = 0;
     if (keys.KeyW || keys.ArrowUp) f += 1; if (keys.KeyS || keys.ArrowDown) f -= 1;
     if (keys.KeyD || keys.ArrowRight) s += 1; if (keys.KeyA || keys.ArrowLeft) s -= 1;
@@ -690,15 +748,15 @@ function tick() {
       const sp = (keys.ShiftLeft || keys.ShiftRight ? 6 : 3.4) * dt;
       const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
       const mx = (-sin * f + cos * s) * sp, mz = (-cos * f - sin * s) * sp;
-      if (!hits(player.x + mx, player.z)) player.x += mx;
-      if (!hits(player.x, player.z + mz)) player.z += mz;
+      // si un teletransporte o un mueble nuevo nos deja solapados, se puede salir andando
+      const stuck = hits(player.x, player.z);
+      if (stuck || !hits(player.x + mx, player.z)) player.x += mx;
+      if (stuck || !hits(player.x, player.z + mz)) player.z += mz;
       player.bob += dt * Math.min(len, 1) * (sp / dt) * 2.4;
     }
     player.moving = len > .2;
   } else player.moving = false;
   if (player.moving !== player._wasMoving) { player._wasMoving = player.moving; window.AudioNave?.setWalking(player.moving, { surface: lastRoom?.id === 'biblioteca' || lastRoom?.id === 'proyeccion' ? 'moqueta' : 'metal' }); }
-  {
-  }
   // puertas
   for (const d of DOORS) {
     const near = Math.hypot(player.x - d.cx, player.z - d.cz) < 2.6;
@@ -709,10 +767,10 @@ function tick() {
     }
   }
   // cámara
-  camera.position.set(player.x, EYE + Math.sin(player.bob) * .035, player.z);
+  camera.position.set(player.x, player.eye ?? (EYE + Math.sin(player.bob) * .035), player.z);
   camera.rotation.set(player.pitch, player.yaw, 0);
   // exterior en movimiento: la nave avanza hacia +x
-  for (const [i, l] of starLayers.entries()) { const a = l.geometry.attributes.position, v = dt * (6 + i * 5); for (let k = 0; k < a.count; k++) { let x = a.array[k * 3] - v; if (x < -800) x += 1600; a.array[k * 3] = x; } a.needsUpdate = true; }
+  for (const [i, l] of starLayers.entries()) { if (!l.visible) continue; const a = l.geometry.attributes.position, v = dt * (6 + i * 5); for (let k = 0; k < a.count; k++) { let x = a.array[k * 3] - v; if (x < -800) x += 1600; a.array[k * 3] = x; } a.needsUpdate = true; }
   planet.rotation.y = t * .01; planet.material.uniforms.t.value = t;
   for (const a of anim) a(t, dt);
   // compartimento actual
@@ -723,10 +781,10 @@ function tick() {
   nearest = null; let best = 1e9;
   for (const it of interact) { const dd = Math.hypot(player.x - it.x, player.z - it.z); if (dd < it.r && dd < best) { best = dd; nearest = it; } }
   const pr = $('prompt');
-  if (nearest && running && !modal) { pr.hidden = false; pr.innerHTML = (TOUCH ? '' : '<kbd>E</kbd>') + nearest.label; $('act').hidden = !TOUCH; }
+  if (nearest && running && !modal && !player.seated) { pr.hidden = false; pr.innerHTML = (TOUCH ? '' : '<kbd>E</kbd>') + nearest.label; $('act').hidden = !TOUCH; }
   else { pr.hidden = true; $('act').hidden = true; }
   if (!mapa && !$('mini').hidden && (miniT += dt) > .1) { miniT = 0; drawMini(); }
-  composer ? composer.render() : renderer.render(scene, camera);
+  if (RP) RP.render(renderer, scene, camera, composer); else composer ? composer.render() : renderer.render(scene, camera);
 }
 addEventListener('resize', () => {
   camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
@@ -734,13 +792,13 @@ addEventListener('resize', () => {
 });
 
 $('go').addEventListener('click', () => {
-  $('start').hidden = true; running = true;
+  $('start').hidden = true; running = true; paused = false;
   dispatchEvent(new CustomEvent('malkevnia:start'));
   for (const id of ['room', 'mini', 'cross', 'help', 'sound']) $(id).hidden = false;
   if (TOUCH) { $('joy').hidden = false; if (innerWidth < 640) $('mini').hidden = true; }
-  lock();
+  lock(true);
 });
-if (TOUCH) $('ctrls').innerHTML = '<dt>Pulgar izquierdo</dt><dd>Caminar</dd><dt>Arrastrar a la derecha</dt><dd>Mirar alrededor</dd><dt>USAR</dt><dd>Consolas y terminales</dd>';
+if (TOUCH) $('ctrls').innerHTML = '<dt>Pulgar izquierdo</dt><dd>Caminar</dd><dt>Arrastrar a la derecha</dt><dd>Mirar alrededor</dd><dt>Usar</dt><dd>Coger cajas y libros, sentarse, consolas</dd><dt>Plano</dt><dd>Toca el plano para ir a una sala</dd>';
 
 /* ---------- API de módulos (ver README.md) ---------- */
 const frameHooks = new Set();
@@ -778,11 +836,17 @@ async function registerModule(roomId, mod, opts = {}) {
   } };
 }
 function teleport(x, z, yaw) { player.x = x; player.z = z; if (yaw !== undefined) player.yaw = yaw; }
-window.Malkevnia = { version: 1, THREE, scene, camera, renderer, player, rooms: roomsWorld, grid, tile: S, registerModule, clearRoom, onFrame, teleport, showPanel, suspend, resume,
+window.Malkevnia = { version: 1, THREE, scene, camera, renderer, player, rooms: roomsWorld, grid, tile: S, registerModule, clearRoom, onFrame, teleport, openUniverse, showPanel, suspend, resume,
   addCollider: addCol, addInteract: it => (interact.push(it), it) };
-window.__nave = { player, scene, camera };
+window.__nave = { player, scene, camera, hits, colliders, interact };
 dispatchEvent(new CustomEvent('malkevnia:ready', { detail: window.Malkevnia }));
+// calidad adaptable (modulos/rendimiento)
+if (RP) try {
+  RP.applyPreset(renderer, scene, 'auto', { composer, bloom, overrides: { sombras: false } });
+  RP.autoTune(renderer, 60);
+  RP.panel($('ajustes'));
+} catch (e) { console.warn('rendimiento', e); }
 // módulos integrados (cada uno falla por separado sin romper la nave)
 tick();
-import('./integracion.js').then(m => m.default({ THREE, scene, camera, renderer, player, rooms: roomsWorld, R, rb, interact, anim, addCol, box, glow, showPanel, suspend, resume, teleport, openUniverse, useNearest, lock, look, joy, keys, TOUCH, S, H, $, get lastRoom() { return lastRoom; }, setKeyCapture: f => { keyCapture = f; }, setMapa: m => { mapa = m; }, setMobile: c => { mobileCtl = c; }, get locked() { return locked; }, setModal: v => { modal = v; }, setAudioOn: v => { audioOn = v; $('sound').textContent = 'Sonido: ' + (v ? 'sí' : 'no'); }, starLayers })).catch(e => console.warn('integración', e));
+import('./integracion.js').then(m => m.default({ THREE, scene, camera, renderer, player, rooms: roomsWorld, R, rb, interact, anim, addCol, box, glow, showPanel, suspend, resume, teleport, openUniverse, useNearest, lock, look, joy, keys, TOUCH, S, H, $, get lastRoom() { return lastRoom; }, setKeyCapture: f => { keyCapture = f; }, setMapa: m => { mapa = m; }, setMobile: c => { mobileCtl = c; }, get locked() { return locked; }, setModal: v => { modal = v; }, setAway: v => { inUniverse = v; if (!v) clock.getDelta(); }, planet, moon, setAudioOn: v => { audioOn = v; $('sound').textContent = 'Sonido: ' + (v ? 'sí' : 'no'); }, starLayers, nebulas, colliders, hits })).catch(e => console.warn('integración', e));
 </script>

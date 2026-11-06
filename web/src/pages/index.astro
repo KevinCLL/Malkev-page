@@ -1,7 +1,7 @@
 ---
 import Nave from '../layouts/Nave.astro';
 import { salas } from '../lib/salas';
-import { urlModulo } from '../lib/modulos';
+import { montaje } from '../lib/modulos';
 import { listarEntradas, resolverUrlAntigua } from '../lib/bitacora';
 
 // Enlaces de la época de WordPress (/?p=1038): la API del catálogo conoce sus alias.
@@ -10,8 +10,9 @@ if (Astro.url.searchParams.has('p')) {
   return Astro.redirect(slug ? `/bitacora/${encodeURIComponent(slug)}` : '/bitacora', 301);
 }
 
-const destinos = salas.filter((s) => s.slug !== 'puente');
-const operativa = (s: (typeof salas)[number]) => s.slug === 'bitacora' || urlModulo(s) !== null;
+// La consola es solo para el capitán: no sale en el panel de salas.
+const destinos = salas.filter((s) => !['puente', 'consola'].includes(s.slug));
+const operativa = (s: (typeof salas)[number]) => s.slug === 'bitacora' || montaje(s) !== null;
 const ultimas = (await listarEntradas()).slice(0, 3);
 const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
 ---

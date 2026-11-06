@@ -1,13 +1,15 @@
 ---
 import Sala from '../components/Sala.astro';
 import Terminal from '../components/Terminal.vue';
-import { salas } from '../lib/salas';
+import { sala, salas } from '../lib/salas';
+import { montaje } from '../lib/modulos';
 import { listarEntradas } from '../lib/bitacora';
 
-// Mientras llega el módulo `ordenador`, una terminal mínima (isla Vue) que ya sirve para moverse.
+// Si no hay ni nave unificada ni módulo `ordenador-abordo`, una terminal mínima (isla Vue) que ya sirve para moverse.
+const conModulo = montaje(sala('ordenador')) !== null;
 const destinos = salas.map(({ slug, ruta, nombre }) => ({ slug, ruta, nombre }));
-const entradas = (await listarEntradas()).map(({ slug, titulo }) => ({ slug, titulo }));
+const entradas = conModulo ? [] : (await listarEntradas()).map(({ slug, titulo }) => ({ slug, titulo }));
 ---
 <Sala slug="ordenador">
-  <Terminal client:load salas={destinos} entradas={entradas} />
+  {!conModulo && <Terminal client:load salas={destinos} entradas={entradas} />}
 </Sala>

@@ -3,11 +3,12 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-/* Layout: lienzo a pantalla completa; telemetría abajo a la izquierda, panel de ajustes arriba a la derecha, como instrumentos del puente */
+/* Layout: lienzo a pantalla completa; telemetría abajo a la izquierda y ajustes arriba a la derecha, como instrumentos del puente.
+   Una sola estética oscura a propósito (es el espacio), con todos los colores definidos aquí. */
 :root{
-  --void:#07040f; --hull:rgba(16,11,34,.82); --text:#e9e2ff; --dim:#9b90c4; --accent:#b59bff; --line:rgba(181,155,255,.22);
+  --void:#07040f; --hull:rgba(16,11,34,.84); --text:#e9e2ff; --dim:#a99fd0; --accent:#b59bff; --line:rgba(181,155,255,.24);
   --ok:#7fe0b4; --warn:#ffcf7a; --bad:#ff8fa8;
-  --f-display:'Chakra Petch',system-ui,sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,monospace;
+  --f-display:'Chakra Petch',system-ui,sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
   color-scheme:dark;
 }
 html,body{height:100%}
@@ -16,48 +17,55 @@ canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
 .hud{position:fixed;inset:0;pointer-events:none;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;
   padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));
   padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
-.hud>*{pointer-events:auto}
 .izq{display:grid;gap:12px;align-self:stretch;grid-template-rows:auto 1fr auto;min-width:0}
-h1{margin:0;font:600 22px/1.1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;text-wrap:balance}
+.izq>*,.der>*{pointer-events:auto}
+h1{margin:0;font:600 22px/1.1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;text-wrap:balance;text-shadow:0 1px 12px rgba(7,4,15,.8)}
 h1 small{display:block;font:500 11px var(--f-mono);letter-spacing:.16em;color:var(--dim);margin-top:6px}
-.tele{background:var(--hull);border:1px solid var(--line);border-radius:14px;padding:14px 16px;width:min(380px,100%);box-sizing:border-box;backdrop-filter:blur(10px);display:grid;gap:10px;align-self:end}
+.tele{background:var(--hull);border:1px solid var(--line);border-radius:14px;padding:14px 16px;width:min(380px,100%);box-sizing:border-box;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;gap:10px;align-self:end}
 .big{display:flex;align-items:baseline;gap:10px;font-variant-numeric:tabular-nums}
-.big b{font:600 40px/1 var(--f-display)}
+.big b{font:600 40px/1 var(--f-display);min-width:2ch}
 .big span{color:var(--dim)}
-.pill{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid currentColor}
+.pill{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;color:var(--dim);white-space:nowrap}
+.pill[data-e=ok]{color:var(--ok)} .pill[data-e=limite]{color:var(--warn)} .pill[data-e=mal]{color:var(--bad)}
 #graf{width:100%;height:70px;display:block}
-dl{display:grid;grid-template-columns:auto 1fr;gap:2px 14px;margin:0;font-variant-numeric:tabular-nums}
-dt{color:var(--dim)} dd{margin:0;text-align:right}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 14px;margin:0;font-variant-numeric:tabular-nums}
+dt{color:var(--dim)} dd{margin:0;text-align:right;overflow-wrap:anywhere}
 .carga{display:flex;align-items:center;gap:10px}
 .carga label{color:var(--dim);white-space:nowrap}
-.carga input{flex:1;accent-color:var(--accent)}
-.carga output{width:2ch;text-align:right}
-#log{margin:0;padding:0;list-style:none;font-size:11px;color:var(--dim);max-height:5.6em;overflow:hidden;display:grid;gap:1px}
+.carga input{flex:1;min-width:0;accent-color:var(--accent);margin:0}
+.carga output{width:2ch;text-align:right;font-variant-numeric:tabular-nums}
+#log{margin:0;padding:0;list-style:none;font-size:11px;color:var(--dim);display:grid;gap:1px}
+#log li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #log li:first-child{color:var(--text)}
-.der{display:grid;gap:8px;justify-items:end}
+.der{display:grid;gap:8px;justify-items:end;align-content:start}
 #toggle{display:none;font:600 12px var(--f-display);letter-spacing:.12em;text-transform:uppercase;background:var(--hull);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
 #toggle:focus-visible,.carga input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.aviso{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--dim)}
 @media (max-width:720px){
-  .hud{grid-template-columns:1fr;grid-template-rows:auto 1fr}
-  .der{position:fixed;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px))}
+  .hud{grid-template-columns:minmax(0,1fr)}
+  .der{position:fixed;z-index:2;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px))}
   #toggle{display:block}
   .der.cerrado .mk-rend{display:none}
-  h1{font-size:17px;padding-right:110px}
-  .big b{font-size:32px}
-  #graf{height:50px}
+  .der .mk-rend{width:min(320px,100%)}
+  h1{font-size:16px;padding-right:110px}
+  .tele{width:100%;padding:12px 14px;gap:8px}
+  .big b{font-size:30px}
+  #graf{height:44px}
+  #log li:nth-child(n+3){display:none}
 }
 </style>
 
-<canvas id="c" aria-label="Escena de prueba: campo de asteroides alrededor de un planeta"></canvas>
+<canvas id="c" aria-label="Escena de prueba: un planeta rodeado de cinturones de asteroides dentro de una nebulosa"></canvas>
 <div class="hud">
   <div class="izq">
     <h1>Banco de pruebas<small>La Malkevnia · modo rendimiento adaptable</small></h1>
     <div></div>
     <section class="tele" aria-label="Telemetría">
       <div class="big"><b id="fps">--</b><span>fps</span><span id="ms">-- ms</span><span class="pill" id="estado">midiendo</span></div>
-      <canvas id="graf" width="760" height="140"></canvas>
+      <canvas id="graf" width="760" height="140" aria-label="Tiempo de cada frame en los últimos segundos; la línea discontinua es el objetivo"></canvas>
       <dl>
         <dt>Calidad</dt><dd id="q">--</dd>
+        <dt>Objetivo</dt><dd id="objv">--</dd>
         <dt>Resolución interna</dt><dd id="res">--</dd>
         <dt>Asteroides · partículas</dt><dd id="obj">--</dd>
       </dl>
@@ -65,7 +73,7 @@ dt{color:var(--dim)} dd{margin:0;text-align:right}
       <ul id="log" aria-live="polite"><li>Detectando la GPU…</li></ul>
     </section>
   </div>
-  <div class="der" id="der"><button id="toggle" type="button" aria-expanded="false">Ajustes</button></div>
+  <div class="der" id="der"><button id="toggle" type="button" aria-expanded="true" aria-controls="der">Ajustes</button></div>
 </div>
 
 <script type="importmap">
@@ -81,31 +89,41 @@ import * as R from './rendimiento.js';
 
 const $ = (id) => document.getElementById(id);
 const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (n) => n.toLocaleString('es-ES');
 
-/* Renderer: el antialias se decide antes de crearlo, a partir de detect() */
+/* Renderer: el antialias del lienzo se decide al crearlo, según el preset que tocará */
 const info = R.detect();
-const aa = R.PRESETS[info.recomendado].antialias;
-const renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: aa, powerPreference: 'high-performance' });
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), ...R.opcionesRenderer() });
+} catch (e) {
+  document.querySelector('.hud').hidden = true;
+  const d = document.createElement('p'); d.className = 'aviso';
+  d.textContent = 'Este navegador no puede mostrar gráficos WebGL, así que no hay escena que ajustar.';
+  document.body.append(d);
+  throw e;
+}
 renderer.setSize(innerWidth, innerHeight);
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x07040f);
-scene.fog = new THREE.FogExp2(0x0b0618, 0.0035);
-const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 2000);
+scene.fog = new THREE.FogExp2(0x0b0618, 0.0028);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 2500);
 
-/* Nebulosa: esfera interior con ruido fbm (carga de píxeles; la que más alivia la resolución dinámica) */
-const nebU = { t: { value: 0 }, oct: { value: 6 } };
-const nebula = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 32), new THREE.ShaderMaterial({
-  side: THREE.BackSide, depthWrite: false, fog: false, uniforms: nebU,
+/* Nebulosa: esfera interior con ruido fbm. Es la carga de píxeles: la que alivia la resolución dinámica */
+const RUIDO = `
+  uniform float t; uniform int oct;
+  float h(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+  float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+    return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+               mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+  float fbm(vec3 p){ float v=0., a=.5; for(int k=0;k<14;k++){ if(k>=oct) break; v+=a*n(p); p=p*2.03+.17; a*=.5; } return v; }`;
+const ruidoU = { t: { value: 0 }, oct: { value: 7 } };
+const nebula = new THREE.Mesh(new THREE.SphereGeometry(1200, 48, 32), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, uniforms: ruidoU,
   vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-  fragmentShader: `
-    varying vec3 vP; uniform float t; uniform int oct;
-    float h(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
-    float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
-      return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
-                 mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
-    float fbm(vec3 p){ float v=0., a=.5; for(int k=0;k<14;k++){ if(k>=oct) break; v+=a*n(p); p=p*2.03+.17; a*=.5; } return v; }
+  fragmentShader: `varying vec3 vP;${RUIDO}
     void main(){
       vec3 p = vP*3. + vec3(t*.01, 0., t*.006);
       float q = fbm(p + fbm(p*1.7));
@@ -116,12 +134,11 @@ const nebula = new THREE.Mesh(new THREE.SphereGeometry(900, 48, 32), new THREE.S
 }));
 scene.add(nebula);
 
-/* Planeta con su propio shader fbm */
-const planU = { t: { value: 0 }, oct: { value: 6 } };
+/* Planeta con su propio fbm */
 const planet = new THREE.Mesh(new THREE.SphereGeometry(40, 128, 96), new THREE.ShaderMaterial({
-  uniforms: planU,
+  uniforms: ruidoU,
   vertexShader: `varying vec3 vP; varying vec3 vN; void main(){ vP=position*.06; vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
-  fragmentShader: nebula.material.fragmentShader.split('void main')[0].replace('varying vec3 vP;', 'varying vec3 vP; varying vec3 vN;') + `
+  fragmentShader: `varying vec3 vP; varying vec3 vN;${RUIDO}
     void main(){
       float q = fbm(vP*2. + vec3(0., t*.02, 0.) + fbm(vP*4.));
       vec3 c = mix(vec3(.18,.08,.38), vec3(.75,.55,1.), smoothstep(.3,.85,q));
@@ -132,53 +149,66 @@ const planet = new THREE.Mesh(new THREE.SphereGeometry(40, 128, 96), new THREE.S
 }));
 scene.add(planet);
 
-/* Anillo fino: sólo a partir de calidad "alto" */
-const ring = new THREE.Mesh(new THREE.RingGeometry(58, 74, 256, 4), new THREE.MeshStandardMaterial({ color: 0x8c74d8, emissive: 0x2a1650, side: THREE.DoubleSide, transparent: true, opacity: .45 }));
-ring.rotation.x = Math.PI * .42; ring.receiveShadow = true;
+/* Anillo fino: sólo a partir de calidad "alto" (userData.rendimiento.detalleMin) */
+const ring = new THREE.Mesh(new THREE.RingGeometry(52, 60, 256, 2), new THREE.MeshStandardMaterial({ color: 0x8c74d8, emissive: 0x2a1650, side: THREE.DoubleSide, transparent: true, opacity: .4, depthWrite: false }));
+ring.rotation.x = Math.PI * .5; ring.receiveShadow = true;
 ring.userData.rendimiento = { detalleMin: 'alto' };
 scene.add(ring);
 
-/* Luces con sombra */
-scene.add(new THREE.HemisphereLight(0x9a86ff, 0x120a24, .5));
+/* Luces: el sol y una luz puntual proyectan sombra (la puntual renderiza 6 caras: es cara) */
+scene.add(new THREE.HemisphereLight(0x9a86ff, 0x120a24, .55));
 const sun = new THREE.DirectionalLight(0xfff0ff, 2.2);
-sun.position.set(120, 80, 140); sun.castShadow = true;
-Object.assign(sun.shadow.camera, { left: -160, right: 160, top: 160, bottom: -160, near: 10, far: 500 });
+sun.position.set(140, 90, 160); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -150, right: 150, top: 150, bottom: -150, near: 20, far: 600 });
+sun.shadow.bias = -0.0005;
 scene.add(sun);
-const glows = [];
-for (const [c, x, z] of [[0xff7ad9, 90, -40], [0x7ad0ff, -100, 50]]) {
-  const p = new THREE.PointLight(c, 3000, 260, 2); p.position.set(x, 10, z); p.castShadow = true; p.shadow.camera.far = 260;
-  const s = new THREE.Mesh(new THREE.SphereGeometry(2.4, 24, 16), new THREE.MeshBasicMaterial({ color: c }));
-  p.add(s); scene.add(p); glows.push(p);
-}
+const glows = [[0xff7ad9, true], [0x7ad0ff, false]].map(([c, sombra]) => {
+  const p = new THREE.PointLight(c, 2600, 240, 2); p.castShadow = sombra;
+  p.shadow.camera.near = 1; p.shadow.camera.far = 240; p.shadow.bias = -0.002;
+  p.add(new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 14), new THREE.MeshBasicMaterial({ color: c })));
+  scene.add(p);
+  return p;
+});
 
-/* Asteroides instanciados (la "carga" decide cuántos) */
-const MAX_AST = 24000;
-const astGeo = new THREE.IcosahedronGeometry(1, 2);
-{ const a = astGeo.attributes.position; for (let i = 0; i < a.count; i++) { const v = new THREE.Vector3().fromBufferAttribute(a, i); v.multiplyScalar(.75 + Math.random() * .5); a.setXYZ(i, v.x, v.y, v.z); } astGeo.computeVertexNormals(); }
-const ast = new THREE.InstancedMesh(astGeo, new THREE.MeshStandardMaterial({ color: 0x6d5d96, roughness: .85, metalness: .1, flatShading: true }), MAX_AST);
-ast.castShadow = ast.receiveShadow = true; ast.frustumCulled = false;
-const astData = [];
-const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e3 = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
-for (let i = 0; i < MAX_AST; i++) {
-  const r = 62 + Math.random() * 70, a = Math.random() * Math.PI * 2, y = (Math.random() - .5) * 10 * (r / 120);
-  astData.push({ r, a, y, s: .25 + Math.random() ** 4 * 2.2, w: (.02 + Math.random() * .05) * (90 / r), rx: Math.random() * 6, ry: Math.random() * 6 });
+/* Tres cinturones de asteroides instanciados. Las matrices se calculan una vez y cada cinturón gira entero:
+   así casi todo el coste es de GPU (lo que el modo rendimiento sí puede aliviar). */
+const POR_CINTURON = 15000, CINTURONES = [];
+const roca = new THREE.IcosahedronGeometry(1, 1);
+{
+  const a = roca.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).multiplyScalar(.7 + Math.random() * .55); a.setXYZ(i, v.x, v.y, v.z); }
+  roca.computeVertexNormals();
 }
-scene.add(ast);
+const matRoca = new THREE.MeshStandardMaterial({ color: 0x6d5d96, roughness: .85, metalness: .1, flatShading: true });
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e3 = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+[[66, 96, .022, .06], [100, 132, .014, -.05], [136, 170, .009, .1]].forEach(([r0, r1, vel, incl]) => {
+  const m = new THREE.InstancedMesh(roca, matRoca, POR_CINTURON);
+  for (let i = 0; i < POR_CINTURON; i++) {
+    const r = r0 + Math.random() * (r1 - r0), a = Math.random() * Math.PI * 2;
+    v3.set(Math.cos(a) * r, (Math.random() - .5) * 8 * Math.random(), Math.sin(a) * r);
+    q4.setFromEuler(e3.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
+    s3.setScalar(.25 + Math.random() ** 4 * 2.4);
+    m.setMatrixAt(i, m4.compose(v3, q4, s3));
+  }
+  m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
+  m.rotation.x = incl; m.userData.vel = vel;
+  scene.add(m); CINTURONES.push(m);
+});
 
 /* Polvo estelar: Points marcado como partículas (el preset decide cuántas se dibujan) */
-const N_DUST = 300000;
-const dustPos = new Float32Array(N_DUST * 3), dustCol = new Float32Array(N_DUST * 3);
-for (let i = 0; i < N_DUST; i++) {
-  const r = 140 + Math.random() * 600, a = Math.random() * Math.PI * 2, y = (Math.random() - .5) * 500 * Math.random();
-  dustPos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
-  const k = Math.random(); dustCol.set([.6 + k * .4, .5 + k * .2, 1], i * 3);
+const N_POLVO = 300000;
+const pos = new Float32Array(N_POLVO * 3), col = new Float32Array(N_POLVO * 3);
+for (let i = 0; i < N_POLVO; i++) {
+  const r = 150 + Math.random() * 650, a = Math.random() * Math.PI * 2, y = (Math.random() - .5) * 520 * Math.random();
+  pos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
+  const k = Math.random(); col.set([.6 + k * .4, .5 + k * .2, 1], i * 3);
 }
-const dustGeo = new THREE.BufferGeometry();
-dustGeo.setAttribute('position', new THREE.BufferAttribute(dustPos, 3));
-dustGeo.setAttribute('color', new THREE.BufferAttribute(dustCol, 3));
-const dust = new THREE.Points(dustGeo, new THREE.PointsMaterial({ size: .7, vertexColors: true, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
-dust.userData.rendimiento = { particulas: true };
-scene.add(dust);
+const polvoGeo = new THREE.BufferGeometry();
+polvoGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+polvoGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+const polvo = new THREE.Points(polvoGeo, new THREE.PointsMaterial({ size: .8, vertexColors: true, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
+polvo.userData.rendimiento = { particulas: true };
+scene.add(polvo);
 
 /* Postproceso */
 const composer = new EffectComposer(renderer);
@@ -188,46 +218,63 @@ composer.addPass(bloom);
 composer.addPass(new OutputPass());
 
 /* ---- Módulo de rendimiento ---- */
+const log = (txt) => {
+  const li = document.createElement('li');
+  li.textContent = `${new Date().toLocaleTimeString('es-ES')} · ${txt}`;
+  li.title = li.textContent;
+  $('log').prepend(li);
+  while ($('log').children.length > 4) $('log').lastChild.remove();
+};
+$('log').replaceChildren();
 R.applyPreset(renderer, scene, 'auto', { composer, bloom });
-const log = (txt) => { const li = document.createElement('li'); li.textContent = `${new Date().toLocaleTimeString('es-ES')} · ${txt}`; $('log').prepend(li); while ($('log').children.length > 5) $('log').lastChild.remove(); };
-$('log').innerHTML = '';
-log(`GPU: ${info.gpu} (${info.motivo}) → ${info.recomendado}`);
+log(`${info.gpu}: ${info.motivo.toLowerCase()} → empieza en ${R.ajustes().nombre}`);
 const tuner = R.autoTune(renderer, 60, { onDecision: log });
-const p = R.panel($('der'));
-R.onChange((ev) => { if (ev.tipo === 'preset' && ev.anterior && ev.anterior.nombre !== ev.ajustes.nombre) actualizarObj(); });
+R.panel($('der'));
+R.onChange((ev) => { if (ev.tipo === 'preset') actualizarObj(); });
 
-$('toggle').addEventListener('click', () => { const d = $('der'); const c = d.classList.toggle('cerrado'); $('toggle').setAttribute('aria-expanded', String(!c)); });
-if (matchMedia('(max-width:720px)').matches) $('der').classList.add('cerrado');
+const der = $('der'), toggle = $('toggle');
+const abrir = (si) => { der.classList.toggle('cerrado', !si); toggle.setAttribute('aria-expanded', String(si)); };
+toggle.addEventListener('click', () => abrir(der.classList.contains('cerrado')));
+if (matchMedia('(max-width:720px)').matches) abrir(false);
 
 let carga = 5;
 function aplicarCarga() {
-  ast.count = Math.round(MAX_AST * carga / 10);
-  nebU.oct.value = planU.oct.value = 2 + carga;
+  const n = Math.round(POR_CINTURON * carga / 10);
+  for (const m of CINTURONES) m.count = n;
+  ruidoU.oct.value = 2 + carga;
   actualizarObj();
 }
 function actualizarObj() {
-  const a = R.ajustes();
-  $('obj').textContent = `${ast.count.toLocaleString('es-ES')} · ${Math.floor(N_DUST * a.particulas).toLocaleString('es-ES')}`;
+  const a = R.ajustes(); if (!a) return;
+  $('obj').textContent = `${fmt(CINTURONES[0].count * CINTURONES.length)} · ${fmt(Math.floor(N_POLVO * a.particulas))}`;
 }
-$('carga').addEventListener('input', (e) => { carga = +e.target.value; $('cargaV').textContent = carga; aplicarCarga(); log(`Carga de la escena: ${carga}`); });
+$('carga').addEventListener('input', (e) => { carga = +e.target.value; $('cargaV').textContent = carga; aplicarCarga(); });
+$('carga').addEventListener('change', () => { log(`Carga de la escena a ${carga} de 10`); tuner.reiniciar(); });
 aplicarCarga();
 
-/* Gráfica de tiempos de frame */
+/* Gráfica del tiempo de cada frame */
 const g = $('graf').getContext('2d');
 function grafica() {
-  const W = g.canvas.width, H = g.canvas.height, h = tuner.historial, obj = 1000 / tuner.objetivo, top = Math.max(obj * 2.5, 40);
+  const W = g.canvas.width, H = g.canvas.height, h = tuner.historial, obj = 1000 / tuner.objetivoEfectivo;
+  const top = Math.max(obj * 2.5, 40), y = (v) => H - Math.min(v / top, 1) * (H - 4) - 2, dx = W / 239;
   g.clearRect(0, 0, W, H);
-  g.strokeStyle = 'rgba(181,155,255,.25)'; g.setLineDash([6, 6]); g.beginPath();
-  const yo = H - (obj / top) * H; g.moveTo(0, yo); g.lineTo(W, yo); g.stroke(); g.setLineDash([]);
-  g.fillStyle = '#9b90c4'; g.font = '20px IBM Plex Mono, monospace'; g.fillText(`${Math.round(obj * 10) / 10} ms`, 6, yo - 6);
-  if (h.length < 2) return;
-  const dx = W / 239;
-  g.beginPath(); g.moveTo(0, H);
-  h.forEach((v, i) => g.lineTo(i * dx, H - Math.min(v / top, 1) * H));
-  g.lineTo((h.length - 1) * dx, H); g.closePath();
-  g.fillStyle = 'rgba(181,155,255,.18)'; g.fill();
-  g.beginPath(); h.forEach((v, i) => (i ? g.lineTo : g.moveTo).call(g, i * dx, H - Math.min(v / top, 1) * H));
-  g.strokeStyle = '#b59bff'; g.lineWidth = 2; g.stroke();
+  if (h.length > 1) {
+    g.beginPath(); g.moveTo(0, H);
+    h.forEach((v, i) => g.lineTo(i * dx, y(v)));
+    g.lineTo((h.length - 1) * dx, H); g.closePath();
+    g.fillStyle = 'rgba(181,155,255,.16)'; g.fill();
+    g.beginPath(); h.forEach((v, i) => (i ? g.lineTo(i * dx, y(v)) : g.moveTo(0, y(v))));
+    g.strokeStyle = '#b59bff'; g.lineWidth = 2.5; g.stroke();
+    const u = h.length - 1; g.fillStyle = '#e9e2ff'; g.beginPath(); g.arc(u * dx, y(h[u]), 5, 0, 7); g.fill();
+  }
+  const yo = y(obj);
+  g.strokeStyle = 'rgba(233,226,255,.45)'; g.lineWidth = 1.5; g.setLineDash([8, 8]);
+  g.beginPath(); g.moveTo(0, yo); g.lineTo(W, yo); g.stroke(); g.setLineDash([]);
+  const txt = `objetivo ${obj.toFixed(1)} ms`;
+  g.font = '500 22px "IBM Plex Mono", monospace';
+  const tw = g.measureText(txt).width;
+  g.fillStyle = 'rgba(16,11,34,.85)'; g.fillRect(W - tw - 16, yo - 30, tw + 12, 26);
+  g.fillStyle = '#e9e2ff'; g.fillText(txt, W - tw - 10, yo - 10);
 }
 
 /* Bucle */
@@ -236,33 +283,33 @@ let t = 0, hudT = 0;
 function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), .1); t += reduce ? dt * .2 : dt;
-  nebU.t.value = planU.t.value = t;
+  ruidoU.t.value = t;
   const ca = t * .05;
-  camera.position.set(Math.cos(ca) * 250, 95 + Math.sin(t * .13) * 25, Math.sin(ca) * 250);
+  camera.position.set(Math.cos(ca) * 260, 100 + Math.sin(t * .13) * 25, Math.sin(ca) * 260);
   camera.lookAt(0, 0, 0);
   planet.rotation.y = t * .03;
-  glows.forEach((l, i) => { const a = t * (.25 + i * .1) + i * 3; l.position.set(Math.cos(a) * (95 + i * 15), 12 * Math.sin(a * 2), Math.sin(a) * (95 + i * 15)); });
-  for (let i = 0; i < ast.count; i++) {
-    const d = astData[i], a = d.a + t * d.w;
-    v3.set(Math.cos(a) * d.r, d.y, Math.sin(a) * d.r);
-    q4.setFromEuler(e3.set(d.rx + t * .3, d.ry + t * .2, 0)); s3.setScalar(d.s);
-    ast.setMatrixAt(i, m4.compose(v3, q4, s3));
-  }
-  ast.instanceMatrix.needsUpdate = true;
-  dust.rotation.y = t * .004;
+  glows.forEach((l, i) => { const a = t * (.22 + i * .08) + i * 3, r = 92 + i * 30; l.position.set(Math.cos(a) * r, 14 * Math.sin(a * 2), Math.sin(a) * r); });
+  for (const m of CINTURONES) m.rotation.y = t * m.userData.vel;
+  polvo.rotation.y = t * .004;
   R.render(renderer, scene, camera, composer);
 
-  if ((hudT += dt) > .25) {
-    hudT = 0;
-    const fps = tuner.fps, ok = fps >= tuner.objetivo * .92, mal = fps < tuner.objetivo * .7;
-    $('fps').textContent = Math.round(fps); $('ms').textContent = `${tuner.ms.toFixed(1)} ms`;
-    const est = $('estado'); est.textContent = ok ? 'estable' : mal ? 'ajustando' : 'al límite';
-    est.style.color = ok ? 'var(--ok)' : mal ? 'var(--bad)' : 'var(--warn)';
-    const a = R.ajustes(), pr = renderer.getPixelRatio();
-    $('q').textContent = `${a.nombre}${R.preferencias().preset === 'auto' ? ' (auto)' : ''}`;
-    $('res').textContent = `${Math.round(innerWidth * pr)}×${Math.round(innerHeight * pr)} · ${Math.round(R.escala() * 100)} %`;
-    grafica();
-  }
+  if ((hudT += dt) > .25) { hudT = 0; hud(); }
+}
+function hud() {
+  const fps = tuner.fps, obj = tuner.objetivoEfectivo, a = R.ajustes(), pr = renderer.getPixelRatio();
+  $('fps').textContent = fps ? Math.round(fps) : '--';
+  $('ms').textContent = tuner.ms ? `${tuner.ms.toFixed(1)} ms` : '-- ms';
+  const auto = R.preferencias().preset === 'auto';
+  const margen = R.escala() > a.escalaMin + .005 || (auto && a.nombre !== 'bajo');
+  const est = $('estado');
+  if (!fps) { est.dataset.e = ''; est.textContent = 'midiendo'; }
+  else if (fps >= obj * .92) { est.dataset.e = 'ok'; est.textContent = 'estable'; }
+  else if (margen) { est.dataset.e = fps >= obj * .7 ? 'limite' : 'mal'; est.textContent = 'ajustando'; }
+  else { est.dataset.e = 'mal'; est.textContent = 'al mínimo'; }
+  $('q').textContent = `${a.nombre}${auto ? ' (auto)' : ''}`;
+  $('objv').textContent = `${obj} fps${tuner.hz ? ` · pantalla de ${tuner.hz} Hz` : ''}`;
+  $('res').textContent = `${fmt(Math.round(innerWidth * pr))}×${fmt(Math.round(innerHeight * pr))} · ${Math.round(R.escala() * 100)} %`;
+  grafica();
 }
 frame();
 
