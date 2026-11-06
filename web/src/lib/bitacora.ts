@@ -41,6 +41,8 @@ export function localizar<T extends string | null>(s: T): T {
 /* ------------------------------------------------------------------ 1. API del catálogo */
 
 const API = (CATALOGO_API_URL ?? '').replace(/\/+$/, '');
+/** Con el catálogo hay comentarios (su API se publica en /api/v1 del mismo dominio). */
+export const hayCatalogo = API !== '';
 /** La API ya manda Cache-Control de 60 s; aquí guardamos lo mismo para no pedirla en cada visita. */
 const TTL_MS = 60_000;
 const memoria = new Map<string, { hasta: number; valor: unknown }>();

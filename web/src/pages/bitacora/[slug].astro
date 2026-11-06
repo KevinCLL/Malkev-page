@@ -1,6 +1,7 @@
 ---
 import Nave from '../../layouts/Nave.astro';
-import { leerEntrada } from '../../lib/bitacora';
+import Comentarios from '../../components/Comentarios.vue';
+import { hayCatalogo, leerEntrada } from '../../lib/bitacora';
 
 const e = await leerEntrada(Astro.params.slug!);
 if (!e) return new Response(null, { status: 404 });
@@ -19,6 +20,7 @@ const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Eur
     {e.etiquetas.length > 0 && (
       <ul class="tags">{e.etiquetas.map((t) => <li>#{t}</li>)}</ul>
     )}
+    {hayCatalogo && <Comentarios client:visible slug={e.slug} />}
   </article>
 </Nave>
 
