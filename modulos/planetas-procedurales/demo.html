@@ -160,14 +160,14 @@ function render(meta) {
   $('desig').textContent = meta.designacion;
   $('sector').textContent = `Sector ${meta.sector}`;
   $('name').textContent = meta.nombre;
-  const chips = [meta.tipoNombre, meta.estado];
-  if (meta.anillos) chips.push('Con anillos');
+  const chips = [meta.tipoNombre, meta.estado, ...(meta.etiquetas || [])];
   if (meta.lunas.length) chips.push(meta.lunas.length === 1 ? '1 luna' : `${meta.lunas.length} lunas`);
   $('chips').innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join('');
   $('lore').textContent = meta.lore;
   const rows = [
-    ['Radio', `${fmt(meta.radioKm)} km`], ['Gravedad', `${meta.gravedad.toLocaleString('es-ES')} g`],
-    ['Temperatura media', `${meta.temperatura} °C`], ['Duración del día', `${meta.duracionDia.toLocaleString('es-ES')} h`],
+    ['Radio', `${fmt(meta.radioKm)} km`], ['Masa', `${fmt(meta.masaTierras)} Tierras`],
+    ['Gravedad', `${meta.gravedad.toLocaleString('es-ES')} g · ${meta.gravedadDesc.toLowerCase()}`], ['Velocidad de escape', `${meta.velocidadEscape.toLocaleString('es-ES')} km/s`],
+    ['Temperatura media', `${fmt(meta.temperatura)} °C`], ['Duración del día', meta.duracionDiaTexto],
     ['Atmósfera', meta.atmosfera], ['Habitabilidad', `${meta.habitabilidad} %`],
   ];
   $('data').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
@@ -185,8 +185,8 @@ function show(seed, push = true) {
   if (planet) planet.dispose();
   planet = generatePlanet(seed, { detail: innerWidth < 720 ? 'media' : 'alta' });
   scene.add(planet.group);
-  const a = new THREE.Color(planet.meta.anillos ? 0x4a2a80 : 0x3a2470);
-  a.lerp(new THREE.Color(planet.group.children[0].children[0].material.uniforms.uAtmoColor.value), 0.35);
+  const a = new THREE.Color(0x3a2470);
+  if (planet.visual?.atmoColor != null) a.lerp(new THREE.Color(planet.visual.atmoColor), 0.35);
   nebMat.uniforms.uA.value.copy(a);
   render(planet.meta);
   if (push) { visited.splice(histIndex + 1); visited.push(seed); histIndex = visited.length - 1; }
