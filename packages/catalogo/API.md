@@ -156,9 +156,9 @@ el panel en `/admin/`; está aquí por si algún script lo necesita.
 | `POST /auth/login` | `{ username, password }` → cookie `malkevnia_capitan` (HttpOnly, SameSite=Strict, 30 días) |
 | `POST /auth/logout` | |
 | `POST /auth/password` | `{ current, password }`; cierra las demás sesiones |
-| `GET /admin/stats` | Como `/stats`, con borradores, programadas y comentarios pendientes |
+| `GET /admin/stats` | Como `/stats`, con borradores, programadas, comentarios pendientes y `to_review` (fichas por revisar, ver abajo) |
 | `GET /admin/lookup?kind=&q=` | Autocompletado: Open Library (libros, rol), TMDB (pelis, series; necesita `TMDB_API_KEY`), AniList (manga), BoardGameGeek |
-| `GET /admin/items` | Como el público, más `hidden=true|false` y con `notes` y `hidden` en cada item (máx. 500) |
+| `GET /admin/items` | Como el público, más `hidden=true` / `hidden=false` y `review=true` (por revisar, ver abajo), y con `notes` y `hidden` en cada item (máx. 500) |
 | `POST /admin/items` | Crea. Campos de Item más `tags: ["nombre"…]` y `collections: ["slug"…]` |
 | `GET/PATCH/DELETE /admin/items/:id` | `PATCH` cambia solo los campos que mandes |
 | `POST /admin/items/:id/ratings` | `{ score, review }`: pone nota y la apunta en el historial |
@@ -175,3 +175,10 @@ el panel en `/admin/`; está aquí por si algún script lo necesita.
 | `PATCH /admin/comments/:id` | `{ status }` o `{ body }` |
 | `POST /admin/comments/:id/reply` | `{ body }`: responde como capitán (y aprueba el original) |
 | `POST /admin/media?name=` | Cuerpo = la imagen (`Content-Type: image/…`, hasta 15 MB) → `{ url: "/uploads/…" }` |
+
+**Por revisar.** Los importadores (`packages/importadores`) apuntan en `meta.import.match` cómo emparejaron cada
+ficha con TMDB, Open Library o AniList (`{ provider, estado, score }`). `review=true` devuelve las que tienen `estado`
+`revisar` (varias obras parecidas y no eligió ninguna), `sin-resultado` o `error`. Cuando el capitán la da por buena
+(o elige la obra buena en el panel), el panel guarda `meta.revisado = { estado, en }` con el estado aceptado: va fuera
+de `meta.import`, que el importador reescribe en cada pasada, y la ficha solo vuelve a salir si una importación
+posterior da otro estado.

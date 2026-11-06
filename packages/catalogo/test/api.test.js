@@ -154,3 +154,32 @@ test('el panel rechaza peticiones de otro origen', { skip }, async () => {
   const r = await call('POST', '/admin/tags', { name: 'x' }, { Origin: 'https://otra-web.example' })
   assert.equal(r.status, 403)
 })
+
+test('«por revisar»: lo que el importador no emparejó, hasta que el capitán lo da por bueno', { skip }, async () => {
+  const importada = async (title, estado) => {
+    const r = await call('POST', '/admin/items', { kind: 'film', title, meta: { import: { sources: ['filmaffinity'], match: { provider: 'tmdb', estado, score: null } } } })
+    assert.equal(r.status, 201)
+    return r.data
+  }
+  const dudosa = await importada('Solaris', 'revisar')
+  const nada = await importada('Stalker', 'sin-resultado')
+  const bien = await importada('Ikiru', 'auto')
+  const porRevisar = async () => (await call('GET', '/admin/items?review=true&limit=500')).data.items.map((i) => i.id)
+  const recuento = async () => (await call('GET', '/admin/stats')).data.to_review
+
+  assert.deepEqual((await porRevisar()).sort(), [dudosa.id, nada.id].sort(), '«auto» y lo no importado no se revisa')
+  assert.equal(await recuento(), 2)
+
+  const buena = await call('PATCH', `/admin/items/${dudosa.id}`, { meta: { ...dudosa.meta, revisado: { estado: 'revisar', en: new Date().toISOString() } } })
+  assert.equal(buena.status, 200)
+  assert.deepEqual(await porRevisar(), [nada.id], 'dada por buena sale de la lista')
+  assert.equal(await recuento(), 1)
+
+  // Una importación posterior con otro veredicto la devuelve a la lista.
+  await call('PATCH', `/admin/items/${dudosa.id}`, { meta: { ...buena.data.meta, import: { match: { provider: 'tmdb', estado: 'error' } } } })
+  assert.ok((await porRevisar()).includes(dudosa.id))
+
+  // La API pública no filtra por esto ni da el recuento.
+  assert.ok((await call('GET', '/items?review=true&kind=film&limit=500')).data.items.some((i) => i.id === bien.id))
+  assert.equal((await call('GET', '/stats')).data.to_review, undefined)
+})
