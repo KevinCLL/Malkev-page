@@ -1,0 +1,24 @@
+{
+  "name": "@malkevnia/multijugador",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multijugador ligero de La Malkevnia: ver a otros visitantes paseando por la nave",
+  "type": "module",
+  "main": "src/server.js",
+  "exports": {
+    "./client": "./client/multijugador.js",
+    "./avatares": "./client/avatares.js",
+    "./core": "./src/core.js"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test test/*.test.js",
+    "build:demo": "node scripts/build-demo.mjs"
+  },
+  "dependencies": {
+    "ws": "^8.18.0"
+  }
+}

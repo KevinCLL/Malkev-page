@@ -1,0 +1,36 @@
+# Servicio del multijugador para el Hetzner (junto a El Dragón Cojo).
+# Solo escucha en 127.0.0.1: el proxy inverso (Caddy o nginx) publica
+# wss://malkevnia.com/mj/ws -> http://127.0.0.1:8787/ws
+# Ver DEPLOY.md antes de levantarlo.
+services:
+  multijugador:
+    build: .
+    image: malkevnia/multijugador:0.1.0
+    container_name: malkevnia-multijugador
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8787:8787"
+    environment:
+      PORT: "8787"
+      ALLOWED_ORIGINS: "https://malkevnia.com,https://www.malkevnia.com"
+      TRUST_PROXY: "1"
+      MAX_PLAYERS: "64"
+      MAX_PER_IP: "4"
+      TICK_HZ: "10"
+      # Solo quien conecte con CAPTAIN_KEY puede llamarse así (también "Ma1kev", "Маlkev"…)
+      RESERVED_NAMES: "Malkev"
+      # Clave larga y aleatoria en un .env junto a este archivo (no se sube al repo):
+      #   echo "MJ_CAPTAIN_KEY=$(openssl rand -hex 24)" > .env
+      CAPTAIN_KEY: "${MJ_CAPTAIN_KEY:-}"
+    read_only: true
+    cap_drop: [ALL]
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 64
+    mem_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "5m"
+        max-file: "3"

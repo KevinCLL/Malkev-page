@@ -1,0 +1,455 @@
+<title>Visitantes a bordo</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: escena 3D a pantalla completa con una consola flotante de cristal a la izquierda. Una sola estética oscura, a propósito: es el interior de la nave. */
+:root {
+  --void: #0b0818;
+  --hull: rgba(22, 16, 44, 0.78);
+  --hull-line: rgba(177, 140, 255, 0.22);
+  --ink: #ece6ff;
+  --ink-dim: #a99fc9;
+  --accent: #b18cff;
+  --ok: #8ff0c4;
+  --warn: #ffd18a;
+  --bad: #ff8fa8;
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--void); color: var(--ink); font-family: var(--f-body); overflow: hidden; }
+#escena { position: fixed; inset: 0; display: block; width: 100%; height: 100%; touch-action: none; }
+
+.consola {
+  position: fixed;
+  top: calc(12px + env(safe-area-inset-top, 0px));
+  left: calc(12px + env(safe-area-inset-left, 0px));
+  width: min(320px, calc(100vw - 24px - env(safe-area-inset-left, 0px) - env(safe-area-inset-right, 0px)));
+  max-height: calc(100% - 24px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overflow: auto;
+  background: var(--hull);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--hull-line);
+  border-radius: 14px;
+  font-size: 13px;
+}
+.consola summary {
+  list-style: none; cursor: pointer;
+  display: flex; align-items: center; gap: 10px;
+  padding: 12px 14px;
+}
+.consola summary::-webkit-details-marker { display: none; }
+.consola summary:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: 14px; }
+.marca { display: grid; gap: 1px; flex: 1; min-width: 0; }
+.marca b { font-family: var(--f-display); font-weight: 600; font-size: 15px; letter-spacing: 0.04em; }
+.marca span { color: var(--ink-dim); font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; }
+.estado { display: inline-flex; align-items: center; gap: 6px; font-family: var(--f-mono); font-size: 11px; color: var(--ink-dim); }
+.estado i { width: 8px; height: 8px; border-radius: 50%; background: var(--warn); box-shadow: 0 0 8px currentColor; }
+.estado[data-s="online"] i { background: var(--ok); }
+.estado[data-s="closed"] i { background: var(--bad); }
+
+.cuerpo { display: grid; gap: 16px; padding: 4px 14px 14px; }
+.bloque { display: grid; gap: 8px; }
+.bloque h2 { margin: 0; font-family: var(--f-display); font-weight: 500; font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--ink-dim); }
+.fila { display: flex; gap: 8px; align-items: center; }
+input[type="text"] {
+  flex: 1; min-width: 0;
+  background: rgba(255,255,255,0.05); color: var(--ink);
+  border: 1px solid var(--hull-line); border-radius: 8px;
+  padding: 7px 9px; font: inherit;
+}
+button {
+  font: inherit; color: var(--ink); cursor: pointer;
+  background: rgba(177,140,255,0.12); border: 1px solid var(--hull-line);
+  border-radius: 8px; padding: 6px 10px;
+}
+button:hover { background: rgba(177,140,255,0.22); }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.salas { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.salas button { display: flex; justify-content: space-between; align-items: center; gap: 6px; text-align: left; padding: 7px 9px; }
+.salas button[aria-pressed="true"] { border-color: var(--accent); background: rgba(177,140,255,0.26); }
+.salas .n { font-family: var(--f-mono); font-size: 12px; color: var(--ink-dim); font-variant-numeric: tabular-nums; }
+.salas button[aria-pressed="true"] .n { color: var(--ink); }
+
+.gente { display: flex; flex-wrap: wrap; gap: 6px; margin: 0; padding: 0; list-style: none; }
+.gente li { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 6px; border-radius: 99px; background: rgba(255,255,255,0.05); font-size: 12px; }
+.gente li i { width: 8px; height: 8px; border-radius: 50%; }
+.gente .vacio { background: none; color: var(--ink-dim); padding: 0; }
+
+.ajuste { display: grid; grid-template-columns: 1fr auto; gap: 4px 10px; align-items: center; }
+.ajuste label { color: var(--ink-dim); }
+.ajuste output { font-family: var(--f-mono); font-size: 12px; font-variant-numeric: tabular-nums; }
+.ajuste input[type="range"] { grid-column: 1 / -1; width: 100%; accent-color: var(--accent); }
+.check { display: flex; gap: 8px; align-items: center; color: var(--ink-dim); }
+.check input { accent-color: var(--accent); }
+.nota { margin: 0; color: var(--ink-dim); font-size: 12px; line-height: 1.5; }
+.nota code { font-family: var(--f-mono); font-size: 11.5px; color: var(--ink); }
+
+.pista {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: calc(14px + env(safe-area-inset-bottom, 0px));
+  max-width: calc(100vw - 32px);
+  padding: 7px 14px; border-radius: 99px;
+  background: var(--hull); border: 1px solid var(--hull-line);
+  color: var(--ink-dim); font-size: 12px; text-align: center;
+  pointer-events: none;
+}
+.rotulo {
+  position: fixed; right: calc(16px + env(safe-area-inset-right, 0px)); top: calc(14px + env(safe-area-inset-top, 0px));
+  text-align: right; pointer-events: none;
+}
+.rotulo b { display: block; font-family: var(--f-display); font-weight: 600; font-size: clamp(18px, 3vw, 26px); letter-spacing: 0.06em; }
+.rotulo span { font-family: var(--f-mono); font-size: 12px; color: var(--ink-dim); }
+@media (max-width: 560px) { .rotulo { top: calc(80px + env(safe-area-inset-top, 0px)); } .consola[open] ~ .rotulo { visibility: hidden; } }
+</style>
+
+<canvas id="escena" aria-label="Sala de pruebas de La Malkevnia con visitantes paseando"></canvas>
+
+<details class="consola" id="consola" open>
+  <summary>
+    <div class="marca"><b>La Malkevnia</b><span>Multijugador · sala de pruebas</span></div>
+    <span class="estado" id="estado" data-s="connecting"><i></i><span>conectando</span></span>
+  </summary>
+  <div class="cuerpo">
+    <div class="bloque">
+      <h2>Tu nombre a bordo</h2>
+      <form class="fila" id="form-nombre">
+        <input type="text" id="nombre" maxlength="20" value="Malkev" autocomplete="off" aria-label="Tu nombre">
+        <button type="submit">Cambiar</button>
+      </form>
+    </div>
+    <div class="bloque">
+      <h2>Salas · visitantes ahora</h2>
+      <div class="salas" id="salas"></div>
+    </div>
+    <div class="bloque">
+      <h2>En esta sala contigo</h2>
+      <ul class="gente" id="gente"></ul>
+    </div>
+    <div class="bloque">
+      <h2>Simulación</h2>
+      <div class="fila">
+        <span style="flex:1;color:var(--ink-dim)">Bots en la nave</span>
+        <button type="button" id="menos" aria-label="Quitar un bot">−</button>
+        <output id="nbots" style="font-family:var(--f-mono);min-width:2ch;text-align:center">0</output>
+        <button type="button" id="mas" aria-label="Añadir un bot">+</button>
+      </div>
+      <div class="ajuste">
+        <label for="lat">Latencia</label><output id="lat-v">80 ms</output>
+        <input type="range" id="lat" min="0" max="400" step="10" value="80">
+      </div>
+      <div class="ajuste">
+        <label for="jit">Jitter</label><output id="jit-v">30 ms</output>
+        <input type="range" id="jit" min="0" max="150" step="5" value="30">
+      </div>
+      <label class="check"><input type="checkbox" id="interp" checked> Interpolar posiciones</label>
+      <p class="nota">Los bots y tú usáis la misma API que en producción (<code>connect</code>, <code>onPlayers</code>, <code>sendPose</code>, <code>sample</code>) contra el núcleo del servidor ejecutándose aquí, con la red simulada. Quita la interpolación y sube la latencia para ver la diferencia.</p>
+    </div>
+  </div>
+</details>
+
+<div class="rotulo" aria-live="polite"><b id="rotulo-sala">Puente</b><span id="rotulo-n">—</span></div>
+<p class="pista" id="pista">WASD o flechas para andar · toca el suelo para ir allí · arrastra para girar la cámara</p>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { connect } from '../client/multijugador.js';
+import { createAvatarLayer, avatarColor } from '../client/avatares.js';
+import { createSimServer, createBot } from './simulador.js';
+
+const SALAS = [
+  { id: 'puente', nombre: 'Puente', tinte: 0xb18cff },
+  { id: 'bitacora', nombre: 'Bitácora', tinte: 0x8aa8ff },
+  { id: 'sala-juegos', nombre: 'Sala de juegos', tinte: 0xff9fd2 },
+  { id: 'proyeccion', nombre: 'Proyección', tinte: 0xffc58a },
+  { id: 'biblioteca', nombre: 'Biblioteca', tinte: 0x8ff0d4 },
+];
+const HALF = 9;
+const $ = (id) => document.getElementById(id);
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+if (matchMedia('(max-width: 560px)').matches) $('consola').open = false;
+
+// ---------- Red simulada + bots ----------
+const sim = createSimServer({ latency: 80, jitter: 30 });
+const bots = [];
+function addBot(room) {
+  const r = room || SALAS[Math.floor(Math.random() * SALAS.length)].id;
+  bots.push(createBot(sim, { room: r, rooms: SALAS.map((s) => s.id), half: HALF - 1 }));
+  $('nbots').value = bots.length;
+}
+function removeBot() { const b = bots.pop(); if (b) b.dispose(); $('nbots').value = bots.length; }
+for (let i = 0; i < 4; i++) addBot('puente');
+for (let i = 0; i < 6; i++) addBot();
+
+// ---------- Escena ----------
+const canvas = $('escena');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0818);
+scene.fog = new THREE.FogExp2(0x0b0818, 0.018);
+const camera = new THREE.PerspectiveCamera(55, 1, 0.1, 400);
+
+scene.add(new THREE.HemisphereLight(0x9c8cff, 0x120c22, 0.9));
+const luzSala = new THREE.PointLight(0xb18cff, 30, 30, 1.6);
+luzSala.position.set(0, 6, 0);
+scene.add(luzSala);
+
+// Estrellas sobre la cubierta abierta
+{
+  const n = 2500, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = 150 + Math.random() * 80;
+    const s = Math.sqrt(1 - u * u);
+    pos.set([r * s * Math.cos(th), Math.abs(r * u) * 0.9 + 5, r * s * Math.sin(th)], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const stars = new THREE.Points(g, new THREE.PointsMaterial({ color: 0xe6dcff, size: 1.6, sizeAttenuation: false, fog: false }));
+  scene.add(stars);
+}
+
+// Suelo con rejilla suave
+const sueloMat = new THREE.ShaderMaterial({
+  uniforms: { tinte: { value: new THREE.Color(0xb18cff) } },
+  vertexShader: 'varying vec2 vP; void main(){ vP = position.xy; gl_Position = projectionMatrix * modelViewMatrix * vec4(position,1.); }',
+  fragmentShader: `uniform vec3 tinte; varying vec2 vP;
+    void main(){
+      vec2 g = abs(fract(vP - .5) - .5) / fwidth(vP);
+      float l = 1. - min(min(g.x, g.y), 1.);
+      float d = length(vP) / ${HALF}.;
+      vec3 base = vec3(.07,.05,.13);
+      vec3 c = base + tinte * l * .28 * (1. - d * .6) + tinte * .05 * (1. - d);
+      gl_FragColor = vec4(c, 1.);
+    }`,
+  extensions: { derivatives: true },
+});
+const suelo = new THREE.Mesh(new THREE.PlaneGeometry(HALF * 2, HALF * 2), sueloMat);
+suelo.rotation.x = -Math.PI / 2;
+scene.add(suelo);
+
+// Barandilla perimetral con franja luminosa
+const franjaMat = new THREE.MeshBasicMaterial({ color: 0xb18cff });
+const paredMat = new THREE.MeshStandardMaterial({ color: 0x2a2150, roughness: 0.6, metalness: 0.3 });
+for (const [x, z, w, d] of [[0, -HALF, HALF * 2, 0.2], [0, HALF, HALF * 2, 0.2], [-HALF, 0, 0.2, HALF * 2], [HALF, 0, 0.2, HALF * 2]]) {
+  const pared = new THREE.Mesh(new THREE.BoxGeometry(w, 1.1, d), paredMat);
+  pared.position.set(x, 0.55, z);
+  scene.add(pared);
+  const f = new THREE.Mesh(new THREE.BoxGeometry(w + 0.02, 0.04, d + 0.02), franjaMat);
+  f.position.set(x, 1.12, z);
+  scene.add(f);
+}
+
+// Mesa holográfica central
+const mesa = new THREE.Group();
+const pie = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.3, 0.8, 40), paredMat);
+pie.position.y = 0.4;
+mesa.add(pie);
+const holoMat = new THREE.MeshBasicMaterial({ color: 0xb18cff, transparent: true, opacity: 0.55, wireframe: true });
+const holo = new THREE.Mesh(new THREE.IcosahedronGeometry(0.55, 1), holoMat);
+holo.position.y = 1.7;
+mesa.add(holo);
+const anillo = new THREE.Mesh(new THREE.TorusGeometry(0.95, 0.02, 8, 64), franjaMat);
+anillo.rotation.x = Math.PI / 2; anillo.position.y = 0.82;
+mesa.add(anillo);
+scene.add(mesa);
+
+function pintarSala(id) {
+  const s = SALAS.find((x) => x.id === id) || SALAS[0];
+  const c = new THREE.Color(s.tinte);
+  sueloMat.uniforms.tinte.value.copy(c);
+  franjaMat.color.copy(c);
+  holoMat.color.copy(c);
+  luzSala.color.copy(c);
+  $('rotulo-sala').textContent = s.nombre;
+}
+
+// ---------- Jugador local ----------
+let mj = null;
+const yo = { x: 0, z: 3, yaw: Math.PI, objetivo: null, sala: 'puente' };
+const otros = createAvatarLayer(THREE, scene);
+const propio = createAvatarLayer(THREE, scene);
+let rooms = {};
+let gente = [];
+
+function nombreLocal() {
+  try { return localStorage.getItem('mj-nombre') || 'Malkev'; } catch { return 'Malkev'; }
+}
+$('nombre').value = nombreLocal();
+
+function conectar() {
+  if (mj) mj.dispose();
+  mj = connect('sim://malkevnia/ws', $('nombre').value || 'Malkev', { room: yo.sala, WebSocket: sim.WebSocket });
+  mj.onStatus((s) => {
+    const el = $('estado');
+    el.dataset.s = s;
+    el.querySelector('span').textContent = { online: 'a bordo', connecting: 'conectando', reconnecting: 'reconectando', closed: 'desconectado' }[s] || s;
+  });
+  mj.onRooms((c) => { rooms = c; pintarSalas(); });
+  mj.onPlayers((l) => { gente = l; pintarGente(); });
+}
+
+function pintarSalas() {
+  const cont = $('salas');
+  cont.replaceChildren(...SALAS.map((s) => {
+    const b = document.createElement('button');
+    b.type = 'button';
+    b.setAttribute('aria-pressed', String(s.id === yo.sala));
+    b.innerHTML = `<span></span><span class="n"></span>`;
+    b.firstChild.textContent = s.nombre;
+    b.lastChild.textContent = rooms[s.id] || 0;
+    b.addEventListener('click', () => irASala(s.id));
+    return b;
+  }));
+  const n = rooms[yo.sala] || 0;
+  $('rotulo-n').textContent = `${n} ${n === 1 ? 'visitante' : 'visitantes'} en la sala`;
+}
+
+function pintarGente() {
+  const ul = $('gente');
+  if (!gente.length) {
+    const li = document.createElement('li');
+    li.className = 'vacio';
+    li.textContent = 'Nadie más por aquí. Prueba otra sala.';
+    return ul.replaceChildren(li);
+  }
+  ul.replaceChildren(...gente.map((p) => {
+    const li = document.createElement('li');
+    const i = document.createElement('i');
+    i.style.background = `#${avatarColor(p).toString(16).padStart(6, '0')}`;
+    li.append(i, document.createTextNode(p.name));
+    return li;
+  }));
+}
+
+function irASala(id) {
+  if (id === yo.sala) return;
+  yo.sala = id;
+  yo.x = 0; yo.z = 3; yo.objetivo = null;
+  mj.setRoom(id);
+  pintarSala(id);
+  pintarSalas();
+}
+
+$('form-nombre').addEventListener('submit', (e) => {
+  e.preventDefault();
+  try { localStorage.setItem('mj-nombre', $('nombre').value); } catch { /* sin almacenamiento */ }
+  conectar();
+});
+$('mas').addEventListener('click', () => { if (bots.length < 40) addBot(); });
+$('menos').addEventListener('click', removeBot);
+$('lat').addEventListener('input', (e) => { sim.net.latency = +e.target.value; $('lat-v').value = `${e.target.value} ms`; });
+$('jit').addEventListener('input', (e) => { sim.net.jitter = +e.target.value; $('jit-v').value = `${e.target.value} ms`; });
+sim.net.latency = +$('lat').value; sim.net.jitter = +$('jit').value;
+
+// ---------- Controles ----------
+const teclas = new Set();
+addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  teclas.add(e.key.toLowerCase());
+});
+addEventListener('keyup', (e) => teclas.delete(e.key.toLowerCase()));
+addEventListener('blur', () => teclas.clear());
+
+let camYaw = 0, camPitch = 0.5, arrastre = null;
+const ray = new THREE.Raycaster();
+canvas.addEventListener('pointerdown', (e) => {
+  arrastre = { x: e.clientX, y: e.clientY, movido: 0 };
+  canvas.setPointerCapture(e.pointerId);
+});
+canvas.addEventListener('pointermove', (e) => {
+  if (!arrastre) return;
+  const dx = e.clientX - arrastre.x, dy = e.clientY - arrastre.y;
+  arrastre.movido += Math.abs(dx) + Math.abs(dy);
+  arrastre.x = e.clientX; arrastre.y = e.clientY;
+  camYaw -= dx * 0.006;
+  camPitch = Math.min(1.2, Math.max(0.15, camPitch + dy * 0.004));
+});
+canvas.addEventListener('pointercancel', () => { arrastre = null; });
+canvas.addEventListener('pointerup', (e) => {
+  if (arrastre && arrastre.movido < 6) {
+    const r = canvas.getBoundingClientRect();
+    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
+    const hit = ray.intersectObject(suelo)[0];
+    if (hit) yo.objetivo = { x: hit.point.x, z: hit.point.z };
+  }
+  arrastre = null;
+});
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+// ---------- Bucle ----------
+pintarSala(yo.sala);
+conectar();
+pintarSalas();
+pintarGente();
+let prev = performance.now();
+const camPos = new THREE.Vector3();
+function frame(t) {
+  const dt = Math.min(0.05, (t - prev) / 1000);
+  prev = t;
+
+  // movimiento relativo a la cámara
+  let fx = 0, fz = 0;
+  if (teclas.has('w') || teclas.has('arrowup')) fz += 1;
+  if (teclas.has('s') || teclas.has('arrowdown')) fz -= 1;
+  if (teclas.has('a') || teclas.has('arrowleft')) fx += 1;
+  if (teclas.has('d') || teclas.has('arrowright')) fx -= 1;
+  let mx = 0, mz = 0;
+  if (fx || fz) {
+    yo.objetivo = null;
+    const fwdX = Math.sin(camYaw + Math.PI), fwdZ = Math.cos(camYaw + Math.PI);
+    mx = fwdX * fz + fwdZ * fx; mz = fwdZ * fz - fwdX * fx;
+  } else if (yo.objetivo) {
+    mx = yo.objetivo.x - yo.x; mz = yo.objetivo.z - yo.z;
+    if (Math.hypot(mx, mz) < 0.15) { yo.objetivo = null; mx = mz = 0; }
+  }
+  const len = Math.hypot(mx, mz);
+  let anim = 'idle';
+  if (len > 0) {
+    const v = 3.2 * dt;
+    yo.x = Math.max(-HALF + 0.6, Math.min(HALF - 0.6, yo.x + (mx / len) * Math.min(v, yo.objetivo ? len : v)));
+    yo.z = Math.max(-HALF + 0.6, Math.min(HALF - 0.6, yo.z + (mz / len) * Math.min(v, yo.objetivo ? len : v)));
+    const r = Math.hypot(yo.x, yo.z);
+    if (r < 1.7) { yo.x *= 1.7 / (r || 1); yo.z *= 1.7 / (r || 1); } // la mesa holográfica
+    const want = Math.atan2(mx, mz);
+    const d = ((want - yo.yaw + Math.PI) % (Math.PI * 2) + Math.PI * 2) % (Math.PI * 2) - Math.PI;
+    yo.yaw += d * Math.min(1, dt * 12);
+    anim = 'walk';
+  }
+  if (mj) mj.sendPose({ x: yo.x, y: 0, z: yo.z, yaw: yo.yaw, anim });
+
+  // los demás: posiciones interpoladas
+  otros.update(mj ? mj.sample(performance.now(), { interpolate: $('interp').checked }) : [], dt);
+  propio.update([{ id: mj?.id || 0, name: mj?.name || $('nombre').value, captain: !!mj?.captain, x: yo.x, y: 0, z: yo.z, yaw: yo.yaw, anim }], dt);
+
+  // cámara en tercera persona
+  const dist = 7.5;
+  camPos.set(yo.x + Math.sin(camYaw) * Math.cos(camPitch) * dist, 1.2 + Math.sin(camPitch) * dist, yo.z + Math.cos(camYaw) * Math.cos(camPitch) * dist);
+  camera.position.lerp(camPos, 1 - Math.pow(0.001, dt));
+  camera.lookAt(yo.x, 1.1, yo.z);
+
+  if (!reduceMotion) { holo.rotation.y += dt * 0.4; holo.rotation.x += dt * 0.15; }
+  renderer.render(scene, camera);
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
