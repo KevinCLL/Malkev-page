@@ -95,7 +95,8 @@ export function crearTmdb({ clave = process.env.TMDB_API_KEY, idioma = process.e
         }
       }
     }
-    if (!seguro) return { ...f, match: { provider: 'tmdb', estado: 'revisar', candidatos: resumen } }
+    // Sin ningún candidato que se parezca de verdad no hay nada que elegir: es «sin resultado», no «revisar».
+    if (!seguro) return { ...f, match: { provider: 'tmdb', estado: resumen.length ? 'revisar' : 'sin-resultado', candidatos: resumen } }
     d = d || (await detalle(f.kind, mejor.r.id))
     if (!d) return { ...f, match: { provider: 'tmdb', estado: 'revisar', candidatos: resumen } }
     return aplicar(f, d, { provider: 'tmdb', estado: 'auto', id: d.id, score: round(mejor.score), candidatos: resumen })

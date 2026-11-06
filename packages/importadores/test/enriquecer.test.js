@@ -74,6 +74,14 @@ test('TMDB: sin candidato claro → revisar con candidatos', async () => {
   assert.equal(f.match.candidatos[0].id, 7)
 })
 
+test('TMDB: solo candidatos que no se parecen en nada → sin resultado, sin lista que revisar', async () => {
+  rutas = [[/^\/3\/search\/movie/, { results: [{ id: 919188, title: '少女灵异日记', release_date: '2013-01-01' }] }]]
+  const tmdb = crearTmdb({ clave: 'k', cache: memoria() })
+  const f = await tmdb.enriquecer(crearFicha({ kind: 'film', title: 'Black Mirror: Oso blanco', year: 2013 }))
+  assert.equal(f.match.estado, 'sin-resultado')
+  assert.deepEqual(f.match.candidatos, [])
+})
+
 test('sin clave de TMDB, las pelis quedan pendientes y los libros se buscan', async () => {
   const antes = process.env.TMDB_API_KEY
   delete process.env.TMDB_API_KEY

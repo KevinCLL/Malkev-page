@@ -51,11 +51,11 @@ export function crearOpenLibrary({ cache, sinRed = false, ritmoMs = 1000 } = {})
     const candidatos = await buscar(f)
     if (candidatos === undefined) return { ...f, match: { provider: 'openlibrary', estado: 'pendiente', motivo: 'sin caché y sin red' } }
     if (!candidatos.length) return { ...f, match: { provider: 'openlibrary', estado: 'sin-resultado', candidatos: [] } }
-    const resumen = candidatos.slice(0, 3).map((c) => ({ id: c.d.key, titulo: c.d.title, autor: c.d.author_name?.[0] || null, año: c.d.first_publish_year || null, score: Math.round(c.score * 100) / 100 }))
+    const resumen = candidatos.filter((c) => c.score >= 0.2).slice(0, 3).map((c) => ({ id: c.d.key, titulo: c.d.title, autor: c.d.author_name?.[0] || null, año: c.d.first_publish_year || null, score: Math.round(c.score * 100) / 100 }))
     const [mejor, segundo] = candidatos
     // Open Library tiene a menudo la misma obra repetida: con título y autor exactos no se duda.
     const seguro = mejor.score >= 0.95 || (mejor.score >= 0.85 && (!segundo || mejor.score - segundo.score >= 0.05))
-    if (!seguro) return { ...f, match: { provider: 'openlibrary', estado: 'revisar', candidatos: resumen } }
+    if (!seguro) return { ...f, match: { provider: 'openlibrary', estado: resumen.length ? 'revisar' : 'sin-resultado', candidatos: resumen } }
     return aplicar(f, mejor.d, await obra(mejor.d.key), { provider: 'openlibrary', estado: 'auto', id: mejor.d.key, score: Math.round(mejor.score * 100) / 100, candidatos: resumen })
   }
 
