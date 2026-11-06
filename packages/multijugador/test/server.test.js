@@ -54,3 +54,17 @@ test('rechaza orígenes no permitidos', async () => {
   c.dispose();
   await srv.close();
 });
+
+test('IP del cliente: última de X-Forwarded-For y IPv6 por /64', async () => {
+  const { clientIp, ipKey } = await import('../src/server.js');
+  const req = (xff, remote = '127.0.0.1') => ({ headers: xff ? { 'x-forwarded-for': xff } : {}, socket: { remoteAddress: remote } });
+  assert.equal(clientIp(req('6.6.6.6, 1.2.3.4'), true), '1.2.3.4');
+  assert.equal(clientIp(req('6.6.6.6'), false), '127.0.0.1');
+  assert.equal(clientIp(req(null, '::ffff:10.0.0.7'), true), '10.0.0.7');
+  assert.equal(ipKey('2001:db8:abcd:12:1:2:3:4'), ipKey('2001:db8:abcd:12:ffff::9'));
+  assert.notEqual(ipKey('2001:db8:abcd:12::1'), ipKey('2001:db8:abcd:13::1'));
+});
+
+test('la clave de capitán corta se rechaza al arrancar', async () => {
+  assert.throws(() => startServer({ port: 0, quiet: true, hub: { captainKey: 'corta' } }), /24 caracteres/);
+});

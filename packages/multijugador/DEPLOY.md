@@ -9,6 +9,8 @@ puede servir WebSockets, así que el multijugador necesita este servicio aparte.
 ```bash
 git clone https://github.com/KevinCLL/Malkev-page.git
 cd Malkev-page/packages/multijugador
+# tu clave de capitán, para poder llamarte "Malkev" a bordo (guárdala en tu gestor de contraseñas)
+echo "MJ_CAPTAIN_KEY=$(openssl rand -hex 24)" > .env
 docker compose up -d --build
 curl http://127.0.0.1:8787/health   # -> ok
 ```
@@ -46,8 +48,13 @@ location /mj/ {
 }
 ```
 
-`TRUST_PROXY=1` hace que el límite por IP use `X-Forwarded-For`. Déjalo solo si
-el puerto queda en `127.0.0.1`, como en el compose.
+`TRUST_PROXY=1` hace que el límite por IP use la **última** dirección de
+`X-Forwarded-For`, la que añade tu proxy. Déjalo solo si el puerto queda en
+`127.0.0.1`, como en el compose. Si algún día pones Cloudflare delante,
+configura el proxy para que esa última dirección sea la del visitante
+(`real_ip_header CF-Connecting-IP` con `set_real_ip_from` en nginx, o
+`trusted_proxies` en Caddy); si no, todos compartirían la IP de Cloudflare y el
+límite de 4 pestañas por IP los dejaría fuera.
 
 ## 3. Variables
 
@@ -58,6 +65,8 @@ el puerto queda en `127.0.0.1`, como en el compose.
 | `MAX_PER_IP` | `4` | |
 | `TICK_HZ` | `10` | instantáneas por segundo |
 | `TRUST_PROXY` | `1` | |
+| `RESERVED_NAMES` | `Malkev` | separados por comas |
+| `CAPTAIN_KEY` | de `.env` | 24+ caracteres; vacío = nadie usa los nombres reservados |
 
 ## 4. Comprobar
 
@@ -70,7 +79,14 @@ docker logs -f malkevnia-multijugador
 Consumo esperado: unos pocos KB/s por visitante a 10 Hz; 64 visitantes caben de
 sobra en el contenedor.
 
-## 5. Actualizar
+## 5. Entrar como capitán
+
+En la nave, pasa la clave al conectar: `connect(url, 'Malkev', { key })`. No la
+pongas en el código público: guárdala en el `localStorage` de tu navegador desde
+la consola de la nave o pégala a mano. Quien no la tenga y se llame `Malkev`,
+`Ma1kev` o parecido entra como `Viajero-…`.
+
+## 6. Actualizar
 
 ```bash
 git pull && docker compose up -d --build

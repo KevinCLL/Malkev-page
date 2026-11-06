@@ -376,6 +376,7 @@ canvas.addEventListener('pointermove', (e) => {
   camYaw -= dx * 0.006;
   camPitch = Math.min(1.2, Math.max(0.15, camPitch + dy * 0.004));
 });
+canvas.addEventListener('pointercancel', () => { arrastre = null; });
 canvas.addEventListener('pointerup', (e) => {
   if (arrastre && arrastre.movido < 6) {
     const r = canvas.getBoundingClientRect();
@@ -438,7 +439,7 @@ function frame(t) {
 
   // los demás: posiciones interpoladas
   otros.update(mj ? mj.sample(performance.now(), { interpolate: $('interp').checked }) : [], dt);
-  propio.update([{ id: mj?.id || 0, name: mj?.name || $('nombre').value, x: yo.x, y: 0, z: yo.z, yaw: yo.yaw, anim }], dt);
+  propio.update([{ id: mj?.id || 0, name: mj?.name || $('nombre').value, captain: !!mj?.captain, x: yo.x, y: 0, z: yo.z, yaw: yo.yaw, anim }], dt);
 
   // cámara en tercera persona
   const dist = 7.5;

@@ -118,3 +118,90 @@ test('una instantánea extra al pararse', () => {
   const snaps = a.out.filter((m) => m.t === 'snap').map((m) => m.ts);
   assert.deepEqual(snaps, [0, 100, 200]);
 });
+
+function hubWith(opts = {}) {
+  const hub = createHub(opts);
+  const add = (name, room = 'puente', extra = {}) => {
+    const c = fakeConn();
+    const { id } = hub.join({ ip: String(Math.random()), ...c, now: 0 });
+    hub.message(id, JSON.stringify({ t: 'hello', name, room, ...extra }), 0);
+    return { id, c };
+  };
+  return { hub, add };
+}
+
+test('instantáneas parciales: solo va quien se mueve', () => {
+  const { hub, add } = hubWith();
+  const a = add('Ana'); const b = add('Bea');
+  hub.tick(0);
+  const first = a.c.last('snap');
+  assert.equal(first.full, 1);
+  assert.equal(first.players.length, 2);
+  hub.message(a.id, JSON.stringify({ t: 'pose', p: [2, 0, 0], r: 0, a: 'walk' }), 50);
+  hub.tick(100);
+  const delta = b.c.last('snap');
+  assert.equal(delta.full, undefined);
+  assert.deepEqual(delta.players.map((p) => p[0]), [a.id]);
+  // repetir la misma pose (señal de vida) no genera más instantáneas
+  hub.tick(200); // la del alto
+  const n = b.c.out.filter((m) => m.t === 'snap').length;
+  hub.message(a.id, JSON.stringify({ t: 'pose', p: [2, 0, 0], r: 0, a: 'walk' }), 250);
+  hub.tick(300);
+  assert.equal(b.c.out.filter((m) => m.t === 'snap').length, n);
+});
+
+test('un segundo hello es una falta y no cambia nada', () => {
+  const { hub, add } = hubWith({ maxStrikes: 0 });
+  const a = add('Ana');
+  hub.message(a.id, JSON.stringify({ t: 'hello', name: 'Otra' }), 1);
+  assert.equal(a.c.closed.code, CLOSE.RATE_LIMIT);
+});
+
+test('sala rechazada: error con la sala buena y lista reenviada', () => {
+  const { hub, add } = hubWith();
+  const a = add('Ana');
+  hub.tick(0);
+  a.c.out.length = 0;
+  hub.message(a.id, JSON.stringify({ t: 'room', room: 'Sala de cine' }), 10);
+  assert.deepEqual(a.c.last('error'), { t: 'error', code: 'room', room: 'puente' });
+  hub.tick(100);
+  assert.equal(a.c.last('roster').room, 'puente');
+  assert.equal(a.c.last('snap').full, 1);
+});
+
+test('nombres reservados solo con la clave de capitán', () => {
+  const key = 'k'.repeat(32);
+  const { hub, add } = hubWith({ reservedNames: ['Malkev'], captainKey: key });
+  const fake = add('Ma1kev');
+  assert.match(fake.c.last('welcome').name, /^Viajero-/);
+  assert.equal(fake.c.last('error').code, 'name');
+  const cyr = add('Маlkev el capi');
+  assert.match(cyr.c.last('welcome').name, /^Viajero-/);
+  const wrong = add('Malkev', 'puente', { key: 'x'.repeat(32) });
+  assert.match(wrong.c.last('welcome').name, /^Viajero-/);
+  assert.equal(wrong.c.last('welcome').captain, undefined);
+  const real = add('Malkev', 'puente', { key });
+  assert.equal(real.c.last('welcome').name, 'Malkev');
+  assert.equal(real.c.last('welcome').captain, true);
+  const other = add('Ana');
+  assert.equal(other.c.last('welcome').name, 'Ana');
+  hub.tick(0);
+  const cap = other.c.last('roster').players.find((p) => p.i === real.id);
+  assert.equal(cap.c, 1);
+});
+
+test('sin clave configurada nadie usa los nombres reservados', () => {
+  const { add } = hubWith({ reservedNames: ['Malkev'] });
+  assert.match(add('Malkev', 'puente', { key: '' }).c.last('welcome').name, /^Viajero-/);
+});
+
+test('las faltas se olvidan con el tiempo', () => {
+  const hub = createHub({ maxStrikes: 3 });
+  const a = fakeConn();
+  const { id } = hub.join({ ip: '1', ...a, now: 0 });
+  hub.message(id, JSON.stringify({ t: 'hello', name: 'A' }), 0);
+  for (let i = 1; i <= 20; i++) hub.message(id, 'basura', i * 2000);
+  assert.equal(a.closed, null);
+  for (let i = 0; i < 5; i++) hub.message(id, 'basura', 50000);
+  assert.equal(a.closed.code, CLOSE.RATE_LIMIT);
+});
