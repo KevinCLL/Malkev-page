@@ -2,31 +2,59 @@
 import Nave from '../../layouts/Nave.astro';
 import Comentarios from '../../components/Comentarios.vue';
 import { hayCatalogo, leerEntrada } from '../../lib/bitacora';
+import { diccionario, fechas, ruta, traductor } from '../../i18n';
+import { imagenSocial } from '../../lib/social';
+import { articulo, migas } from '../../lib/datos-estructurados';
 
 const e = await leerEntrada(Astro.params.slug!);
 if (!e) return Astro.rewrite('/404');
-const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
+const idioma = Astro.locals.idioma;
+const t = traductor(idioma);
+const fmt = fechas(idioma, { dateStyle: 'long' });
+const site = Astro.site ?? new URL('https://malkevnia.com');
+const original = `/bitacora/${e.slug}`;
+// Para redes: la portada de la entrada si tiene; si no, la imagen de la bitácora.
+const imagen = e.portada
+  ? { src: e.portada, alt: e.titulo }
+  : imagenSocial('bitacora', idioma, t('La bitácora del capitán a bordo de La Malkevnia'));
+const datos = [
+  articulo(site, e, imagen.src),
+  migas(site, [['La Malkevnia', ruta(idioma, '/')], [t('Bitácora del capitán'), ruta(idioma, '/bitacora')], [e.titulo, ruta(idioma, original)]]),
+];
 ---
-<Nave titulo={e.titulo} descripcion={e.descripcion || undefined} sala="bitacora">
+{/* Las entradas solo existen en español: en inglés cambia la interfaz, pero la canónica es la original. */}
+<Nave
+  titulo={e.titulo}
+  descripcion={e.descripcion || undefined}
+  sala="bitacora"
+  imagen={imagen}
+  tipo="article"
+  articulo={{ publicado: e.fecha, etiquetas: e.etiquetas, seccion: t('Bitácora') }}
+  datos={datos}
+  canonica={original}
+  traducida={false}
+>
   <article class="entrada">
-    <a class="volver" href="/bitacora">◂ Bitácora</a>
+    <a class="volver" href={ruta(idioma, '/bitacora')}>◂ {t('Bitácora')}</a>
     <p class="etiqueta">
       <time datetime={e.fecha.toISOString()}>{fmt.format(e.fecha)}</time>
       {e.minutos && <> · {e.minutos} min</>}
     </p>
-    <h1>{e.titulo}</h1>
+    <h1 lang="es">{e.titulo}</h1>
+    {idioma !== 'es' && <p class="aviso-idioma">{t('Entrada escrita en español.')}</p>}
     {e.portada && <img class="portada" src={e.portada} alt="" loading="lazy" />}
-    <div class="cuerpo" set:html={e.html} />
+    <div class="cuerpo" lang="es" set:html={e.html} />
     {e.etiquetas.length > 0 && (
-      <ul class="tags">{e.etiquetas.map((t) => <li>#{t}</li>)}</ul>
+      <ul class="tags" lang="es" aria-label={t('Etiquetas')}>{e.etiquetas.map((x) => <li>#{x}</li>)}</ul>
     )}
-    {hayCatalogo && <Comentarios client:visible slug={e.slug} />}
+    {hayCatalogo && <Comentarios client:visible slug={e.slug} idioma={idioma} textos={diccionario(idioma, ['comentarios', 'comun'])} />}
   </article>
 </Nave>
 
 <style>
   .entrada { max-width: 72ch; margin: 0 auto; }
   .volver { font: 13px var(--f-mono); text-decoration: none; }
+  .aviso-idioma { margin: -10px 0 20px; color: var(--muted); font-size: 14px; }
   h1 { font-size: clamp(26px, 5vw, 40px); margin: 6px 0 20px; }
   .portada { width: 100%; border-radius: 12px; border: 1px solid var(--line); margin-bottom: 20px; }
   .cuerpo :global(img), .cuerpo :global(iframe), .cuerpo :global(video) { max-width: 100%; height: auto; border-radius: 8px; }

@@ -4,12 +4,15 @@ import Terminal from '../components/Terminal.vue';
 import { sala, salas } from '../lib/salas';
 import { montaje } from '../lib/modulos';
 import { listarEntradas } from '../lib/bitacora';
+import { diccionario, ruta, traductor } from '../i18n';
 
 // Si no hay ni nave unificada ni módulo `ordenador-abordo`, una terminal mínima (isla Vue) que ya sirve para moverse.
+const idioma = Astro.locals.idioma;
+const t = traductor(idioma);
 const conModulo = montaje(sala('ordenador')) !== null;
-const destinos = salas.map(({ slug, ruta, nombre }) => ({ slug, ruta, nombre }));
-const entradas = conModulo ? [] : (await listarEntradas()).map(({ slug, titulo }) => ({ slug, titulo }));
+const destinos = salas.map((s) => ({ slug: s.slug, ruta: ruta(idioma, s.ruta), nombre: t(s.nombre) }));
+const entradas = conModulo ? [] : (await listarEntradas()).map(({ slug, titulo }) => ({ slug, titulo, ruta: ruta(idioma, `/bitacora/${slug}`) }));
 ---
 <Sala slug="ordenador">
-  {!conModulo && <Terminal client:load salas={destinos} entradas={entradas} />}
+  {!conModulo && <Terminal client:load salas={destinos} entradas={entradas} textos={diccionario(idioma, ['terminal', 'comun'])} />}
 </Sala>
