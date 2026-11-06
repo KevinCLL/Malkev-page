@@ -6,7 +6,7 @@ sin base de datos: cada pestaña es un visitante anónimo con el nombre que elij
 - `src/core.js`: lógica pura (salas, validación, límites, instantáneas). La usan el servidor y la demo.
 - `src/server.js`: servidor Node (`ws`) con `/ws`, `/health` y `/stats`.
 - `client/multijugador.js`: cliente ES autocontenido, sin dependencias (navegador y Node ≥ 22).
-- `client/avatares.js`: avatares Three.js opcionales (cápsula + visor + placa con nombre).
+- `client/avatares.js`: avatares Three.js opcionales (siluetas humanas tipo sombra, con paso animado y placa con nombre).
 - `demo/`: sala de pruebas con bots y red simulada (`npm run build:demo` genera `dist/demo.html`).
 - `Dockerfile`, `docker-compose.yml`, [`DEPLOY.md`](DEPLOY.md): para el Hetzner.
 

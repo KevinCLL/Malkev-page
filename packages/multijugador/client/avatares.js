@@ -1,6 +1,7 @@
-// Avatares sencillos para los visitantes: cápsula con visor luminoso y placa
-// con el nombre. No importa three: recibe el módulo THREE como parámetro
-// para que use la misma copia que la escena de la nave.
+// Avatares de los visitantes: siluetas humanas oscuras, como sombras, con un
+// contorno luminoso de su color, sombra en el suelo y placa con el nombre.
+// No importa three: recibe el módulo THREE como parámetro para que use la
+// misma copia que la escena de la nave.
 //
 //   import * as THREE from 'three';
 //   import { createAvatarLayer } from './avatares.js';
@@ -47,46 +48,161 @@ function makeTag(THREE, text, color) {
   return sprite;
 }
 
+// Geometrías compartidas por todos los avatares (una copia por módulo THREE)
+const SHARED = new WeakMap();
+function shared(THREE) {
+  let g = SHARED.get(THREE);
+  if (g) return g;
+  const blob = document.createElement('canvas');
+  blob.width = blob.height = 128;
+  const bctx = blob.getContext('2d');
+  const grad = bctx.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grad.addColorStop(0, 'rgba(0,0,0,0.65)');
+  grad.addColorStop(0.55, 'rgba(0,0,0,0.3)');
+  grad.addColorStop(1, 'rgba(0,0,0,0)');
+  bctx.fillStyle = grad;
+  bctx.fillRect(0, 0, 128, 128);
+  g = {
+    head: new THREE.SphereGeometry(0.115, 20, 16),
+    neck: new THREE.CylinderGeometry(0.045, 0.055, 0.1, 10),
+    torso: new THREE.CapsuleGeometry(0.15, 0.36, 6, 16),
+    hips: new THREE.CapsuleGeometry(0.12, 0.08, 4, 12),
+    upperArm: new THREE.CapsuleGeometry(0.045, 0.24, 4, 10),
+    foreArm: new THREE.CapsuleGeometry(0.038, 0.24, 4, 10),
+    thigh: new THREE.CapsuleGeometry(0.068, 0.34, 4, 10),
+    shin: new THREE.CapsuleGeometry(0.052, 0.34, 4, 10),
+    floor: new THREE.PlaneGeometry(1.1, 1.1),
+    blobTex: new THREE.CanvasTexture(blob),
+  };
+  SHARED.set(THREE, g);
+  return g;
+}
+
+// Material "sombra": cuerpo casi negro y opaco, con un contorno luminoso del color del visitante
+function shadowMaterial(THREE, color) {
+  return new THREE.ShaderMaterial({
+    uniforms: { glow: { value: new THREE.Color(color) } },
+    vertexShader: `
+      varying vec3 vN; varying vec3 vV; varying float vY;
+      void main() {
+        vec4 mv = modelViewMatrix * vec4(position, 1.0);
+        vN = normalize(normalMatrix * normal);
+        vV = normalize(-mv.xyz);
+        vY = (modelMatrix * vec4(position, 1.0)).y;
+        gl_Position = projectionMatrix * mv;
+      }`,
+    fragmentShader: `
+      uniform vec3 glow;
+      varying vec3 vN; varying vec3 vV; varying float vY;
+      void main() {
+        float rim = pow(1.0 - max(dot(normalize(vN), normalize(vV)), 0.0), 2.2);
+        vec3 base = vec3(0.025, 0.018, 0.05);
+        vec3 c = base + glow * (rim * 0.85 + 0.02);
+        gl_FragColor = vec4(c, 1.0);
+      }`,
+  });
+}
+
+// Una extremidad de dos segmentos que cuelga desde su articulación
+function limb(THREE, mat, upperGeo, lowerGeo, len) {
+  const root = new THREE.Group();
+  const upper = new THREE.Mesh(upperGeo, mat);
+  upper.position.y = -len / 2;
+  root.add(upper);
+  const joint = new THREE.Group();
+  joint.position.y = -len;
+  root.add(joint);
+  const lower = new THREE.Mesh(lowerGeo, mat);
+  lower.position.y = -len / 2;
+  joint.add(lower);
+  return { root, joint };
+}
+
 function makeAvatar(THREE, id, name, opts) {
   const color = colorFor(id);
+  const G = shared(THREE);
+  const mat = shadowMaterial(THREE, color);
   const g = new THREE.Group();
   g.name = `visitante-${id}`;
 
-  const bodyMat = new THREE.MeshStandardMaterial({ color: 0x4a4070, roughness: 0.45, metalness: 0.2, emissive: color, emissiveIntensity: 0.12 });
-  const body = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, 0.7, 6, 14), bodyMat);
-  body.position.y = 0.6 + 0.22;
-  g.add(body);
+  // Todo el cuerpo cuelga de "pelvis" para poder balancearlo al andar
+  const pelvis = new THREE.Group();
+  pelvis.position.y = 0.92;
+  g.add(pelvis);
 
-  const visorMat = new THREE.MeshStandardMaterial({ color: 0x000000, emissive: color, emissiveIntensity: 1.6, roughness: 0.2 });
-  const visor = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.09, 0.08), visorMat);
-  visor.position.set(0, 1.18, 0.19); // mira hacia +Z local
-  g.add(visor);
+  const hips = new THREE.Mesh(G.hips, mat);
+  hips.rotation.z = Math.PI / 2;
+  hips.scale.set(1, 1, 0.8);
+  pelvis.add(hips);
 
-  const ring = new THREE.Mesh(
-    new THREE.RingGeometry(0.28, 0.34, 32),
-    new THREE.MeshBasicMaterial({ color, transparent: true, opacity: 0.55, side: THREE.DoubleSide, depthWrite: false }),
-  );
-  ring.rotation.x = -Math.PI / 2;
-  ring.position.y = 0.01;
-  g.add(ring);
+  const chest = new THREE.Group();
+  chest.position.y = 0.06;
+  pelvis.add(chest);
+  const torso = new THREE.Mesh(G.torso, mat);
+  torso.position.y = 0.3;
+  torso.scale.set(1.18, 1, 0.68);
+  chest.add(torso);
+  const neck = new THREE.Mesh(G.neck, mat);
+  neck.position.y = 0.6;
+  chest.add(neck);
+  const head = new THREE.Mesh(G.head, mat);
+  head.position.y = 0.72;
+  head.scale.set(0.92, 1.05, 1);
+  chest.add(head);
+
+  const arms = [-1, 1].map((side) => {
+    const a = limb(THREE, mat, G.upperArm, G.foreArm, 0.3);
+    a.root.position.set(side * 0.23, 0.5, 0);
+    a.root.rotation.z = side * 0.08;
+    chest.add(a.root);
+    return a;
+  });
+  const legs = [-1, 1].map((side) => {
+    const l = limb(THREE, mat, G.thigh, G.shin, 0.44);
+    l.root.position.set(side * 0.095, -0.02, 0);
+    pelvis.add(l.root);
+    return l;
+  });
+
+  const blob = new THREE.Mesh(G.floor, new THREE.MeshBasicMaterial({ map: G.blobTex, transparent: true, depthWrite: false }));
+  blob.rotation.x = -Math.PI / 2;
+  blob.position.y = 0.012;
+  g.add(blob);
 
   const tag = makeTag(THREE, name, color);
-  tag.position.y = 1.75;
+  tag.position.y = 2.0;
   g.add(tag);
 
-  g.userData = { id, name, body, tag, phase: Math.random() * 10, lastX: null, lastZ: null, speed: 0 };
+  g.userData = { id, name, pelvis, chest, head, arms, legs, ownMaterials: [mat, blob.material, tag.material],
+    phase: Math.random() * 10, lastX: null, lastZ: null, speed: 0 };
   g.scale.setScalar(opts.scale);
   return g;
 }
 
+// Pose de paseo: piernas y brazos en oposición, leve balanceo; quieto, respira
+function animate(u, moving, dt) {
+  u.phase += dt * (moving ? 7.5 : 1.6);
+  const s = Math.sin(u.phase);
+  const amt = u.blend = (u.blend || 0) + ((moving ? 1 : 0) - (u.blend || 0)) * Math.min(1, dt * 8);
+  u.legs[0].root.rotation.x = s * 0.55 * amt;
+  u.legs[1].root.rotation.x = -s * 0.55 * amt;
+  u.legs[0].joint.rotation.x = Math.max(0, -Math.cos(u.phase)) * 0.7 * amt;
+  u.legs[1].joint.rotation.x = Math.max(0, Math.cos(u.phase)) * 0.7 * amt;
+  u.arms[0].root.rotation.x = -s * 0.45 * amt;
+  u.arms[1].root.rotation.x = s * 0.45 * amt;
+  u.arms[0].joint.rotation.x = -0.25 - 0.2 * amt;
+  u.arms[1].joint.rotation.x = -0.25 - 0.2 * amt;
+  u.pelvis.position.y = 0.92 + Math.abs(Math.cos(u.phase)) * 0.035 * amt;
+  u.pelvis.rotation.y = s * 0.08 * amt;
+  u.chest.rotation.y = -s * 0.14 * amt;
+  u.chest.rotation.x = 0.04 * amt + (1 - amt) * Math.sin(u.phase) * 0.012;
+}
+
 function disposeObject(o) {
-  o.traverse((n) => {
-    if (n.geometry) n.geometry.dispose();
-    if (n.material) {
-      if (n.material.map) n.material.map.dispose();
-      n.material.dispose();
-    }
-  });
+  for (const m of o.userData.ownMaterials || []) {
+    if (m.map && m.isSpriteMaterial) m.map.dispose(); // la textura del nombre es propia; la de la sombra, compartida
+    m.dispose();
+  }
 }
 
 /**
@@ -124,11 +240,9 @@ export function createAvatarLayer(THREE, parent, opts = {}) {
         const v = Math.hypot(dx, dz) / Math.max(dt, 1e-3);
         u.speed += (v - u.speed) * Math.min(1, dt * 10);
         const moving = u.speed > 0.15 || p.anim === 'walk' || p.anim === 'run';
-        u.phase += dt * (moving ? 9 : 2);
         a.position.set(p.x, p.y, p.z);
         a.rotation.y = p.yaw + o.yawOffset;
-        u.body.position.y = 0.82 + (moving ? Math.abs(Math.sin(u.phase)) * 0.06 : Math.sin(u.phase) * 0.012);
-        u.body.rotation.z = moving ? Math.sin(u.phase) * 0.05 : 0;
+        animate(u, moving, dt);
       }
       for (const [id, a] of avatars) {
         if (!seen.has(id)) { root.remove(a); disposeObject(a); avatars.delete(id); }
