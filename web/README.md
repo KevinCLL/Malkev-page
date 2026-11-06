@@ -71,7 +71,12 @@ build. Para traerlos:
 npm run modulos:sync     # espejo de /mnt/project-files/modulos/*, nave-3d y universo-3d en web/modulos/
 ```
 
-La copia deja fuera capturas de pantalla y scripts de generación (`.py`). Se sirven en
+La copia deja fuera capturas de pantalla y scripts de generación (`.py`, `.rb`).
+
+> **Ojo con el tamaño del repo.** Cada sincronización entra en el historial de git, y
+> algunos módulos traen datos binarios grandes (la filmoteca de `sala-cine` son ~26 MB de
+> `.bin` que se regeneran enteros). Sincroniza cuando haga falta, no en cada cambio, y
+> fusiona este trabajo en `master` con **squash** para que solo quede la última copia. Se sirven en
 `/modulos/<nombre>/…` con ETag (el navegador revalida y recibe 304 si no han cambiado).
 La carpeta y la página de cada sala están en `src/lib/salas.ts` (`modulo` y `entrada`):
 léelas del README de cada módulo. Las rutas relativas entre módulos que asumen la
