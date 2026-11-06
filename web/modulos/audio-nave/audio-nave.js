@@ -363,27 +363,27 @@ function buildTexture(kind, out, src, parts) {
   } else if (kind === 'projector') {
     // Obturador a 24 fotogramas por segundo y motor del proyector.
     const am = G(0.5); keep(lfo(24, 0.5, am.gain, 'square'));
-    keep(loop(nodes.noise.white)).connect(F('bandpass', 2300, 1.4)).connect(am).connect(G(0.05)).connect(out);
-    keep(osc('sine', 96)).connect(G(0.03)).connect(out);
+    keep(loop(nodes.noise.white)).connect(F('bandpass', 2300, 1.4)).connect(am).connect(G(0.035)).connect(out);
+    keep(osc('sine', 96)).connect(G(0.02)).connect(out);
     keep(osc('triangle', 192)).connect(G(0.008)).connect(out);
   } else if (kind === 'servers') {
-    keep(loop(nodes.noise.pink)).connect(F('highpass', 1800)).connect(F('lowpass', 6000)).connect(G(0.3)).connect(out);
-    keep(osc('square', 120)).connect(F('lowpass', 380)).connect(G(0.02)).connect(out);
+    keep(loop(nodes.noise.pink)).connect(F('highpass', 1800)).connect(F('lowpass', 6000)).connect(G(0.15)).connect(out);
+    keep(osc('square', 120)).connect(F('lowpass', 380)).connect(G(0.01)).connect(out);
   } else if (kind === 'stars') {
     // Viento solar y un brillo agudo que aparece y desaparece.
     const wind = G(0.5); keep(lfo(0.07, 0.5, wind.gain));
-    keep(loop(nodes.noise.white)).connect(F('bandpass', 5500, 0.6)).connect(wind).connect(G(0.02)).connect(out);
+    keep(loop(nodes.noise.white)).connect(F('bandpass', 5500, 0.6)).connect(wind).connect(G(0.04)).connect(out);
     [2637.02, 3135.96, 3951.07].forEach((f, i) => {
       const tr = G(0.5); keep(lfo(0.05 + i * 0.023, 0.5, tr.gain));
-      keep(osc('sine', f)).connect(tr).connect(G(0.004)).connect(P(i - 1)).connect(out);
+      keep(osc('sine', f)).connect(tr).connect(G(0.006)).connect(P(i - 1)).connect(out);
     });
   }
   // 'clock' es discreto: lo programa tick().
 }
 
 function clockTick(dest, t, tock) {
-  noiseHit(dest, t, 0.3, 'bandpass', tock ? 1800 : 2500, 6, 0.04);
-  playTone(dest, tock ? 1250 : 1650, t, 'sine', 0.06, 0.015);
+  noiseHit(dest, t, 0.45, 'bandpass', tock ? 1800 : 2500, 6, 0.04);
+  playTone(dest, tock ? 1250 : 1650, t, 'sine', 0.06, 0.025);
 }
 
 // ─────────────────────── Música por sala ───────────────────────

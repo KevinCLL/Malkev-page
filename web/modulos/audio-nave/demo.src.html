@@ -82,7 +82,15 @@ button:disabled { opacity: .45; cursor: not-allowed; }
 .fader.master { border-color: color-mix(in oklab, var(--glow) 50%, var(--line)); }
 input[type=range].v { writing-mode: vertical-lr; direction: rtl; width: 28px; height: 150px; accent-color: var(--glow); }
 @supports not (writing-mode: vertical-lr) { input[type=range].v { width: 100%; height: auto; } }
-@media (max-width: 460px) { input[type=range].v { height: 120px; } .fader { padding: 10px 2px; } }
+@media (max-width: 460px) { input[type=range].v { height: 120px; } .fader { padding: 10px 2px; } .fader label { font-size: 10px; letter-spacing: .03em; } }
+/* En móvil el plano no cabe legible: lista de salas en su lugar */
+.room-list { display: none; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.room-list button { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; text-align: left; }
+.room-list button span { font: 500 11px/1 var(--f-mono); color: var(--ink-dim); }
+.room-list button:last-child:nth-child(odd) { grid-column: 1 / -1; }
+.room-list button[aria-current="true"] { border-color: var(--rc); background: color-mix(in oklab, var(--rc) 22%, var(--hull-2)); }
+@media (max-width: 600px) { .plan-wrap { display: none; } .room-list { display: grid; } }
+@media (hover: none) { .keys { display: none; } }
 .mixfoot { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; justify-content: space-between; }
 canvas#scope { width: 100%; height: 64px; display: block; border-radius: 6px; background: #0a0815; border: 1px solid var(--line); margin-top: 12px; }
 
@@ -120,6 +128,7 @@ footer code { font-family: var(--f-mono); color: var(--ink); }
   <section class="panel" aria-labelledby="h-plan">
     <h2 id="h-plan">Plano de la nave</h2>
     <div class="plan-wrap"><svg id="plan" viewBox="0 0 37.5 15.5" role="group" aria-label="Salas de la nave"></svg></div>
+    <div class="room-list" id="roomList" role="group" aria-label="Salas de la nave"></div>
     <div class="now" aria-live="polite"><strong id="roomName">Pasillo central</strong><span id="roomMood">Tránsito tranquilo, pad suave</span><span class="detail" id="roomDetail"></span></div>
   </section>
 
@@ -186,7 +195,7 @@ const ORDER = ['puente','pasillo','maquinas','recreativa','proyeccion','bitacora
 const SHORT = { maquinas:'Máquinas', recreativa:'Recreativa', proyeccion:'Proyección', bitacora:'Bitácora', pasillo:'Pasillo central', juegos:'Juegos', biblioteca:'Biblioteca', ordenador:'Ordenador', puente:'Puente' };
 const FLOOR = { metal:'chapa', rejilla:'rejilla', moqueta:'moqueta', madera:'madera' };
 const SOUNDS = { turbine:'turbina', projector:'proyector', servers:'servidores', stars:'viento solar', clock:'reloj',
-  blip:'telemetría', tick:'el casco', hiss:'vapor', creak:'crujidos', chirp:'máquinas recreativas', typing:'teclas', dice:'dados' };
+  blip:'telemetría', tick:'el casco al dilatarse', hiss:'vapor', creak:'crujidos', chirp:'máquinas recreativas', typing:'teclas', dice:'dados' };
 const NS = 'http://www.w3.org/2000/svg';
 const svg = $('plan');
 const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
@@ -201,9 +210,12 @@ PLAN.forEach((r) => {
   if (r.id !== 'pasillo') { const k = el('text', { class: 'k', x: cx, y: cy + .95 }); k.textContent = n; g.append(k); }
   g.addEventListener('click', () => goTo(r.id));
   g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); goTo(r.id); } });
-  svg.append(g); roomEls[r.id] = { g, cx, cy };
+  const chip = document.createElement('button'); chip.type = 'button'; chip.style.setProperty('--rc', r.color);
+  chip.innerHTML = `${A.ROOMS[r.id].name}<span>${n}</span>`; chip.addEventListener('click', () => goTo(r.id));
+  svg.append(g); roomEls[r.id] = { g, chip, cx, cy, n };
 });
-const you = el('circle', { id: 'you', r: .32, cx: roomEls.pasillo.cx, cy: roomEls.pasillo.cy }); svg.append(you);
+Object.values(roomEls).sort((a, b) => a.n - b.n).forEach((r) => $('roomList').append(r.chip));
+const you = el('circle', { id: 'you', r: .32, cx: roomEls.pasillo.cx - 7.5, cy: roomEls.pasillo.cy }); svg.append(you);
 
 // Mezclador
 const FADERS = [['master','Maestro'],['motores','Motores'],['ambiente','Ambiente'],['musica','Música'],['efectos','Efectos']];
@@ -223,12 +235,12 @@ FADERS.forEach(([k, name]) => {
 let current = 'pasillo', busy = false;
 function showRoom(id) {
   current = id;
-  Object.entries(roomEls).forEach(([k, r]) => { r.g.classList.toggle('active', k === id); r.g.setAttribute('aria-current', k === id ? 'true' : 'false'); });
+  Object.entries(roomEls).forEach(([k, r]) => { r.g.classList.toggle('active', k === id); r.g.setAttribute('aria-current', k === id ? 'true' : 'false'); r.chip.setAttribute('aria-current', k === id ? 'true' : 'false'); });
   const R = A.ROOMS[id];
   $('roomName').textContent = R.name; $('roomMood').textContent = R.mood;
   const extra = [R.texture, ...Object.keys(R.events)].filter(Boolean).map((k) => SOUNDS[k]);
   $('roomDetail').textContent = `Suelo de ${FLOOR[R.floor]}` + (extra.length ? ` · Se oye: ${extra.join(', ')}` : '');
-  you.setAttribute('cx', roomEls[id].cx); you.setAttribute('cy', roomEls[id].cy + (id === 'pasillo' ? 0 : -1.2));
+  you.setAttribute('cx', roomEls[id].cx + (id === 'pasillo' ? -7.5 : 0)); you.setAttribute('cy', roomEls[id].cy + (id === 'pasillo' ? 0 : -1.2));
 }
 showRoom('pasillo');
 

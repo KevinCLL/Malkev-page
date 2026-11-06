@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Cartografía estelar</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Sistemas estelares procedurales de La Malkevnia: binarias, púlsares, agujeros negros, lóbulos de Roche, lunas y civilizaciones a partir de una semilla.">
+<style>
+/* Página suelta del visor: todo el diseño vive en visor.js (prefijo .mkv-carto). Aspecto único y oscuro, a propósito. */
+:root{ --void:#07051a; color-scheme:dark }
+html,body{height:100%;margin:0;background:var(--void)}
+</style>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+</head>
+<body>
+<script type="module">
+import { crearVisor } from './visor.js';
+crearVisor({ usarHash: true });
+</script>
+</body>
+</html>

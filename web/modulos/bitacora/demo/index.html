@@ -56,6 +56,7 @@ body.nogl #dock{display:none}
   #toggle{display:block;position:fixed;z-index:5;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
     padding:11px 18px;border-radius:999px;border:1px solid var(--amber);background:var(--panel);color:var(--text);font:600 13px var(--f-mono);letter-spacing:.08em;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);cursor:pointer}
   .x{display:block}
+  #side.open ~ #toggle{display:none}
   body.nogl #side{transform:none;visibility:visible;height:auto;top:calc(110px + env(safe-area-inset-top,0px))}
   body.nogl #toggle,body.nogl .x,body.nogl #mhint{display:none}
 }
@@ -246,15 +247,15 @@ async function start({ createReader, createBrowser, createHoloWall, FONTS }, pos
 
   // cúpula de observación: costillas finas desde el borde de la cubierta hasta lo alto
   {
-    const mat = new THREE.MeshBasicMaterial({ color: 0x2a1d4f, transparent: true, opacity: 0.85 });
+    const mat = new THREE.MeshBasicMaterial({ color: 0x1d1538, transparent: true, opacity: 0.7, depthWrite: false });
     const R = 7, Hh = 6.2, ribs = 14;
     for (let i = 0; i < ribs; i++) {
       const a = (i / ribs) * Math.PI * 2;
       const pts = [];
       for (let k = 0; k <= 24; k++) { const u = k / 24, ang = u * Math.PI / 2; pts.push(new THREE.Vector3(Math.cos(a) * R * Math.cos(ang), Hh * Math.sin(ang), Math.sin(a) * R * Math.cos(ang))); }
-      scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.035, 6, false), mat));
+      scene.add(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts), 48, 0.022, 5, false), mat));
     }
-    const rim = new THREE.Mesh(new THREE.TorusGeometry(7, 0.06, 8, 180), new THREE.MeshBasicMaterial({ color: 0xb59bff, transparent: true, opacity: 0.35, toneMapped: false }));
+    const rim = new THREE.Mesh(new THREE.TorusGeometry(7, 0.03, 6, 180), new THREE.MeshBasicMaterial({ color: 0xb59bff, transparent: true, opacity: 0.14, toneMapped: false, depthWrite: false }));
     rim.rotation.x = Math.PI / 2; rim.position.y = 0.03; scene.add(rim);
     const top = new THREE.Mesh(new THREE.TorusGeometry(1.1, 0.05, 8, 64), mat);
     top.rotation.x = Math.PI / 2; top.position.y = Hh - 0.2; scene.add(top);

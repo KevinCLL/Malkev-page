@@ -1,4 +1,4 @@
-# mapa-nave · Plano de la nave en tiempo real (v2.0.0)
+# mapa-nave · Plano de la nave en tiempo real (v2.1.0)
 
 Este es un módulo ES sin dependencias (`mapa-nave.js`). Dibuja en SVG el minimapa de La Malkevnia con:
 
@@ -10,7 +10,7 @@ Este es un módulo ES sin dependencias (`mapa-nave.js`). Dibuja en SVG el minima
 Si tocas el minimapa, o pulsas **M**, se abre el plano ampliado. Ahí eliges una estancia con el ratón, el dedo o las flechas más Intro, y te teletransportas. **Esc** cierra el plano.
 
 - Demo: `demo.html` en esta carpeta (es la misma que el Artifact https://claude.ai/artifact/VbQ46xK3Gw6PVcAoB1mweq).
-- Pruebas: `pruebas.playwright.js` con `pruebas.html` (36 comprobaciones). Para ejecutarlas, sirve esta carpeta con `layout.json` en `http://127.0.0.1:8765/` y lanza `node pruebas.playwright.js`.
+- Pruebas: `pruebas.playwright.js` con `pruebas.html` (38 comprobaciones). Para ejecutarlas, sirve esta carpeta con `layout.json` en `http://127.0.0.1:8765/` y lanza `node pruebas.playwright.js`.
 - Layout de la nave: `/mnt/project-files/nave-3d/layout.json`.
 
 ## Uso mínimo
@@ -65,13 +65,13 @@ Acepta el `layout.json` de la nave tal cual, o el formato corto:
 | `onTeleport(cb)` | `cb({ roomId, room, x, z, yaw, from, via })`. Devuelve la función de baja. **No mueve al jugador** salvo con `autoMove: true`. `via` puede ser `click`, `key` o `api`. |
 | `onRoomChange(cb)` | `cb({ room, prev })`. `room` es `null` fuera de toda estancia. |
 | `onToggle(cb)` | `cb(abierto, { via })`. Al abrir, `via` es `click`, `key` o `api`. Al cerrar es `escape`, `key`, `close`, `backdrop`, `teleport`, `api` o `dispose`. Tras `escape` no pidas `requestPointerLock`: Esc no cuenta como gesto del usuario y el navegador lo rechaza. |
-| `setOthers(lista, { yawOffset })` | Dibuja otros visitantes: `[{ id, name?, x, z, yaw?, color? }]`. Los que ya no vienen desaparecen. Los nombres se colocan sin solaparse. Se puede llamar cada frame. |
-| `setRoomCounts({ puente: 2, … })` | Muestra en el plano ampliado la insignia "N visitantes" en cada sala. |
+| `setOthers(lista, { yawOffset })` | Dibuja otros visitantes: `[{ id, name?, x, z, yaw?, color?, captain? }]`. `color` acepta `0xRRGGBB` o un color CSS. El capitán lleva un aro dorado. Los que ya no vienen desaparecen. Los nombres se colocan sin solaparse. Se puede llamar cada frame. |
+| `setRoomCounts(recuentos, { self })` | Muestra en el plano ampliado la insignia "N visitantes" en cada sala. Con `self: idDeSala` resta al jugador local de esa sala. Las salas que faltan valen 0. |
 | `teleportTo(id)` | Teletransporta por código, por ejemplo desde la consola de a bordo. |
 | `expand()` / `collapse()` / `toggle()` / `isExpanded()` | Controlan el plano ampliado. |
 | `roomAt(x, z)`, `currentRoom()`, `getRoom(id)`, `getLayout()` | Consultas. Devuelven copias, así que tocarlas no cambia el mapa. |
 | `setLayout(layout)` | Cambia de cubierta o de layout en caliente. |
-| `version` | `'2.0.0'`. |
+| `version` | `'2.1.0'`. |
 | `dispose()` | Si el plano está abierto, lo cierra (emite `toggle(false, { via: 'dispose' })`). Luego quita el DOM, los listeners, los temporizadores, los observadores y el CSS compartido. Se puede llamar varias veces. |
 
 También exporta `fromGrid`, `parseWindows`, `yawFromDir` y `colorFromId`.
@@ -107,4 +107,17 @@ Todo va prefijado con `.mn`, con `pointer-events: auto`, así que funciona dentr
 `nave-3d/integracion.js` ya lo monta en `#mini`, con fundido al teletransportarse y modal mientras el plano está abierto. Lo he comprobado dentro de la nave 3D real: la M abre el plano y al tocar "Sala de juegos" te lleva allí. Mejoras recomendadas:
 
 1. Pasar `{ bare: true }`, o quitar el fondo y el borde de `#mini`, para que no salga un panel dentro de otro.
-2. Cuando llegue el multijugador: `mj.onRooms(c => mapa.setRoomCounts(c))`, y en cada frame `mapa.setOthers(mj.sample(), { yawOffset })`. Usa como `yawOffset` la diferencia entre el yaw que envías en `sendPose` y el de la cámara. Si envías `player.yaw + Math.PI`, pasa `-Math.PI`.
+2. Multijugador (datos confirmados por su hilo: `onRooms` cuenta también al jugador local, llega como mucho una vez por segundo y solo si cambia; `sample()` devuelve solo a los demás, con el mismo yaw y las mismas coordenadas que cada uno mandó en `sendPose`):
+
+```js
+const { avatarColor } = await import(M('modulos/multijugador/avatares.js')); // como en integracion.js; mismo color que el avatar 3D, capitán incluido
+
+let rooms = {};
+const pushCounts = () => mapa.setRoomCounts(rooms, { self: mj.status === 'online' ? mj.room : null });
+mj.onRooms(c => { rooms = c; pushCounts(); });
+mj.onStatus(pushCounts);
+
+// cada frame. yawOffset = yaw de la cámara − yaw enviado en sendPose:
+// si mandas sendPose({ yaw: player.yaw }) → 0; si mandas player.yaw + Math.PI (convención del multijugador, 0 = +Z) → -Math.PI
+mapa.setOthers(mj.sample().map(p => ({ id: p.id, name: p.name, captain: p.captain, x: p.x, z: p.z, yaw: p.yaw, color: avatarColor(p) })), { yawOffset });
+```

@@ -70,17 +70,17 @@ function fill(tpl, vars) { return tpl.replace(/\{(\w+)\}/g, (_, k) => vars[k] ??
 /** Eras por nivel de Kardashev (0 = nada, 3 = galáctica). */
 export const ERAS = [
   { desde: 0.00, id: 'silencio', nombre: 'Silencio', resumen: 'Ninguna luz artificial. Solo el planeta.' },
-  { desde: 0.05, id: 'hogueras', nombre: 'Edad de las Hogueras', resumen: 'Puntos de fuego en las costas, visibles solo de noche y de cerca.' },
-  { desde: 0.25, id: 'agraria', nombre: 'Era Agraria', resumen: 'Campos de cultivo en mosaico y aldeas que brillan débilmente.' },
-  { desde: 0.45, id: 'ciudades', nombre: 'Era de las Ciudades-Estado', resumen: 'Las primeras ciudades grandes se encienden en la cara nocturna.' },
-  { desde: 0.60, id: 'industrial', nombre: 'Era Industrial', resumen: 'Bruma de humo sobre los continentes y caminos de luz entre ciudades.' },
-  { desde: 0.80, id: 'red', nombre: 'Era de la Red', resumen: 'Redes continentales de luz y los primeros satélites.' },
-  { desde: 1.00, id: 'tipo1', nombre: 'Tipo I · Civilización planetaria', resumen: 'Dominan toda la energía de su planeta. El cielo se llena de satélites.' },
-  { desde: 1.30, id: 'orbital', nombre: 'Era Orbital', resumen: 'Estaciones, rutas de tráfico y ascensores espaciales.' },
-  { desde: 1.60, id: 'ecumenopolis', nombre: 'Era de la Ecumenópolis', resumen: 'Un anillo orbital ciñe el ecuador y la ciudad cubre los continentes.' },
-  { desde: 2.00, id: 'tipo2', nombre: 'Tipo II · Civilización estelar', resumen: 'Un enjambre de Dyson cosecha la luz de su estrella.' },
-  { desde: 2.35, id: 'mega', nombre: 'Era de las Megaestructuras', resumen: 'Celosías, mundos-anillo y faros del tamaño de lunas.' },
-  { desde: 2.80, id: 'tipo3', nombre: 'Tipo III · Civilización galáctica', resumen: 'Una puerta abierta a otras estrellas y haces de luz que cruzan la galaxia.' },
+  { desde: 0.05, id: 'hogueras', nombre: 'Edad de las Hogueras', resumen: 'Puntos de fuego en las costas, visibles solo de noche y de cerca.', alcance: 'a encender sus primeras hogueras' },
+  { desde: 0.25, id: 'agraria', nombre: 'Era Agraria', resumen: 'Campos de cultivo en mosaico y aldeas que brillan débilmente.', alcance: 'a cultivar sus campos' },
+  { desde: 0.45, id: 'ciudades', nombre: 'Era de las Ciudades-Estado', resumen: 'Las primeras ciudades grandes se encienden en la cara nocturna.', alcance: 'a levantar sus primeras ciudades' },
+  { desde: 0.60, id: 'industrial', nombre: 'Era Industrial', resumen: 'Bruma de humo sobre los continentes y caminos de luz entre ciudades.', alcance: 'a la era industrial' },
+  { desde: 0.80, id: 'red', nombre: 'Era de la Red', resumen: 'Redes continentales de luz y los primeros satélites.', alcance: 'a conectar todo su planeta' },
+  { desde: 1.00, id: 'tipo1', nombre: 'Tipo I · Civilización planetaria', resumen: 'Dominan toda la energía de su planeta. El cielo se llena de satélites.', alcance: 'a ser una civilización planetaria' },
+  { desde: 1.30, id: 'orbital', nombre: 'Era Orbital', resumen: 'Estaciones, rutas de tráfico y ascensores espaciales.', alcance: 'a vivir en órbita' },
+  { desde: 1.60, id: 'ecumenopolis', nombre: 'Era de la Ecumenópolis', resumen: 'Un anillo orbital ciñe el ecuador y la ciudad cubre los continentes.', alcance: 'a cubrir su mundo de ciudad' },
+  { desde: 2.00, id: 'tipo2', nombre: 'Tipo II · Civilización estelar', resumen: 'Un enjambre de Dyson cosecha la luz de su estrella.', alcance: 'a ser una civilización estelar' },
+  { desde: 2.35, id: 'mega', nombre: 'Era de las Megaestructuras', resumen: 'Celosías, mundos-anillo y faros del tamaño de lunas.', alcance: 'a construir megaestructuras' },
+  { desde: 2.80, id: 'tipo3', nombre: 'Tipo III · Civilización galáctica', resumen: 'Una puerta abierta a otras estrellas y haces de luz que cruzan la galaxia.', alcance: 'a ser una civilización galáctica' },
 ];
 
 /** Rasgos visibles, en orden de aparición. Útil para leyendas y chips. */
@@ -196,6 +196,16 @@ const ERA_FRASES = {
   tipo3: ['Una puerta junto al planeta lleva a otras estrellas. A veces sale alguien.', 'Sus haces de luz cruzan la galaxia; alguno pasó cerca de La Malkevnia una vez.'],
 };
 
+// Lo que queda, según hasta dónde llegaron antes de extinguirse
+const RUINAS_FRASES = [
+  [0.0, ['Quedan muros cubiertos de musgo y caminos que ya no llevan a ninguna parte.', 'Sus hogueras se apagaron; desde órbita solo se adivinan los círculos de piedra.']],
+  [0.6, ['Las ciudades siguen en pie, a oscuras, y sus carreteras se ven desde órbita como cicatrices.', 'Hay cráteres vitrificados donde antes había capitales.']],
+  [1.0, ['Miles de satélites muertos siguen dando vueltas: un cementerio que nadie limpia.', 'De noche apenas parpadean un par de luces de emergencia que nadie ha apagado.']],
+  [1.3, ['En órbita giran estaciones vacías y el anillo se cae a trozos, muy despacio.', 'Los ascensores espaciales siguen anclados, pero ya no sube nadie.']],
+  [2.0, ['El enjambre de su estrella sigue girando sin nadie que recoja la energía.', 'Sus megaestructuras, rotas, todavía brillan cuando les da el sol.']],
+  [2.8, ['La puerta sigue ahí, apagada. Nadie sabe adónde llevaba ni si alguien la cerró desde el otro lado.']],
+];
+
 const ORIGENES = [
   '{civ} nació en {planeta} hace {antig} ciclos: {forma}.',
   'Los {especie} ({forma}) fundaron {civ} hace {antig} ciclos.',
@@ -225,7 +235,7 @@ function poblacionTxt(nivel, rng01) {
   return formatoGrande(v, '');
 }
 function formatoGrande(v, unidad) {
-  const nombres = [[1e18, 'trillones'], [1e12, 'billones'], [1e9, 'mil millones'], [1e6, 'millones'], [1e3, 'mil']];
+  const nombres = [[1e18, 'trillones'], [1e15, 'mil billones'], [1e12, 'billones'], [1e9, 'mil millones'], [1e6, 'millones'], [1e3, 'mil']];
   for (const [n, s] of nombres) if (v >= n) return `${(v / n).toLocaleString('es-ES', { maximumFractionDigits: v / n < 10 ? 1 : 0 })} ${s}${unidad}`;
   return `${Math.round(v).toLocaleString('es-ES')}${unidad}`;
 }
@@ -373,10 +383,13 @@ function describir(meta, nivel, estado) {
     const plantillas = meta.origen === 'colonia' ? ORIGENES_COLONIA : ORIGENES;
     frases.push(fill(r.pick(plantillas), vars));
     frases.push(`Su cultura es ${meta.cultura.txt}.`);
-    frases.push(r.pick(ERA_FRASES[era.id] || ERA_FRASES.silencio));
     if (estado === 'extinta') {
-      frases.push(`Las luces se apagaron hace ${meta.hace.toLocaleString('es-ES')} ciclos por ${meta.causa}. Quedan sus ruinas, ${nivel >= 1.3 ? 'y en órbita siguen girando estaciones vacías' : 'cubiertas de polvo'}.`);
+      let banda = RUINAS_FRASES[0][1];
+      for (const [desde, fr] of RUINAS_FRASES) if (nivel >= desde) banda = fr;
+      frases.push(`Llegaron ${era.alcance || 'lejos'}, pero se extinguieron hace ${meta.hace.toLocaleString('es-ES')} ciclos por ${meta.causa}.`);
+      frases.push(r.pick(banda));
     } else {
+      frases.push(r.pick(ERA_FRASES[era.id] || ERA_FRASES.silencio));
       frases.push(meta.contacto);
     }
   }
@@ -499,7 +512,31 @@ float heightAt(vec3 n,int oct){
   float h=fbm(p+wv*uWarp,oct)*0.5+0.5;
   return clamp((h-0.5)*1.6+0.5,0.0,1.0);
 }
+// Línea antialiasada de semiancho w a partir de una distancia d (las líneas más finas que un píxel se atenúan)
+float lineAA(float d,float w){
+  float fw=fwidth(d);
+  float a=1.0-smoothstep(w,w+fw*1.5,d);
+  return a*clamp(w/(fw+1e-5)*1.5,0.15,1.0);
+}
+// Worley con los puntos proyectados sobre la esfera (radio K). Devuelve F1, F2, id del más cercano y la
+// distancia al tramo que une los dos puntos más cercanos: así salen carreteras que van de ciudad a ciudad.
+vec4 worleyR(vec3 n,float K,vec3 off,out float id2){
+  vec3 p=n*K;vec3 q=p+off;vec3 i=floor(q);
+  float F1=1e9,F2=1e9,i1=0.0,i2=0.0;vec3 c1=p,c2=p;
+  for(int z=-1;z<=1;z++)for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){
+    vec3 g=i+vec3(float(x),float(y),float(z));
+    vec3 fp=normalize(g+hash33(g)-off)*K;
+    vec3 r=fp-p;float d=dot(r,r);
+    float h=hash13(g+0.37);
+    if(d<F1){F2=F1;c2=c1;i2=i1;F1=d;c1=fp;i1=h;}
+    else if(d<F2){F2=d;c2=fp;i2=h;}
+  }
+  vec3 e=c2-c1;float t=clamp(dot(p-c1,e)/max(dot(e,e),1e-6),0.0,1.0);
+  id2=i2;
+  return vec4(sqrt(F1),sqrt(F2),i1,length(p-c1-e*t));
+}
 void main(){
+  if(uFire+uCity+uRoad+uFarm+uHaze+uEcu+uRuin<0.001)discard;
   vec3 n=normalize(vObj);
   float land=1.0,coast=0.0,elev=0.3;
   if(uHasTerrain>0.5){
@@ -518,74 +555,70 @@ void main(){
   float day=smoothstep(-0.12,0.25,ndl);
   float lit=0.25+0.85*max(ndl,0.0);
 
-  // Densidad de población: costas y llanuras
+  // Densidad de población: costas y llanuras, nunca cumbres
   float dn=fbm(n*2.3+uCivOff,3)*0.5+0.5;
   float dens=smoothstep(0.36,0.7,dn+coast*0.22-max(elev-0.4,0.0)*0.9)*land;
   dens=max(dens,uEcu*land*0.85);
 
-  vec3 w1=worley(n*5.5+uCivOff);
-  vec3 w2=worley(n*17.0+uCivOff.zxy);
   float grain=smoothstep(-0.35,0.75,snoise(n*96.0+uCivOff));
   float grain2=smoothstep(-0.2,0.8,snoise(n*260.0+uCivOff.yzx));
 
-  float rBig=max(mix(0.05,0.24,w1.z*w1.z)*dens,0.001);
-  float big=exp(-w1.x/rBig*2.2)*smoothstep(rBig*1.6,0.0,w1.x);
-  float rTown=max(0.09*dens*w2.z,0.001);
-  float town=smoothstep(rTown,0.0,w2.x)*step(0.42,w2.z);
-  float cityM=clamp(big*1.4+town*0.8,0.0,1.6)*land;
+  // Grandes ciudades y autopistas entre ellas
+  float idB;vec4 W1=worleyR(n,5.5,uCivOff,idB);
+  float on1=step(0.22,W1.z)*smoothstep(0.08,0.35,dens);
+  float rBig=mix(0.05,0.3,W1.z*W1.z)*(0.4+0.6*dens);
+  float big=on1*exp(-W1.x/rBig*2.0)*smoothstep(rBig*2.0,0.0,W1.x);
+  float hw=lineAA(W1.w,0.010)*on1*step(0.22,idB)*smoothstep(0.12,0.45,dens);
+  // Pueblos y carreteras locales
+  float idT;vec4 W2=worleyR(n,17.0,uCivOff.zxy,idT);
+  float on2=step(0.45,W2.z)*smoothstep(0.25,0.6,dens);
+  float rTown=mix(0.05,0.14,W2.z)*(0.5+0.5*dens);
+  float town=on2*smoothstep(rTown,0.0,W2.x);
+  float lr=lineAA(W2.w,0.022)*on2*step(0.45,idT)*smoothstep(0.4,0.85,dens);
+  float cityM=clamp(big*1.5+town*0.8,0.0,1.6)*land;
+  float roads=(hw*(0.5+0.5*grain2)+lr*0.6*grain2)*land;
 
-  float e1=w1.y-w1.x;float road1=1.0-smoothstep(0.0,0.006+fwidth(e1)*1.2,e1);
-  float e2=w2.y-w2.x;float road2=1.0-smoothstep(0.0,0.012+fwidth(e2)*1.2,e2);
-  float roads=(road1*smoothstep(0.25,0.6,dens)+road2*0.45*smoothstep(0.45,0.9,dens))*land*(0.45+0.55*grain2);
-
-  // Hogueras y aldeas
-  vec3 w3=worley(n*42.0+uCivOff.yzx);
+  // Aldeas, hogueras, calles de la ecumenópolis y arcologías en el mar (solo si hacen falta)
+  vec3 w3=vec3(1.0,1.0,0.5);
+  if(uFire>0.0||uEcu>0.0||uFarm>0.0)w3=worley(n*42.0+uCivOff.yzx);
   float fire=smoothstep(0.1,0.0,w3.x)*step(0.58,w3.z)*smoothstep(0.25,0.65,dn+coast*0.35)*land;
   fire*=0.55+0.45*sin(uTime*(2.5+w3.z*6.0)+w3.z*60.0);
+  float streets=lineAA(w3.y-w3.x,0.03);
+  float ecu=land*(0.06+0.7*grain*grain2)+land*streets*0.45+lr*land*0.6+hw*land+big*0.8;
+  ecu+=(1.0-land)*smoothstep(0.12,0.0,w3.x)*step(0.72,w3.z)*(uHasTerrain!=0.0?1.2:0.0);
 
-  // Ecumenópolis: calles finas y arcologías flotantes en el mar
-  float e3=w3.y-w3.x;float streets=1.0-smoothstep(0.0,0.035+fwidth(e3)*1.2,e3);
-  float ecu=(land*(0.08+0.75*grain*grain2)+land*streets*0.55+road2*land*0.35+big*0.6);
-  float arco=(1.0-land)*smoothstep(0.12,0.0,w3.x)*step(0.72,w3.z)*(uHasTerrain!=0.0?1.0:0.0);
-  ecu+=arco*1.4;
-
-  // Color de cada ciudad (culturas artísticas: cada ciudad a su aire)
-  vec3 cA=mix(uCol1,uCol2,uMulti*step(0.5,fract(w1.z*7.3)));
+  // Color de cada ciudad (las culturas artísticas pintan cada ciudad de un color)
+  vec3 cA=mix(uCol1,uCol2,uMulti*step(0.5,fract(W1.z*7.3)));
   vec3 lights=vec3(0.0);
   lights+=vec3(1.0,0.5,0.18)*fire*uFire*0.9;
-  lights+=cA*cityM*(0.15+1.2*grain*(0.4+0.6*grain2))*uCity;
-  lights+=uCol2*roads*uRoad*0.45;
-  lights+=mix(uCol1,uCol2,0.35)*ecu*uEcu*0.75;
-  lights+=uCol1*(smoothstep(0.3,0.95,dens)*0.03+big*0.12)*(uCity+uEcu); // resplandor del cielo
+  lights+=cA*cityM*(0.2+1.25*grain*(0.45+0.55*grain2))*uCity;
+  lights+=mix(uCol2,uCol1,0.4)*roads*uRoad*0.85;
+  lights+=mix(uCol1,uCol2,0.35)*ecu*uEcu*0.7;
+  lights+=cA*(big*0.18+smoothstep(0.35,0.95,dens)*0.025)*(uCity+uEcu); // resplandor del cielo
   lights*=uBright;
 
-  // Día: campos, manchas urbanas, ruinas, bruma
+  // Día: campos, manchas urbanas, ruinas, bruma (composición "over" premultiplicada)
   vec4 acc=vec4(0.0);
-  // campos de cultivo
   float fieldMask=uFarm*0.26*smoothstep(0.2,0.6,dn+coast*0.2)*land*(1.0-clamp(cityM,0.0,1.0))*day;
   vec3 fieldCol=mix(vec3(0.62,0.55,0.24),vec3(0.3,0.46,0.18),w3.z);
   fieldCol=mix(fieldCol,vec3(0.55,0.38,0.2),step(0.75,hash13(floor(n*120.0))));
   acc=vec4(fieldCol*lit*fieldMask,fieldMask)+acc*(1.0-fieldMask);
-  // manchas urbanas y ecumenópolis
-  float urban=clamp((cityM*0.5+roads*0.25)*uCity+uEcu*land*(0.55+0.3*streets),0.0,0.9)*day;
+  float urban=clamp((cityM*0.55+roads*0.3)*uCity+uEcu*land*(0.5+0.3*streets),0.0,0.9)*day;
   vec3 urbanCol=uUrbanCol*(0.75+0.5*grain)*lit;
   acc=vec4(urbanCol*urban,urban)+acc*(1.0-urban);
-  // ruinas: cicatrices quemadas y cráteres vitrificados
   if(uRuin>0.0){
-    float scar=clamp(cityM*0.75+roads*0.4,0.0,1.0)*uRuin*0.75;
-    vec3 scarCol=vec3(0.07,0.05,0.045)*lit;
-    acc=vec4(scarCol*scar,scar)+acc*(1.0-scar);
-    float crater=smoothstep(0.02,0.0,abs(w1.x-0.07-0.05*w1.z))*step(0.72,w1.z)*land*uRuin;
-    vec3 glass=vec3(0.35,0.85,0.8)*(0.3+lit);
-    acc=vec4(glass*crater*0.7,crater*0.7)+acc*(1.0-crater*0.7);
-    // brasas que todavía parpadean
-    float ember=cityM*step(0.93,hash13(floor(n*70.0)))*(0.5+0.5*sin(uTime*1.7+hash13(floor(n*70.0)+3.0)*40.0));
-    lights+=vec3(1.0,0.35,0.12)*ember*uRuin*0.8;
+    // cicatrices donde hubo ciudades, cráteres vitrificados y brasas que todavía parpadean
+    float scar=clamp(cityM*0.9+roads*0.6+uRuin*land*0.12,0.0,1.0)*uRuin*0.85;
+    acc=vec4(vec3(0.05,0.04,0.035)*lit*scar,scar)+acc*(1.0-scar);
+    float crater=smoothstep(0.022,0.0,abs(W1.x-0.08-0.1*fract(W1.z*13.7)))*step(0.86,W1.z)*on1*land*uRuin;
+    vec3 glass=vec3(0.35,0.85,0.8)*(0.35+lit);
+    acc=vec4(glass*crater*0.75,crater*0.75)+acc*(1.0-crater*0.75);
+    float hc=hash13(floor(n*70.0));
+    float ember=clamp(cityM,0.0,1.0)*step(0.9,hc)*(0.4+0.6*sin(uTime*1.7+hc*40.0));
+    lights+=vec3(1.0,0.35,0.12)*ember*uRuin*0.9+vec3(0.3,0.9,0.85)*crater*0.08;
   }
-  // bruma industrial
   float haze=uHaze*(0.12+0.3*dens+0.15*smoothstep(0.3,0.9,dn))*day;
-  vec3 hazeCol=uHazeCol*lit;
-  acc=vec4(hazeCol*haze,haze)+acc*(1.0-haze);
+  acc=vec4(uHazeCol*lit*haze,haze)+acc*(1.0-haze);
 
   vec3 add=lights*night*(1.0-haze*0.5);
   gl_FragColor=vec4(acc.rgb+add,acc.a);
@@ -1129,7 +1162,7 @@ export function createCivilization(seedOrMeta, planetMeta = {}, opts = {}) {
         uHasTerrain: { value: hasTerrain },
         uSeedOffset: { value: pu.uSeedOffset ? pu.uSeedOffset.value : new THREE.Vector3() },
         uFreq: { value: pu.uFreq ? pu.uFreq.value : 2 }, uWarp: { value: pu.uWarp ? pu.uWarp.value : 0.3 },
-        uSea: { value: pu.uSea ? pu.uSea.value : -1 }, uOctaves: { value: Math.min(pu.uOctaves ? pu.uOctaves.value : 5, lowDetail ? 4 : 6) },
+        uSea: { value: pu.uSea ? pu.uSea.value : -1 }, uOctaves: { value: Math.min(pu.uOctaves ? pu.uOctaves.value : 5, lowDetail ? 4 : detalle === 'media' ? 5 : 6) },
         uCivOff: { value: civOff },
         uFire: { value: 0 }, uCity: { value: 0 }, uRoad: { value: 0 }, uFarm: { value: 0 }, uHaze: { value: 0 }, uEcu: { value: 0 }, uRuin: { value: 0 },
         uBright: { value: meta.cultura.brillo }, uMulti: { value: meta.cultura.id === 'artistica' ? 1 : 0 },

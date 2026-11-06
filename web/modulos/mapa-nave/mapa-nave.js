@@ -19,7 +19,7 @@
 
 const NS = 'http://www.w3.org/2000/svg';
 const STYLE_ID = 'mapa-nave-css';
-const VERSION = '2.0.0';
+const VERSION = '2.1.0';
 let styleRefs = 0;
 let uid = 0;
 
@@ -98,6 +98,7 @@ const CSS = `
 .mn-trail circle{fill:var(--mn-player)}
 .mn-other circle{stroke:#140c2c;stroke-width:calc(var(--mn-sw)*1)}
 .mn-other line{stroke-width:calc(var(--mn-sw)*1.6);stroke-linecap:round}
+.mn-other--captain circle{stroke:#ffe2a8;stroke-width:calc(var(--mn-sw)*1.8)}
 .mn-oname{font-family:var(--mn-mono);font-weight:600;paint-order:stroke;stroke:#0b0720;stroke-width:calc(var(--mn-sw)*2.5);stroke-linejoin:round}
 .mn-dot{fill:var(--mn-player);stroke:#1a1038;stroke-width:calc(var(--mn-sw)*1.2)}
 .mn-halo{fill:none;stroke:var(--mn-player);stroke-opacity:.5;stroke-width:var(--mn-sw);transform-box:fill-box;transform-origin:center;animation:mn-halo 2.2s ease-out infinite}
@@ -514,12 +515,15 @@ export function init(container, layout, opciones = {}) {
         const c = svg('circle', { cx: 0, cy: 0 }, ring);
         const t = svg('text', { class: 'mn-oname', x: r2(L.unit * 1.6) }, g);
         const tt = svg('title', null, g);
-        o = { g, ring, c, l, t, tt, color: null, name: '', x: 0, z: 0 };
+        o = { g, ring, c, l, t, tt, color: null, name: '', cap: false, x: 0, z: 0 };
         others.set(id, o); sizeOther(o);
       }
       if (o.color !== color) { o.color = color; o.c.style.fill = color; o.l.style.stroke = color; o.t.style.fill = color; }
-      const name = String(p.name || 'Visitante');
-      if (o.name !== name) { o.name = name; o.t.textContent = name; o.tt.textContent = name; }
+      const name = String(p.name || 'Visitante'), cap = !!p.captain;
+      if (o.name !== name || o.cap !== cap) {
+        o.name = name; o.cap = cap; o.t.textContent = name; o.tt.textContent = cap ? `${name} (capitán)` : name;
+        o.g.classList.toggle('mn-other--captain', cap);
+      }
       o.x = +p.x; o.z = +p.z;
       o.g.setAttribute('transform', `translate(${r2(o.x)} ${r2(o.z)})`);
       const yw = num(+p.yaw) ? +p.yaw + yawOffset : null;
@@ -551,9 +555,14 @@ export function init(container, layout, opciones = {}) {
       o.t.setAttribute('text-anchor', spot === right ? 'start' : 'end');
     }
   }
-  function setRoomCounts(c) {
+  // `self`: id de la sala donde está el jugador local, si el recuento lo incluye (el de multijugador lo incluye)
+  function setRoomCounts(c, { self = null } = {}) {
     counts = {};
-    if (c && typeof c === 'object') for (const k in c) { const n = Math.max(0, Math.floor(+c[k] || 0)); if (n) counts[k] = n; }
+    if (c && typeof c === 'object') for (const k in c) {
+      let n = Math.max(0, Math.floor(+c[k] || 0));
+      if (self != null && k === String(self)) n = Math.max(0, n - 1);
+      if (n) counts[k] = n;
+    }
     applyCounts(); if (expanded) { applyA11y(); scheduleFit(); }
   }
   function applyCounts() {

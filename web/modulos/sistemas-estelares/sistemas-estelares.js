@@ -429,6 +429,15 @@ export function buildSystem(seedOrSpec, opts = {}) {
   // Estado de tiempo
   const state = { t: opts.t0 ?? 0, real: 0, timeScale: opts.timeScale ?? 2, paused: false };
 
+  // Efemérides externas opcionales (p. ej. el módulo de órbitas con perturbaciones):
+  // opts.efemerides.posicion(id, tDias, out) -> true si ha escrito en out la posición
+  // relativa al padre en unidades de escena; si no, se usa Kepler.
+  const eph = opts.efemerides && typeof opts.efemerides.posicion === 'function' ? opts.efemerides : null;
+  function orbitPos(id, orbita, t, out) {
+    if (eph) { try { if (eph.posicion(id, t, out)) return out; } catch (e) { /* respaldo kepleriano */ } }
+    return keplerPosition(orbita, t, out);
+  }
+
   // Posiciones de nodos
   for (const n of nodes) { n._pos = v3(); n._rel = v3(); n._vel = v3(); }
   const nodeById = new Map(nodes.map((n) => [n.id, n]));
@@ -438,8 +447,9 @@ export function buildSystem(seedOrSpec, opts = {}) {
     (function walk(n, pos) {
       n._pos.copy(pos);
       if (n.tipo !== 'par') return;
-      keplerPosition(n.orbita, t, _k); n._rel.set(_k.x, _k.y, _k.z);
-      keplerPosition(n.orbita, t + n.orbita.periodoDias * 0.001, _k); n._vel.set(_k.x, _k.y, _k.z).sub(n._rel);
+      orbitPos(n.id, n.orbita, t, _k); n._rel.set(_k.x, _k.y, _k.z);
+      const dtv = (n.orbita.periodoVisualDias || n.orbita.periodoDias) * 0.001;
+      orbitPos(n.id, n.orbita, t + dtv, _k); n._vel.set(_k.x, _k.y, _k.z).sub(n._rel);
       const fa = n.b.M / n.M, fb = n.a.M / n.M;
       walk(n.a, v3().copy(pos).addScaledVector(n._rel, -fa));
       walk(n.b, v3().copy(pos).addScaledVector(n._rel, fb));
@@ -1007,7 +1017,22 @@ export function buildSystem(seedOrSpec, opts = {}) {
     group.add(head, tail);
     const b = { id: c.id, tipo: 'cometa', nombre: c.nombre, subtitulo: `Cometa · e = ${c.orbita.e}`, radio: 0.5, position: v3(), datos: c, object3D: head };
     bodies.push(b);
-    comets.push({ c, node, head, tail, orbitLine, body: b, prev: v3() });
+    // Corriente de meteoroides: polvo que el cometa ha ido soltando a lo largo de su órbita
+    const NS = detail === 'baja' ? 350 : 800;
+    const sp = [], sc = [], ss = [], params = [];
+    for (let i = 0; i < NS; i++) {
+      const side = crng() < 0.62 ? -1 : 1; // más polvo detrás que delante
+      const dM = side * Math.pow(crng(), 2.2) * Math.PI * 0.95;
+      params.push({ dM, da: 1 + (crng() - 0.5) * 0.035, dy: (crng() - 0.5) * 0.6 });
+      sp.push(0, 0, 0);
+      const k = 0.25 + crng() * 0.35; sc.push(0.75 * k, 0.8 * k, 1.0 * k);
+      ss.push(0.1 + Math.pow(crng(), 5) * 0.3);
+    }
+    const stream = glowPoints(sp, sc, ss, { opacity: 0.85 });
+    trackObj(stream); pxMaterials.push(stream.material);
+    stream.userData.params = params;
+    const sg = new THREE.Group(); sg.add(stream); layers.cinturones.add(sg);
+    comets.push({ c, node, head, tail, orbitLine, body: b, prev: v3(), stream, streamGroup: sg });
   }
 
   /* ---------------- Anomalías ---------------- */
@@ -1055,13 +1080,15 @@ export function buildSystem(seedOrSpec, opts = {}) {
 
   /* ---------------- Bucle ---------------- */
   const _lc = v3(), _tmp = v3(), _wp = v3();
+  const _orbTmp = {};
   let pxScale = 600;
   const lenses = [];
 
   function update(dt = 1 / 60, camera = null) {
     dt = Math.min(dt, 0.1);
     state.real += dt;
-    if (!state.paused) state.t += dt * state.timeScale;
+    if (typeof opts.reloj === 'function') state.t = opts.reloj();
+    else if (!state.paused) state.t += dt * state.timeScale;
     const t = state.t;
     if (camera && camera.isPerspectiveCamera && opts.viewportHeight) pxScale = opts.viewportHeight / (2 * Math.tan(THREE.MathUtils.degToRad(camera.fov) / 2));
     placeNodes(t);
@@ -1074,7 +1101,7 @@ export function buildSystem(seedOrSpec, opts = {}) {
     // Planetas
     const spinDt = state.paused ? 0 : dt * THREE.MathUtils.clamp(state.timeScale / 2, 0.25, 6);
     for (const e of planets) {
-      keplerPosition(e.p.orbita, t, _k);
+      orbitPos(e.p.id, e.p.orbita, t, _k);
       e.h.group.position.set(_k.x, _k.y, _k.z).add(e.host._pos);
       e.orbitLine.position.copy(e.host._pos);
       e.h.update(spinDt);
@@ -1105,7 +1132,7 @@ export function buildSystem(seedOrSpec, opts = {}) {
 
     // Cometas
     for (const c of comets) {
-      keplerPosition(c.c.orbita, t, _k);
+      orbitPos(c.c.id, c.c.orbita, t, _k);
       const pos = _tmp.set(_k.x, _k.y, _k.z).add(c.node._pos);
       c.head.position.copy(pos);
       c.orbitLine.position.copy(c.node._pos);
@@ -1121,6 +1148,18 @@ export function buildSystem(seedOrSpec, opts = {}) {
       u.uLen.value = THREE.MathUtils.clamp(900 * Math.sqrt(Lroot) / (dist + 20), 2, 70);
       u.uOpacity.value = THREE.MathUtils.clamp(60 / (dist + 10), 0.15, 1.2);
       u.uReal.value = state.real;
+      // Meteoroides: misma órbita, desfasados en anomalía media
+      c.streamGroup.position.copy(c.node._pos);
+      const P = c.stream.geometry.attributes.position.array, prm = c.stream.userData.params, o = c.c.orbita;
+      const M0 = o.fase + (2 * Math.PI * t) / o.periodoDias;
+      for (let i = 0; i < prm.length; i++) {
+        const q = prm[i];
+        _orbTmp.fase = M0 + q.dM; _orbTmp.aEscena = o.aEscena * q.da; _orbTmp.eEscena = o.eEscena; _orbTmp.e = o.e;
+        _orbTmp.argPeri = o.argPeri; _orbTmp.inclinacion = o.inclinacion; _orbTmp.nodo = o.nodo; _orbTmp.periodoDias = 1e30;
+        keplerPosition(_orbTmp, 0, _k);
+        P[i * 3] = _k.x; P[i * 3 + 1] = _k.y + q.dy; P[i * 3 + 2] = _k.z;
+      }
+      c.stream.geometry.attributes.position.needsUpdate = true;
     }
 
     updateDysons(dt);
@@ -1144,6 +1183,7 @@ export function buildSystem(seedOrSpec, opts = {}) {
   }
 
   function setTimeScale(daysPerSecond) { state.timeScale = daysPerSecond; }
+  function setTime(tDias) { state.t = tDias; }
   function setPaused(p) { state.paused = !!p; }
   function setViewportHeight(h) { opts.viewportHeight = h; }
   function getBody(id) { return bodies.find((b) => b.id === id) || null; }
@@ -1161,7 +1201,7 @@ export function buildSystem(seedOrSpec, opts = {}) {
 
   return {
     group, spec, bodies, lenses, layers, state,
-    update, setTimeScale, setPaused, setVisible, visible, setViewportHeight, getBody, dispose,
+    update, setTime, setTimeScale, setPaused, setVisible, visible, setViewportHeight, getBody, dispose,
     get time() { return state.t; }, set time(v) { state.t = v; },
     get timeScale() { return state.timeScale; },
     extension: spec.extensionEscena,

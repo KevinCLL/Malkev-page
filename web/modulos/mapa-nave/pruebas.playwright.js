@@ -120,6 +120,18 @@ const results = []; const ok = (name, cond, info = '') => { results.push([cond ?
   ok('spawn calculado dentro de la sala mirando hacia dentro', r9.s.z < 4 && r9.s.z > 0 && Math.abs(Math.abs(r9.s.yaw) - 0) < 1e-9, JSON.stringify(r9.s));
   ok('layout inválido da un error claro', /ancho y fondo/.test(r9.err), r9.err);
 
+  // 10. datos tal como llegan del multijugador
+  const r10 = await p.evaluate(() => { const d = document.createElement('div'); d.style.width = '320px'; document.body.appendChild(d);
+    const m = init(d, layout); m.setPlayer(27, 18, 0);
+    m.setOthers([{ id: 7, name: 'Malkev', captain: true, x: 26.5, z: 18.2, y: 0, yaw: 6.3, anim: 'walk', color: 0xffc27a }, { id: 8, name: 'Nadie', x: 16, z: 18, yaw: -0.02 }]);
+    m.setRoomCounts({ biblioteca: 2, juegos: 1 }, { self: 'biblioteca' }); m.expand();
+    const badges = [...d.ownerDocument.querySelectorAll('.mn-badge--on text')].map(t => t.textContent);
+    const cap = document.querySelector('.mn-other--captain circle');
+    const out = { badges, capFill: cap && cap.style.fill, capTitle: document.querySelector('.mn-other--captain title')?.textContent, n: document.querySelectorAll('.mn-other').length };
+    m.dispose(); return out; });
+  ok('recuento con self resta al jugador local', JSON.stringify(r10.badges) === '["1 visitante","1 visitante"]', JSON.stringify(r10.badges));
+  ok('color numérico 0xRRGGBB, ids numéricos y capitán', r10.n === 2 && /255, 194, 122|#ffc27a/i.test(r10.capFill) && r10.capTitle === 'Malkev (capitán)', JSON.stringify(r10));
+
   ok('sin errores de consola', errs.length === 0, errs.join(' | '));
   for (const r of results) console.log(r.join('  '));
   console.log(results.filter(r => r[0] !== 'OK ').length + ' fallos de ' + results.length);

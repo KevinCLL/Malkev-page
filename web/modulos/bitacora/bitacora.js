@@ -42,6 +42,16 @@ const stripTags = (h) => String(h).replace(/<(script|style)[^>]*>[\s\S]*?<\/\1>/
 let uid = 0;
 const nextId = (p) => `${p}-${++uid}`;
 
+/**
+ * Textos de la interfaz. Por defecto usa M.i18n.t de la nave unificada si existe (contrato §1.5) y si no, el español.
+ * Se puede pasar otra función t(clave, porDefecto, vars) en las opciones de cada pieza.
+ */
+export const defaultT = (k, d, v) => {
+  const f = globalThis.Malkevnia && globalThis.Malkevnia.i18n && globalThis.Malkevnia.i18n.t;
+  return f ? f(k, d, v) : d;
+};
+const tr = (t, k, d, v) => String(t(k, d, v) ?? d).replace(/\{(\w+)\}/g, (m, x) => (v && x in v ? v[x] : m));
+
 // ---------------------------------------------------------------- datos
 
 /**
@@ -190,7 +200,7 @@ a.bx-media:hover{background:rgba(255,194,122,.08);color:var(--bx-text)}
 .bx-nav span{font:600 10px var(--bx-mono);letter-spacing:.16em;text-transform:uppercase;color:var(--bx-muted)}
 .bx-nav strong{font:400 14px var(--bx-body);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .bx-ext{font:600 11px var(--bx-mono);letter-spacing:.08em;color:var(--bx-cyan);text-decoration:none;white-space:nowrap}
-@media (max-width:560px){.bx-head{padding:16px 16px 12px}.bx-body{padding:16px 16px 24px}.bx-foot{grid-template-columns:1fr 1fr;padding:10px}.bx-ext{grid-column:1/-1;grid-row:1;text-align:center}.bx-prose{font-size:16px}}
+@media (max-width:560px){.bx-meta{gap:2px 14px}.bx-meta>*+*::before{content:none}.bx-head{padding:16px 16px 12px}.bx-body{padding:16px 16px 24px}.bx-foot{grid-template-columns:1fr 1fr;padding:10px}.bx-ext{grid-column:1/-1;grid-row:1;text-align:center}.bx-prose{font-size:16px}}
 @media (prefers-reduced-motion:reduce){.bx-reader,.bx-sheet{transition:none}}
 
 /* Índice */
@@ -242,10 +252,10 @@ function mediaLink(href, label, text, thumb) {
   return a;
 }
 
-function prepareHtml(html, { embeds, audio, mapAsset, idPrefix }) {
-  const t = document.createElement('template');
-  t.innerHTML = html;
-  const root = t.content;
+function prepareHtml(html, { embeds, audio, mapAsset, idPrefix, t }) {
+  const tpl = document.createElement('template');
+  tpl.innerHTML = html;
+  const root = tpl.content;
   root.querySelectorAll('script,style,object,embed,link,meta,base').forEach((n) => n.remove());
   root.querySelectorAll('*').forEach((n) => [...n.attributes].forEach((at) => { if (/^on/i.test(at.name)) n.removeAttribute(at.name); }));
   // ids con prefijo para no chocar con la página que monta el lector (los enlaces internos se reescriben a juego)
@@ -267,7 +277,7 @@ function prepareHtml(html, { embeds, audio, mapAsset, idPrefix }) {
     try { host = new URL(src, location.href).hostname; } catch { /* src raro: se queda el texto genérico */ }
     const name = yt ? 'YouTube' : /vimeo/.test(src) ? 'Vimeo' : host;
     const href = yt ? `https://www.youtube.com/watch?v=${yt}` : src.replace('player.vimeo.com/video/', 'vimeo.com/');
-    f.replaceWith(mediaLink(href, '▶ Vídeo', `Ver en ${name}`, yt ? `https://i.ytimg.com/vi/${yt}/mqdefault.jpg` : null));
+    f.replaceWith(mediaLink(href, tr(t, 'bitacora.video', '▶ Vídeo'), tr(t, 'bitacora.verEn', 'Ver en {sitio}', { sitio: name }), yt ? `https://i.ytimg.com/vi/${yt}/mqdefault.jpg` : null));
   });
   root.querySelectorAll('audio').forEach((au) => {
     const raw = au.getAttribute('src') || au.querySelector('source')?.getAttribute('src') || '';
@@ -276,15 +286,15 @@ function prepareHtml(html, { embeds, audio, mapAsset, idPrefix }) {
       au.src = src; au.preload = 'none'; au.controls = true;
       au.querySelectorAll('source').forEach((s) => s.remove());
       // si no se puede reproducir aquí, se cambia por un enlace
-      au.addEventListener('error', () => au.replaceWith(mediaLink(raw, '♪ Audio', 'Escuchar la grabación')), { once: true });
-    } else au.replaceWith(mediaLink(raw, '♪ Audio', 'Escuchar la grabación'));
+      au.addEventListener('error', () => au.replaceWith(mediaLink(raw, tr(t, 'bitacora.audio', '♪ Audio'), tr(t, 'bitacora.escuchar', 'Escuchar la grabación'))), { once: true });
+    } else au.replaceWith(mediaLink(raw, tr(t, 'bitacora.audio', '♪ Audio'), tr(t, 'bitacora.escuchar', 'Escuchar la grabación')));
   });
   // índice para las entradas largas
   const hs = [...root.querySelectorAll('h2')];
   if (hs.length >= 4) {
     const toc = document.createElement('details');
     toc.className = 'bx-toc';
-    toc.innerHTML = `<summary>Contenido · ${hs.length} secciones</summary><ol>${hs.map((h) => `<li><a href="#${esc(h.id)}" data-bx-anchor="1">${esc(h.textContent)}</a></li>`).join('')}</ol>`;
+    toc.innerHTML = `<summary>${esc(tr(t, 'bitacora.contenido', 'Contenido · {n} secciones', { n: hs.length }))}</summary><ol>${hs.map((h) => `<li><a href="#${esc(h.id)}" data-bx-anchor="1">${esc(h.textContent)}</a></li>`).join('')}</ol>`;
     root.prepend(toc);
   }
   return root;
@@ -295,11 +305,11 @@ const FOCUSABLE = 'button:not(:disabled),a[href],audio[controls],summary,[tabind
 /**
  * Lector a pantalla completa.
  * opts: { posts, container=document.body, embeds:'link'|'native', audio:'native'|'link', mapAsset(url)->url,
- *         captureKeys=true, onOpen(post, {first}), onClose(post) }
+ *         captureKeys=true, emitEvents=true, t(clave, porDefecto, vars), onOpen(post, {first}), onClose(post) }
  */
 export function createReader({
   posts, container = document.body, embeds = 'link', audio = 'native', mapAsset = (u) => u,
-  captureKeys = true, onOpen, onClose,
+  captureKeys = true, emitEvents = true, t = defaultT, onOpen, onClose,
 } = {}) {
   injectStyles(container.ownerDocument);
   const byId = new Map(posts.map((p) => [p.id, p]));
@@ -313,12 +323,12 @@ export function createReader({
   el.innerHTML = `<article class="bx-sheet">
     <div class="bx-progress" data-r="progress"></div>
     <header class="bx-head"><div><div class="bx-eb" data-r="eb"></div><h2 id="${titleId}" data-r="title"></h2><div class="bx-meta" data-r="meta"></div></div>
-      <button type="button" class="bx-x" data-r="close" aria-label="Cerrar la entrada">✕</button></header>
+      <button type="button" class="bx-x" data-r="close" aria-label="${esc(tr(t, 'bitacora.cerrar', 'Cerrar la entrada'))}">✕</button></header>
     <div class="bx-body" data-r="body" tabindex="0"><div class="bx-prose" data-r="prose"></div></div>
     <footer class="bx-foot">
-      <button type="button" class="bx-nav" data-r="prev"><span>‹ Anterior</span><strong></strong></button>
-      <a class="bx-ext" data-r="ext" target="_blank" rel="noopener">Ver en malkevnia.com ↗</a>
-      <button type="button" class="bx-nav bx-r" data-r="next"><span>Siguiente ›</span><strong></strong></button>
+      <button type="button" class="bx-nav" data-r="prev"><span>${esc(tr(t, 'bitacora.anterior', '‹ Anterior'))}</span><strong></strong></button>
+      <a class="bx-ext" data-r="ext" target="_blank" rel="noopener">${esc(tr(t, 'bitacora.verWeb', 'Ver en malkevnia.com ↗'))}</a>
+      <button type="button" class="bx-nav bx-r" data-r="next"><span>${esc(tr(t, 'bitacora.siguiente', 'Siguiente ›'))}</span><strong></strong></button>
     </footer></article>`;
   container.appendChild(el);
   const $ = (k) => el.querySelector(`[data-r="${k}"]`);
@@ -335,16 +345,16 @@ export function createReader({
   body.addEventListener('scroll', updateProgress, { passive: true });
 
   function render(p) {
-    $('eb').textContent = `Entrada ${pad3(p.n)} · Bitácora del capitán`;
+    $('eb').textContent = `${tr(t, 'bitacora.entrada', 'Entrada {n}', { n: pad3(p.n) })} · ${tr(t, 'bitacora.titulo', 'Bitácora del capitán')}`;
     $('title').textContent = p.title;
-    $('meta').innerHTML = `<time datetime="${esc(p.datetime || p.date)}">${formatDate(p.date, true)}</time><span>${p.readingMinutes} min de lectura</span>` +
+    $('meta').innerHTML = `<time datetime="${esc(p.datetime || p.date)}">${formatDate(p.date, true)}</time><span>${esc(tr(t, 'bitacora.minLectura', '{n} min de lectura', { n: p.readingMinutes }))}</span>` +
       (p.tags.length ? `<span>${p.tags.map((t) => `<span class="bx-tag">#${esc(t)}</span>`).join(' ')}</span>` : '');
     const prose = $('prose');
-    prose.replaceChildren(prepareHtml(p.html, { embeds, audio, mapAsset, idPrefix }));
+    prose.replaceChildren(prepareHtml(p.html, { embeds, audio, mapAsset, idPrefix, t }));
     prose.querySelectorAll('img').forEach((img) => img.addEventListener('error', () => {
       if (!img.isConnected) return;
       const parentLink = img.closest('a');
-      const chip = mediaLink(img.src, '▣ Imagen', img.alt ? `${img.alt} · ábrela aparte` : 'No se puede mostrar aquí, ábrela aparte');
+      const chip = mediaLink(img.src, tr(t, 'bitacora.imagen', '▣ Imagen'), img.alt ? `${img.alt} · ${tr(t, 'bitacora.abrirAparte', 'ábrela aparte')}` : tr(t, 'bitacora.imagenFallo', 'No se puede mostrar aquí, ábrela aparte'));
       (parentLink && parentLink.childElementCount === 1 ? parentLink : img).replaceWith(chip);
     }, { once: true }));
     $('ext').href = p.url;
@@ -370,6 +380,8 @@ export function createReader({
     requestAnimationFrame(() => el.classList.add('bx-on'));
     if (first) $('close').focus({ preventScroll: true });
     onOpen && onOpen(p, { first });
+    // contrato de la nave unificada §4: evento malkevnia:post al abrir una entrada
+    if (emitEvents) dispatchEvent(new CustomEvent('malkevnia:post', { detail: { id: p.id, n: p.n, year: p.year, title: p.title, first } }));
     return p;
   }
   function close() {
@@ -440,24 +452,25 @@ export function createReader({
  * Índice navegable: búsqueda (título, etiquetas, resumen y cuerpo), años, etiquetas y lista.
  * opts: { posts, container, onSelect(post), onFilter(list, filter), filter:{year,tag,q}, maxTags=10 }
  */
-export function createBrowser({ posts, container, onSelect, onFilter, filter = {}, maxTags = 10 } = {}) {
+export function createBrowser({ posts, container, onSelect, onFilter, filter = {}, maxTags = 10, t = defaultT } = {}) {
   injectStyles(container.ownerDocument);
   const state = { year: null, tag: null, q: '', ...filter };
   const el = document.createElement('div');
   el.className = 'bx bx-browser';
   const inputId = nextId('bx-search');
   const years = yearsOf(posts), allTags = tagsOf(posts);
-  el.innerHTML = `<input class="bx-search" id="${inputId}" type="search" placeholder="Buscar en la bitácora…" aria-label="Buscar en la bitácora" autocomplete="off" enterkeyhint="search">
+  const count = (n) => (n === 1 ? tr(t, 'bitacora.unaEntrada', '1 entrada') : tr(t, 'bitacora.entradas', '{n} entradas', { n }));
+  el.innerHTML = `<input class="bx-search" id="${inputId}" type="search" placeholder="${esc(tr(t, 'bitacora.buscar', 'Buscar en la bitácora…'))}" aria-label="${esc(tr(t, 'bitacora.buscarEtiqueta', 'Buscar en la bitácora'))}" autocomplete="off" enterkeyhint="search">
     <div style="display:grid;gap:8px">
-      <div class="bx-chips" role="group" aria-label="Año">
-        <button type="button" class="bx-chip" data-y="">Todas</button>${years.map((y) => `<button type="button" class="bx-chip" data-y="${y}" title="${posts.filter((p) => p.year === y).length} entradas">${y}</button>`).join('')}
+      <div class="bx-chips" role="group" aria-label="${esc(tr(t, 'bitacora.anio', 'Año'))}">
+        <button type="button" class="bx-chip" data-y="">${esc(tr(t, 'bitacora.todas', 'Todas'))}</button>${years.map((y) => `<button type="button" class="bx-chip" data-y="${y}" title="${esc(count(posts.filter((p) => p.year === y).length))}">${y}</button>`).join('')}
       </div>
-      <div class="bx-chips" role="group" aria-label="Etiqueta" data-r="tags"></div>
+      <div class="bx-chips" role="group" aria-label="${esc(tr(t, 'bitacora.etiqueta', 'Etiqueta'))}" data-r="tags"></div>
       <div class="bx-count" aria-live="polite"></div>
     </div>
-    <ul class="bx-list" aria-label="Entradas"></ul>`;
+    <ul class="bx-list" aria-label="${esc(tr(t, 'bitacora.lista', 'Entradas'))}"></ul>`;
   container.appendChild(el);
-  const input = el.querySelector('.bx-search'), list = el.querySelector('.bx-list'), count = el.querySelector('.bx-count'), tagBox = el.querySelector('[data-r="tags"]');
+  const input = el.querySelector('.bx-search'), list = el.querySelector('.bx-list'), countEl = el.querySelector('.bx-count'), tagBox = el.querySelector('[data-r="tags"]');
   input.value = state.q;
   let filtered = [], currentId = null;
 
@@ -488,7 +501,7 @@ export function createBrowser({ posts, container, onSelect, onFilter, filter = {
     filtered = filterPosts(posts, state);
     el.querySelectorAll('[data-y]').forEach((b) => b.setAttribute('aria-pressed', String(String(state.year || '') === b.dataset.y)));
     renderTags();
-    count.textContent = `${filtered.length} ${filtered.length === 1 ? 'entrada' : 'entradas'}${state.q.trim() ? ' · por relevancia' : ''}`;
+    countEl.textContent = count(filtered.length) + (state.q.trim() ? ' · ' + tr(t, 'bitacora.relevancia', 'por relevancia') : '');
     const q = state.q.trim();
     list.innerHTML = filtered.length ? filtered.map((p) => {
       const ix = index(p), nq = norm(q);
@@ -497,14 +510,14 @@ export function createBrowser({ posts, container, onSelect, onFilter, filter = {
       return `<li><button type="button" class="bx-item${p.id === currentId ? ' bx-cur' : ''}" data-id="${esc(p.id)}">
         <span class="bx-n">${pad3(p.n)}</span><span class="bx-tt">${q ? mark(p.title, q) : esc(p.title)}</span><span class="bx-dd">${formatDate(p.date)} · ${p.readingMinutes} min</span>${sn ? `<span class="bx-sn">${mark(sn, q)}</span>` : ''}</button></li>`;
     }).join('')
-      : '<li class="bx-empty">Ninguna entrada coincide. Prueba con otra palabra o quita un filtro.</li>';
+      : `<li class="bx-empty">${esc(tr(t, 'bitacora.vacio', 'Ninguna entrada coincide. Prueba con otra palabra o quita un filtro.'))}</li>`;
     if (emit && onFilter) onFilter(filtered, { ...state });
   }
-  let t = 0;
-  input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(() => { state.q = input.value; refresh(); }, 160); });
+  let debounce = 0;
+  input.addEventListener('input', () => { clearTimeout(debounce); debounce = setTimeout(() => { state.q = input.value; refresh(); }, 160); });
   input.addEventListener('keydown', (e) => {
     if (e.key === 'ArrowDown') { e.preventDefault(); list.querySelector('.bx-item')?.focus(); }
-    else if (e.key === 'Enter') { clearTimeout(t); state.q = input.value; refresh(); const p = filtered[0]; if (p && onSelect) onSelect(p); }
+    else if (e.key === 'Enter') { clearTimeout(debounce); state.q = input.value; refresh(); const p = filtered[0]; if (p && onSelect) onSelect(p); }
   });
   list.addEventListener('keydown', (e) => {
     if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
@@ -535,14 +548,14 @@ export function createBrowser({ posts, container, onSelect, onFilter, filter = {
       });
     },
     focusSearch() { input.focus(); input.select(); },
-    destroy() { clearTimeout(t); el.remove(); },
+    destroy() { clearTimeout(debounce); el.remove(); },
   };
 }
 
 /** Índice + lector juntos, sin 3D. Útil como pantalla de la consola o versión ligera en móvil. */
 export function mountBitacora(container, { posts, ...readerOpts } = {}) {
   const reader = createReader({ posts, ...readerOpts, onOpen: (p, info) => { browser.setCurrent(p.id); readerOpts.onOpen && readerOpts.onOpen(p, info); } });
-  const browser = createBrowser({ posts, container, onSelect: (p) => reader.open(p) });
+  const browser = createBrowser({ posts, container, t: readerOpts.t, onSelect: (p) => reader.open(p) });
   return { reader, browser, destroy() { reader.destroy(); browser.destroy(); } };
 }
 
@@ -580,7 +593,7 @@ function roundRectPath(g, x, y, w, h, r) {
  * Dibuja la cara de un holopanel en un <canvas> (nuevo, o el que se pase en opts.canvas).
  * opts: { w=640, h=w*0.625, color, accent, image (HTMLImageElement ya cargada, opcional), canvas }
  */
-export function drawPanelCanvas(post, { w = 640, h = Math.round(w * 0.625), color = PALETTE.amber, accent = PALETTE.violet, image = null, canvas = null } = {}) {
+export function drawPanelCanvas(post, { w = 640, h = Math.round(w * 0.625), color = PALETTE.amber, accent = PALETTE.violet, image = null, canvas = null, t = defaultT } = {}) {
   const c = canvas || document.createElement('canvas');
   c.width = w; c.height = h;
   const g = c.getContext('2d');
@@ -633,16 +646,16 @@ export function drawPanelCanvas(post, { w = 640, h = Math.round(w * 0.625), colo
   if (!post) { // panel vacío
     g.fillStyle = rgba(PALETTE.text, 0.8); g.textAlign = 'center';
     g.font = '600 34px "Exo 2", system-ui, sans-serif';
-    g.fillText('Sin señal', W / 2, H / 2 - 6);
+    g.fillText(tr(t, 'bitacora.sinSenal', 'Sin señal'), W / 2, H / 2 - 6);
     g.font = '300 22px "Exo 2", system-ui, sans-serif'; g.fillStyle = rgba(PALETTE.text, 0.6);
-    g.fillText('Ninguna entrada coincide con la búsqueda', W / 2, H / 2 + 30);
+    g.fillText(tr(t, 'bitacora.sinSenalTexto', 'Ninguna entrada coincide con la búsqueda'), W / 2, H / 2 + 30);
     g.textAlign = 'left';
     return c;
   }
   // cabecera
   g.fillStyle = hex(color);
   g.font = '600 19px "JetBrains Mono", ui-monospace, monospace';
-  g.fillText(`ENTRADA ${pad3(post.n)}`, pad, pad + 20);
+  g.fillText(tr(t, 'bitacora.entrada', 'Entrada {n}', { n: pad3(post.n) }).toUpperCase(), pad, pad + 20);
   g.textAlign = 'right'; g.fillStyle = rgba(PALETTE.text, 0.7);
   g.fillText(formatDate(post.date).toUpperCase(), W - pad, pad + 20);
   g.textAlign = 'left';
@@ -668,7 +681,7 @@ export function drawPanelCanvas(post, { w = 640, h = Math.round(w * 0.625), colo
   for (const t of tags) { const nx = line ? line + '  ' + t : t; if (g.measureText(nx).width > W - pad * 2 - 90) break; line = nx; }
   g.fillText(line, pad, H - pad);
   g.textAlign = 'right'; g.fillStyle = rgba(PALETTE.text, 0.55);
-  g.fillText(`${post.readingMinutes} MIN`, W - pad, H - pad);
+  g.fillText(`${post.readingMinutes} MIN`, W - pad, H - pad); // «min» es igual en los idiomas previstos
   g.textAlign = 'left';
   return c;
 }
@@ -693,14 +706,14 @@ function loadImage(url) {
 /**
  * Arco de holopaneles orientados hacia el centro del grupo (donde se coloca quien mira).
  * opts: { posts, radius=3.4, rows=2, perRow=12, spacing=0.44 (rad), panelWidth=1.3, baseY=1.05, rowGap=0.95,
- *         color, accent, emitter=true, covers=true, mapAsset(url)->url, textureWidth=640, reducedMotion }
+ *         color, accent, emitter=true, covers=true, mapAsset(url)->url, textureWidth=640, t, reducedMotion }
  * Devuelve { group, setPosts(list), page, pages, setPage(i), nextPage(), prevPage(), focus(post), spin(dRad), step(±1), hold(bool),
  *            pick(raycaster), hover(post|null), update(t, dt), redraw(), dispose() }
  */
 export function createHoloWall(THREE, opts = {}) {
   const o = {
     radius: 3.4, rows: 2, perRow: 12, spacing: 0.44, panelWidth: 1.3, baseY: 1.05, rowGap: 0.95,
-    color: PALETTE.amber, accent: PALETTE.violet, emitter: true, covers: true, mapAsset: (u) => u, textureWidth: 640,
+    color: PALETTE.amber, accent: PALETTE.violet, emitter: true, covers: true, mapAsset: (u) => u, textureWidth: 640, t: defaultT,
     reducedMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
     ...opts,
   };
@@ -729,7 +742,7 @@ export function createHoloWall(THREE, opts = {}) {
   const slotAngle = (i, count) => (i - (count - 1) / 2) * o.spacing;
 
   function paint(p) {
-    drawPanelCanvas(p.post, { w: o.textureWidth, color: o.color, accent: o.accent, image: p.image, canvas: p.canvas });
+    drawPanelCanvas(p.post, { w: o.textureWidth, color: o.color, accent: o.accent, image: p.image, canvas: p.canvas, t: o.t });
     p.mesh.material.map.needsUpdate = true;
   }
 

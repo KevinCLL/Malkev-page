@@ -43,17 +43,23 @@ async function localizar(rel: string): Promise<{ fichero: string; etag: string }
 }
 
 /**
- * Los módulos se cargan unos a otros con rutas relativas pensadas para la carpeta del
- * proyecto. P. ej. nave-3d pide `./modulos/audio-nave/…` y `./universo-3d/…`. Aquí todos
- * los módulos son hermanos, así que si no está, se busca quitando el prefijo:
- *   nave-3d/modulos/audio-nave/x.js → audio-nave/x.js
- *   nave-3d/universo-3d/x.js        → universo-3d/x.js
+ * Los módulos se cargan unos a otros con rutas relativas pensadas para otra estructura:
+ * la carpeta del proyecto (nave-3d pide `./modulos/audio-nave/…` y `./universo-3d/…`) o el
+ * Artifact donde se publicó la demo (demo y módulo hermanos: `rendimiento/demo/index.html`
+ * pide `./rendimiento.js`). Aquí todos los módulos son hermanos y las demos van en su
+ * subcarpeta, así que si un fichero no está, se busca en este orden:
+ *   nave-3d/modulos/audio-nave/x.js → audio-nave/x.js      (módulo dentro de modulos/)
+ *   nave-3d/universo-3d/x.js        → universo-3d/x.js     (módulo hermano)
+ *   rendimiento/demo/x.js           → rendimiento/x.js     (la demo pide un fichero de su módulo)
+ * La última regla no se aplica a páginas .html: una página servida en otra ruta
+ * resolvería mal sus propios enlaces relativos.
  */
 function alternativas(rel: string): string[] {
   const p = rel.split('/');
   const out: string[] = [];
   if (p.length > 3 && p[1] === 'modulos') out.push(p.slice(2).join('/'));
   if (p.length > 2) out.push(p.slice(1).join('/'));
+  if (p.length > 2 && !rel.toLowerCase().endsWith('.html')) out.push([p[0], ...p.slice(2)].join('/'));
   return out;
 }
 

@@ -504,7 +504,7 @@ export function systemSpec(seedIn) {
     const M = a.M + b.M;
     return {
       tipo: 'par', id: a.id + b.id, a, b, M, L: a.L + b.L, esPar: true, planetas: [],
-      orbita: { aUA: sig(aUA), e: r2(e, 3), periodoDias: sig(periodDays(aUA, M), 4), fase: r2(rng.range(0, 6.283), 3), argPeri: r2(rng.range(0, 6.283), 3), inclinacion: r2(rng.range(-0.08, 0.08), 3), nodo: r2(rng.range(0, 6.283), 3), aEscena: 0 },
+      orbita: { aUA: sig(aUA), e: r2(e, 3), periodoDias: sig(periodDays(aUA, M), 4), periodoVisualDias: sig(Math.max(periodDays(aUA, M), 3), 4), fase: r2(rng.range(0, 6.283), 3), argPeri: r2(rng.range(0, 6.283), 3), inclinacion: r2(rng.range(-0.08, 0.08), 3), nodo: r2(rng.range(0, 6.283), 3), aEscena: 0 },
       ...extra,
     };
   };
@@ -522,7 +522,7 @@ export function systemSpec(seedIn) {
     root = pair(leaf(A), leaf(B), rng.logRange(60, 400), rng.range(0.1, 0.55));
   } else if (arquitectura === 'binaria-interactiva') {
     // Donante hinchada que llena su lóbulo de Roche + acretor compacto con disco
-    let donorClass = isGiant(A.clase) ? A.clase : rng.pick(['gigante-roja', 'K', 'G', 'M', 'gigante-roja']);
+    let donorClass = isGiant(A.clase) ? A.clase : rng.weighted([['gigante-roja', 6], ['K', 1], ['G', 1], ['M', 0.6], ['supergigante-azul', 0.8]]);
     let accClass = isCompact(A.clase) ? A.clase : rng.weighted([['enana-blanca', 5], ['neutrones', 2], ['pulsar', 1], ['agujero-negro', 2.5], ['estrella-quark', 0.4]]);
     // Rehacemos A/B con los papeles bien puestos (A = la más brillante en el catálogo)
     estrellas.length = 0;
@@ -581,50 +581,16 @@ export function systemSpec(seedIn) {
   }
   assignCivilizations(makeRng(seed, 'civ'), planetas, ctx);
 
-  // --- Escala de escena ---
+  // --- Cinturones (en UA) y escala de escena ---
+  const brng = makeRng(seed, 'cinturones');
+  for (const node of nodes) planBelts(node, brng, node === root);
   computeSceneLayout(root);
 
-  // --- Cinturones, discos, cometas ---
+  // --- Cinturones y discos (ya colocados por computeSceneLayout) ---
   const cinturones = [];
-  const brng = makeRng(seed, 'cinturones');
-  for (const node of nodes) {
-    if (!node.planetas.length && node !== root) continue;
-    const ps = node.planetas;
-    const host = node.estrella;
-    if (host?.clase === 'protoestrella') {
-      cinturones.push({ id: `${node.id}-disco`, tipo: 'disco-protoplanetario', tipoNombre: 'Disco protoplanetario', alrededorDe: node.id, interiorUA: node.limites.aMin, exteriorUA: Math.max(node.limites.aMin * 40, 30), huecos: ps.map((p) => p.orbita.aUA) });
-      continue;
-    }
-    const gigante = ps.find((p) => esGaseoso(p.tipo) && p.masaTierra > 30) || ps.find((p) => esGaseoso(p.tipo));
-    if (gigante && brng.chance(0.75)) {
-      const aJ = gigante.orbita.aUA;
-      const inner = ps.filter((p) => p.orbita.aUA < aJ).pop();
-      const lo = Math.max(inner ? inner.orbita.aUA * 1.25 : aJ * 0.35, aJ * 0.35), hi = aJ * 0.78;
-      if (hi > lo * 1.1) {
-        cinturones.push({
-          id: `${node.id}-asteroides`, tipo: brng.chance(0.12) ? 'cristal' : 'asteroides', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(hi),
-          // Huecos de Kirkwood: resonancias con el gigante (3:1, 5:2, 7:3, 2:1)
-          huecosKirkwood: [1 / 3, 2 / 5, 3 / 7, 1 / 2].map((r) => sig(aJ * Math.pow(r, 2 / 3))).filter((x) => x > lo && x < hi),
-          resonanteCon: gigante.id,
-        });
-      }
-    }
-    const last = ps[ps.length - 1];
-    if (brng.chance(node === root ? 0.7 : 0.35)) {
-      const lo = last ? last.orbita.aUA * 1.35 : node.limites.aMin * 3;
-      const hi = Math.min(lo * brng.range(1.6, 2.4), node.limites.aMax * 1.6 || lo * 2);
-      if (hi > lo * 1.1) cinturones.push({ id: `${node.id}-kuiper`, tipo: 'hielo', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(hi) });
-    }
-    if (host && (host.clase === 'enana-blanca' || host.clase === 'A' || host.clase === 'pulsar') && brng.chance(0.5)) {
-      const lo = node.limites.aMin * brng.range(1.5, 3);
-      cinturones.push({ id: `${node.id}-escombros`, tipo: 'escombros', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(lo * brng.range(1.4, 2.2)) });
-    }
-  }
+  for (const node of nodes) for (const c of node.cinturones || []) cinturones.push(c);
   for (const c of cinturones) {
     c.tipoNombre = c.tipoNombre || { asteroides: 'Cinturón de asteroides', hielo: 'Cinturón helado (tipo Kuiper)', escombros: 'Disco de escombros', cristal: 'Cinturón de cristal' }[c.tipo];
-    const node = nodes.find((n) => n.id === c.alrededorDe);
-    c.interiorEscena = r2(sceneDist(node, c.interiorUA)); c.exteriorEscena = r2(sceneDist(node, c.exteriorUA));
-    c.huecosEscena = (c.huecosKirkwood || c.huecos || []).map((a) => r2(sceneDist(node, a)));
     if (c.tipo === 'asteroides') c.descripcion = 'Los huecos de Kirkwood marcan dónde el gigante, con sus empujoncitos resonantes, no deja quedarse a ninguna roca.';
     if (c.tipo === 'cristal') c.descripcion = 'Rocas de cuarzo y hielo que devuelven la luz en todos los colores. Nadie sabe de dónde salió tanto cristal.';
     if (c.tipo === 'hielo') c.descripcion = 'Bolas de hielo sucio y cometas dormidos, mucho más allá del último planeta.';
@@ -735,8 +701,45 @@ export function escalaEscena(spec, nodeId, aUA) {
   return node ? sceneDist(node, aUA) : ESCALA.K * Math.sqrt(aUA);
 }
 
+// Decide qué cinturones tiene un nodo (en UA). computeSceneLayout les hace sitio.
+function planBelts(node, brng, isRoot) {
+  node.plan = { dentro: null, entre: null, fuera: null, disco: null };
+  const ps = node.planetas;
+  if (!ps.length && !isRoot) return;
+  const host = node.estrella;
+  if (host?.clase === 'protoestrella') {
+    node.plan.disco = { id: `${node.id}-disco`, tipo: 'disco-protoplanetario', tipoNombre: 'Disco protoplanetario', alrededorDe: node.id, interiorUA: sig(node.limites.aMin * 0.6), exteriorUA: sig(Math.max((ps[ps.length - 1]?.orbita.aUA ?? 1) * 1.6, 3)) };
+    return;
+  }
+  const gi = ps.findIndex((p) => esGaseoso(p.tipo) && p.masaTierra > 30);
+  const gIdx = gi >= 0 ? gi : ps.findIndex((p) => esGaseoso(p.tipo));
+  if (gIdx >= 0 && brng.chance(0.75)) {
+    const g = ps[gIdx], aJ = g.orbita.aUA;
+    const inner = gIdx > 0 ? ps[gIdx - 1] : null;
+    const lo = Math.max(inner ? inner.orbita.aUA * 1.25 : aJ * 0.35, aJ * 0.35), hi = aJ * 0.78;
+    if (hi > lo * 1.08) {
+      node.plan.entre = {
+        antesDe: gIdx, id: `${node.id}-asteroides`, tipo: brng.chance(0.12) ? 'cristal' : 'asteroides', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(hi),
+        // Huecos de Kirkwood: resonancias con el gigante (3:1, 5:2, 7:3, 2:1)
+        huecosKirkwood: [1 / 3, 2 / 5, 3 / 7, 1 / 2].map((r) => sig(aJ * Math.pow(r, 2 / 3))).filter((x) => x > lo && x < hi),
+        resonanteCon: g.id,
+      };
+    }
+  }
+  if (brng.chance(isRoot ? 0.7 : 0.35)) {
+    const last = ps[ps.length - 1];
+    const lo = last ? last.orbita.aUA * 1.35 : node.limites.aMin * 3;
+    node.plan.fuera = { id: `${node.id}-kuiper`, tipo: 'hielo', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(lo * brng.range(1.6, 2.4)) };
+  }
+  if (host && ['enana-blanca', 'A', 'pulsar', 'neutrones', 'F'].includes(host.clase) && brng.chance(host.clase === 'F' ? 0.2 : 0.5)) {
+    const lo = node.limites.aMin * 1.1;
+    const first = ps[0]?.orbita.aUA ?? lo * 4;
+    node.plan.dentro = { id: `${node.id}-escombros`, tipo: 'escombros', alrededorDe: node.id, interiorUA: sig(lo), exteriorUA: sig(Math.max(lo * 1.3, Math.min(first * 0.7, lo * 2.2))) };
+  }
+}
+
 function computeSceneLayout(root) {
-  // De abajo arriba: núcleo (lo que ocupan las estrellas) y extensión (núcleo + planetas)
+  // De abajo arriba: núcleo (lo que ocupan las estrellas) y extensión (núcleo + planetas + cinturones)
   (function layout(node) {
     if (node.tipo === 'estrella') {
       const s = node.estrella;
@@ -763,12 +766,28 @@ function computeSceneLayout(root) {
       const apo = sep * (1 + o.e);
       node.nucleo = Math.max(apo * fa + node.a.extension, apo * fb + node.b.extension) + 2.5;
     }
+    const plan = node.plan || {};
+    node.cinturones = [];
+    const sqrtMap = (c, lo, hi, a) => lo + (hi - lo) * (Math.sqrt(a) - Math.sqrt(c.interiorUA)) / (Math.sqrt(c.exteriorUA) - Math.sqrt(c.interiorUA));
     let prev = node.nucleo, prevReach = 0;
+    if (plan.dentro) {
+      const c = plan.dentro, w = Math.max(3, node.nucleo * 0.6);
+      c.interiorEscena = r2(node.nucleo + 0.5); c.exteriorEscena = r2(node.nucleo + 0.5 + w);
+      node.cinturones.push(c); prev = c.exteriorEscena + 0.5;
+    }
     node.mapa = [];
-    for (const p of node.planetas) {
+    node.planetas.forEach((p, i) => {
       const reach = planetReach(p);
+      let gapExtra = 0;
+      if (plan.entre && plan.entre.antesDe === i) {
+        const c = plan.entre, w = Math.max(6, (prev + prevReach) * 0.35);
+        c.interiorEscena = r2(prev + prevReach + 1.5); c.exteriorEscena = r2(c.interiorEscena + w);
+        c.huecosEscena = c.huecosKirkwood.map((a) => r2(sqrtMap(c, c.interiorEscena, c.exteriorEscena, a)));
+        node.cinturones.push(c);
+        gapExtra = w + 3;
+      }
       const want = node.nucleo + ESCALA.K * Math.sqrt(p.orbita.aUA);
-      const peri = Math.max(want, prev + prevReach + reach + 1.2) ;
+      const peri = Math.max(want, prev + prevReach + reach + 1.2 + gapExtra);
       const es = r2(p.orbita.e * 0.5, 3); // excentricidad visual (suavizada para que no se crucen)
       const d = peri / (1 - es);
       p.orbita.aEscena = r2(d, 3);
@@ -776,9 +795,21 @@ function computeSceneLayout(root) {
       p.alcanceEscena = r2(reach, 3);
       node.mapa.push([Math.sqrt(p.orbita.aUA), d]);
       prev = d * (1 + es); prevReach = reach;
+    });
+    let ext = node.planetas.length ? prev + prevReach + 2 : node.nucleo;
+    if (plan.fuera) {
+      const c = plan.fuera, lo = ext + 3, w = Math.max(10, lo * 0.35);
+      c.interiorEscena = r2(lo); c.exteriorEscena = r2(lo + w);
+      node.cinturones.push(c); ext = lo + w + 2;
     }
-    const last = node.planetas[node.planetas.length - 1];
-    node.extension = last ? last.orbita.aEscena * (1 + last.orbita.eEscena) + last.alcanceEscena + 2 : node.nucleo;
+    if (plan.disco) {
+      const c = plan.disco;
+      c.interiorEscena = r2(node.nucleo * 0.75); c.exteriorEscena = r2(Math.max(ext * 1.15, node.nucleo * 4));
+      c.huecosEscena = node.planetas.map((p) => p.orbita.aEscena);
+      node.cinturones.push(c); ext = Math.max(ext, c.exteriorEscena + 2);
+    }
+    for (const c of node.cinturones) c.huecosEscena = c.huecosEscena || [];
+    node.extension = ext;
   })(root);
 }
 
@@ -817,7 +848,7 @@ function serializeNode(n) {
 export function keplerPosition(o, tDias, out) {
   const e = o.eEscena != null ? o.eEscena : o.e; // en escena se usa la excentricidad visual
   const a = o.aEscena;
-  const M = o.fase + (2 * Math.PI * tDias) / o.periodoDias;
+  const M = o.fase + (2 * Math.PI * tDias) / (o.periodoVisualDias || o.periodoDias);
   let E = M + e * Math.sin(M);
   for (let i = 0; i < 6; i++) E -= (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
   const x = a * (Math.cos(E) - e), y = a * Math.sqrt(1 - e * e) * Math.sin(E);

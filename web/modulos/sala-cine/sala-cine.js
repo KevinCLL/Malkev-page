@@ -31,6 +31,40 @@ const shade = (c, t) => t < 0 ? mix(c, '#05030c', -t) : mix(c, '#f4eeff', t);
 const canvas = (w, h) => { const c = document.createElement('canvas'); c.width = w; c.height = h; return c; };
 const ctex = (c) => { const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = 4; return t; };
 
+// Color de respaldo cuando la película no trae uno: tono sacado del título, apagado y oscuro.
+const autoColor = (title) => { const h = hash(String(title || '')); return '#' + new THREE.Color().setHSL((h % 360) / 360, 0.42 + ((h >>> 9) % 22) / 100, 0.26 + ((h >>> 17) % 12) / 100, THREE.SRGBColorSpace).getHexString(); };
+// Color de una imagen (media de una miniatura), con algo más de saturación y luz contenida.
+function colorFromImage(img) {
+  try {
+    const c = canvas(6, 9), g = c.getContext('2d', { willReadFrequently: true }); g.drawImage(img, 0, 0, 6, 9);
+    const d = g.getImageData(0, 0, 6, 9).data; let r = 0, gg = 0, b = 0; for (let i = 0; i < d.length; i += 4) { r += d[i]; gg += d[i + 1]; b += d[i + 2]; }
+    const col = new THREE.Color().setRGB(r / 54 / 255, gg / 54 / 255, b / 54 / 255, THREE.SRGBColorSpace); const hsl = {}; col.getHSL(hsl, THREE.SRGBColorSpace);
+    return '#' + new THREE.Color().setHSL(hsl.h, clamp(hsl.s * 1.35, 0.3, 0.75), clamp(hsl.l, 0.24, 0.48), THREE.SRGBColorSpace).getHexString(THREE.SRGBColorSpace);
+  } catch { return null; }
+}
+// Una imagen puede venir como URL (con CORS), como imagen o bitmap ya cargados, o como función que devuelve
+// una Promise de cualquiera de las dos cosas (para cargar solo lo que se ve).
+function loadImage(src) {
+  if (!src) return Promise.reject(new Error('sin imagen'));
+  if (typeof src === 'function') return Promise.resolve().then(src).then(loadImage);
+  if (typeof src === 'string') return new Promise((ok, ko) => { const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async'; img.onload = () => ok(img); img.onerror = () => ko(new Error('no carga ' + src)); img.src = src; });
+  return Promise.resolve(src);
+}
+// Los ImageBitmap que entregan las funciones de carga son de la sala: se liberan al dejar de usarlos.
+const release = (img, own) => { if (own && typeof ImageBitmap !== 'undefined' && img instanceof ImageBitmap) img.close(); };
+const imgW = (img) => img.naturalWidth || img.videoWidth || img.width, imgH = (img) => img.naturalHeight || img.videoHeight || img.height;
+function cover(g, img, W, H, zoom = 1, fx = 0.5, fy = 0.5) {
+  const iw = imgW(img), ih = imgH(img), s = Math.max(W / iw, H / ih) * zoom, w = iw * s, h = ih * s;
+  g.drawImage(img, (W - w) * fx, (H - h) * fy, w, h);
+}
+// Texto corto para la pantalla: la frase de cartel o, si no hay, el comienzo de la sinopsis.
+function blurb(f, max = 150) {
+  let t = (f.tagline || f.synopsis || '').replace(/\s+/g, ' ').trim(); if (!t) return '';
+  if (!f.tagline) { const m = t.match(/^(.+?[.!?…])(\s|$)/); if (m) t = m[1]; }
+  return t.length > max ? t.slice(0, max).replace(/[\s,;:]+\S*$/, '') + '…' : t;
+}
+const runtimeText = (min) => min ? (min >= 60 ? `${Math.floor(min / 60)} h ${String(min % 60).padStart(2, '0')} min` : `${min} min`) : '';
+
 function fitFont(g, text, weight, family, maxSize, maxW, minSize = 12) {
   let s = maxSize; g.font = `${weight} ${s}px ${family}`;
   while (s > minSize && g.measureText(text).width > maxW) { s -= 2; g.font = `${weight} ${s}px ${family}`; }
@@ -90,7 +124,8 @@ function paletteOf(film) {
 function drawPoster(c, film, img) {
   const g = c.getContext('2d'); const W = c.width, H = c.height; const p = paletteOf(film); const r = rng(hash(film.title + film.year));
   if (img) {
-    const s = Math.max(W / img.width, H / img.height); g.drawImage(img, (W - img.width * s) / 2, (H - img.height * s) / 2, img.width * s, img.height * s);
+    g.fillStyle = '#000'; g.fillRect(0, 0, W, H); cover(g, img, W, H);
+    g.strokeStyle = '#ffffff22'; g.lineWidth = 6; g.strokeRect(3, 3, W - 6, H - 6);
     return;
   }
   const bg = g.createLinearGradient(0, 0, 0, H); bg.addColorStop(0, p.dark); bg.addColorStop(0.55, p.deep); bg.addColorStop(1, p.dark);
@@ -170,12 +205,13 @@ function drawPoster(c, film, img) {
 export function init(opts = {}) {
   const o = {
     width: 9, depth: 7.5, height: 3, shell: true, rotationY: 0, rows: 3, seatsPerSide: 4,
-    autoAdvance: true, sound: false, roomLights: opts.shell ?? true, maxPosters: 32,
+    autoAdvance: true, sound: false, roomLights: opts.shell ?? true, maxPosters: 32, followPosters: true,
     reducedMotion: typeof matchMedia === 'function' && matchMedia('(prefers-reduced-motion: reduce)').matches,
     ...opts,
   };
   o.origin = new THREE.Vector3().copy(opts.origin || { x: 0, y: 0, z: 0 });
-  const films = (o.films && o.films.length ? o.films : [{ title: 'Sin películas', director: '—', year: '', color: '#5b3fa0', rating: 0 }]).map(f => ({ ...f, director: f.director || f.creator || '' }));
+  const films = (o.films && o.films.length ? o.films : [{ title: 'Sin películas', director: '—', year: '', rating: 0 }])
+    .map(f => ({ ...f, title: String(f.title ?? ''), director: f.director || f.creator || '', color: f.color || autoColor(f.title), colorAuto: !f.color }));
   const W = o.width, D = o.depth, H = o.height;
   const group = new THREE.Group(); group.name = 'sala-cine';
   group.position.copy(o.origin); group.rotation.y = o.rotationY;
@@ -183,7 +219,7 @@ export function init(opts = {}) {
   const disposables = [];
   const track = (x) => { disposables.push(x); return x; };
   const pickables = [];
-  const state = { mode: 'sala', index: 0, level: 1, posterPage: 0, time: 0 };
+  const state = { mode: 'sala', index: 0, level: 1, posterPage: 0, time: 0, selTime: 0 };
 
   /* ---- materiales ---- */
   const M = {
@@ -300,9 +336,14 @@ export function init(opts = {}) {
     const c = canvas(512, 768); const film = films[i]; drawPoster(c, film); const t = ctex(c);
     posterCache.set(i, { c, t });
     if (film.poster) {
-      const img = new Image(); img.crossOrigin = 'anonymous'; img.decoding = 'async';
-      img.onload = () => { if (posterCache.get(i)?.c !== c) return; drawPoster(c, film, img); t.needsUpdate = true; if (i === state.index) { drawIdleCache(); o.onSelect?.(films[i], i); } };
-      img.src = film.poster;
+      const own = typeof film.poster === 'function';
+      loadImage(film.poster).then(img => {
+        if (posterCache.get(i)?.c !== c) { release(img, own); return; }
+        if (film.colorAuto) { const col = colorFromImage(img); if (col) { film.color = col; film.colorAuto = false; if (i === state.index) trailer = makeTrailer(film, trailer); } }
+        drawPoster(c, film, img); release(img, own); t.needsUpdate = true;
+        if (i === state.index) { drawIdleCache(); drawConsole(); }
+        o.onPosterReady?.(film, i, c);
+      }).catch(() => { /* sin CORS o sin red: se queda el póster generado */ });
     }
     if (posterCache.size > o.maxPosters) {
       const keep = new Set([state.index, ...slots.map(sl => sl.filmIndex)]);
@@ -339,7 +380,7 @@ export function init(opts = {}) {
     }
   }
   function fillSlots() {
-    slots.forEach((sl, k) => { sl.filmIndex = (state.posterPage * slots.length + k) % films.length; sl.mat.map = posterTex(sl.filmIndex); sl.mat.needsUpdate = true; });
+    slots.forEach((sl, k) => { sl.filmIndex = (state.posterPage * slots.length + k) % films.length; const t = posterTex(sl.filmIndex); if (sl.mat.map !== t) { sl.mat.map = t; sl.mat.needsUpdate = true; } });
   }
 
   /* ---- proyector, haz de luz y polvo ---- */
@@ -426,11 +467,28 @@ export function init(opts = {}) {
   const tint = new THREE.Color(0x9b7bff);
   const setTint = (c, k = 1) => tint.set(c).multiplyScalar(k);
 
-  function makeTrailer(film) {
+  // prev: tráiler anterior de la misma película (al cambiar solo el color se conserva su fotograma ya cargado)
+  function makeTrailer(film, prev) {
     const r = rng(hash(film.title) ^ 0x9e37); const p = paletteOf(film);
     const layers = [0, 1, 2].map(() => Array.from({ length: 96 }, () => r()));
-    return { p, layers, planet: { x: 0.25 + r() * 0.5, y: 0.22 + r() * 0.2, R: 70 + r() * 90, ring: r() < 0.5, moons: Math.floor(r() * 3) },
-      cuts: [0, 1, 2, 3].map(() => ({ kind: Math.floor(r() * 4), a: r(), b: r() })), shipY: 0.15 + r() * 0.25 };
+    const tr = { film, p, layers, planet: { x: 0.25 + r() * 0.5, y: 0.22 + r() * 0.2, R: 70 + r() * 90, ring: r() < 0.5, moons: Math.floor(r() * 3) },
+      cuts: [0, 1, 2, 3].map(() => ({ kind: Math.floor(r() * 4), a: r(), b: r(), fx: 0.2 + r() * 0.6, fy: 0.25 + r() * 0.5, z: 1.5 + r() * 0.8 })),
+      shipY: 0.15 + r() * 0.25, pan: r() < 0.5 ? 1 : -1, still: null, soft: null, own: false, requested: false };
+    if (prev && prev.film === film) { Object.assign(tr, { still: prev.still, soft: prev.soft, own: prev.own, requested: prev.requested }); prev.still = null; }
+    else if (prev) dropStill(prev);
+    return tr;
+  }
+  function dropStill(tr) { if (tr?.still) { release(tr.still, tr.own); tr.still = null; tr.soft = null; } }
+  // El fotograma se pide cuando la película lleva un momento elegida (así no se descargan al pasar deprisa).
+  function requestStill(tr) {
+    tr.requested = true; const f = tr.film; if (!f.backdrop) return;
+    const own = typeof f.backdrop === 'function';
+    loadImage(f.backdrop).then(img => {
+      if (trailer !== tr) { release(img, own); return; }
+      tr.still = img; tr.own = own; tr.stillAt = state.time;
+      const soft = canvas(96, 41); const g = soft.getContext('2d'); cover(g, img, 96, 41); tr.soft = soft;   // versión desenfocada barata
+      drawIdleCache();
+    }).catch(() => {});
   }
   function drawIdleCache() {
     const f = films[state.index]; const p = paletteOf(f);
@@ -441,10 +499,12 @@ export function init(opts = {}) {
     const tb = titleBlock(g, f.title.toUpperCase(), FONT_D, 64, 760, 2);
     g.fillStyle = '#ffffff'; let y = 92 + 24 + tb.size;
     for (const l of tb.lines) { g.font = `700 ${tb.size}px ${FONT_D}`; g.fillText(l, 440, y); y += tb.size * 1.08; }
-    g.fillStyle = '#d9ccff'; g.font = `400 28px ${FONT_B}`; g.fillText(`Un film de ${f.director}${f.year ? ' · ' + f.year : ''}`, 440, y + 10);
-    g.fillStyle = '#c8bdf0'; g.font = `italic 300 26px ${FONT_B}`;
-    const tl = f.tagline ? wrap(g, '«' + f.tagline + '»', 760).slice(0, 3) : []; tl.forEach((l, i) => g.fillText(l, 440, y + 62 + i * 34));
-    const yy = Math.max(y + 62 + tl.length * 34 + 18, 400);
+    g.fillStyle = '#d9ccff'; g.font = `400 28px ${FONT_B}`; fitFont(g, `Un film de ${f.director}${f.year ? ' · ' + f.year : ''}`, 400, FONT_B, 28, 760, 18); g.fillText(`Un film de ${f.director}${f.year ? ' · ' + f.year : ''}`, 440, y + 10);
+    const meta = [f.type, ...(f.genres || []).slice(0, 3), runtimeText(f.runtime)].filter(Boolean).join('  ·  ');
+    if (meta) { g.fillStyle = '#a99cd6'; g.font = `400 19px ${FONT_M}`; fitFont(g, meta.toUpperCase(), 400, FONT_M, 19, 760, 12); g.fillText(meta.toUpperCase(), 440, y + 46); y += 30; }
+    g.fillStyle = '#c8bdf0'; g.font = `italic 300 25px ${FONT_B}`;
+    const text = blurb(f, 190), tl = text ? wrap(g, f.tagline ? '«' + text + '»' : text, 760).slice(0, 3) : []; tl.forEach((l, i) => g.fillText(l, 440, y + 62 + i * 33));
+    const yy = Math.min(Math.max(y + 62 + tl.length * 33 + 18, 400), 456);
     stars(g, 452, yy, f.rating ?? 0, 30, p.glow, '#ffffff26');
     g.fillStyle = '#e9e2ff'; g.font = `600 22px ${FONT_M}`; g.fillText(`${f.rating ?? '–'}/10`, 452 + 5 * 37 + 10, yy + 8);
     if (f.format) { g.strokeStyle = '#b59bff'; g.lineWidth = 2; const bx = 452 + 5 * 37 + 110, label = FORMAT[f.format] || f.format; g.font = `600 18px ${FONT_M}`; const w = g.measureText(label).width + 24; g.beginPath(); g.roundRect(bx, yy - 18, w, 32, 6); g.stroke(); g.fillStyle = '#b59bff'; g.fillText(label, bx + 12, yy + 5); }
@@ -455,11 +515,36 @@ export function init(opts = {}) {
     sg.globalAlpha = 1; sg.shadowBlur = 0; sg.textBaseline = 'alphabetic'; setTint(shade(p.base, -0.25), 1.2);
     const bg = sg.createRadialGradient(330, 272, 40, 640, 272, 900); bg.addColorStop(0, shade(p.base, -0.45)); bg.addColorStop(1, '#07050f');
     sg.fillStyle = bg; sg.fillRect(0, 0, 1280, 544);
+    if (trailer?.still) {   // fotograma de fondo, muy oscurecido y con un zoom lento
+      sg.globalAlpha = 0.5 * clamp((state.time - (trailer.stillAt ?? -9)) / 0.8); cover(sg, trailer.still, 1280, 544, 1.04 + 0.03 * Math.sin(t * 0.05), 0.5, 0.4); sg.globalAlpha = 1;
+      const sh = sg.createLinearGradient(0, 0, 1280, 0); sh.addColorStop(0, 'rgba(7,5,15,.92)'); sh.addColorStop(0.55, 'rgba(7,5,15,.78)'); sh.addColorStop(1, 'rgba(7,5,15,.55)');
+      sg.fillStyle = sh; sg.fillRect(0, 0, 1280, 544);
+    }
     for (const s of bgStars) { const x = ((s.x - t * 12 * s.z) % 1280 + 1280) % 1280; sg.fillStyle = `rgba(233,226,255,${0.25 + s.z * 0.5})`; sg.fillRect(x, s.y, s.z * 2.2, s.z * 2.2); }
     sg.save(); sg.shadowColor = p.glow; sg.shadowBlur = 40; sg.fillStyle = '#000'; sg.fillRect(80, 48, 300, 450); sg.restore();
     sg.drawImage(idleCard, 0, 0);
     const a = 0.45 + 0.35 * Math.sin(t * 2);
     sg.fillStyle = `rgba(127,214,255,${a})`; sg.font = `600 18px ${FONT_M}`; sg.textAlign = 'left'; spaced(sg, 'ENCIENDE EL PROYECTOR PARA VER EL TRÁILER', 440, 500, 2, 'left');
+  }
+  function drawStill(T0, tr, f) {
+    const k = T0 / 5.5, z = 1.06 + 0.12 * k;
+    sg.fillStyle = '#000'; sg.fillRect(0, 0, 1280, 544);
+    cover(sg, tr.still, 1280, 544, z, 0.5 + tr.pan * (0.5 * k - 0.25) * 0.6, 0.45);
+    sg.globalCompositeOperation = 'soft-light'; sg.globalAlpha = 0.35; sg.fillStyle = tr.p.base; sg.fillRect(0, 0, 1280, 544);
+    sg.globalCompositeOperation = 'source-over'; sg.globalAlpha = 1;
+    const low = sg.createLinearGradient(0, 330, 0, 544); low.addColorStop(0, 'rgba(0,0,0,0)'); low.addColorStop(1, 'rgba(0,0,0,.75)'); sg.fillStyle = low; sg.fillRect(0, 330, 1280, 214);
+    taglineOver(T0, f);
+  }
+  function taglineOver(T0, f) {
+    const text = blurb(f, 120); if (!text) return;
+    const a = fadeIO(T0, 0.8, 5.4, 0.7); if (a <= 0) return;
+    sg.globalAlpha = a; sg.fillStyle = '#f4eeff'; sg.textAlign = 'center'; sg.shadowColor = '#000'; sg.shadowBlur = 16;
+    // subtítulo en dos líneas como mucho, a un tamaño que se lea desde las butacas
+    const size = f.tagline ? 38 : 32; sg.font = `italic 300 ${size}px ${FONT_B}`;
+    let lines = wrap(sg, text, 1040);
+    if (lines.length > 2) { lines = lines.slice(0, 2); lines[1] = lines[1].replace(/[\s,;:.…]*$/, '') + '…'; }
+    lines.forEach((l, i) => sg.fillText(l, 640, 504 - (lines.length - 1 - i) * size * 1.25));
+    sg.shadowBlur = 0; sg.globalAlpha = 1;
   }
   function drawLandscape(T0, tr, f) {
     const p = tr.p; const sky = sg.createLinearGradient(0, 0, 0, 544); sky.addColorStop(0, '#05030c'); sky.addColorStop(0.65, shade(p.base, -0.25)); sky.addColorStop(1, p.light);
@@ -481,12 +566,15 @@ export function init(opts = {}) {
       for (let x = 0; x <= 1280; x += 20) { const u = (x + off) / 40, i0 = Math.floor(u), fr = u - i0; const a = L[((i0 % 96) + 96) % 96], b = L[(((i0 + 1) % 96) + 96) % 96]; sg.lineTo(x, base - (a + (b - a) * fr) * amp); }
       sg.lineTo(1280, 544); sg.closePath(); sg.fill();
     });
-    if (f.tagline) {
-      const a = fadeIO(T0, 0.8, 5.4, 0.7); if (a > 0) { sg.globalAlpha = a; sg.fillStyle = '#f4eeff'; sg.textAlign = 'center'; sg.shadowColor = '#000'; sg.shadowBlur = 16; fitFont(sg, f.tagline, 'italic 300', FONT_B, 38, 1100, 20); sg.fillText(f.tagline, 640, 500); sg.shadowBlur = 0; sg.globalAlpha = 1; }
-    }
+    taglineOver(T0, f);
   }
-  function drawCut(c, tr, k) {
+  function drawCut(c, tr, k, u) {
     const p = tr.p; sg.fillStyle = k % 2 ? shade(p.base, -0.7) : '#05030c'; sg.fillRect(0, 0, 1280, 544);
+    if (tr.still) {   // planos cortos: encuadres distintos del mismo fotograma
+      cover(sg, tr.still, 1280, 544, c.z + u * 0.12, c.fx, c.fy);
+      if (k % 2) { sg.globalCompositeOperation = 'soft-light'; sg.globalAlpha = 0.5; sg.fillStyle = p.glow; sg.fillRect(0, 0, 1280, 544); sg.globalCompositeOperation = 'source-over'; sg.globalAlpha = 1; }
+      return;
+    }
     if (c.kind === 0) { sg.fillStyle = p.glow; sg.beginPath(); sg.arc(640, 272, 190, 0, TAU); sg.fill(); sg.fillStyle = '#05030c'; sg.beginPath(); sg.arc(640 + 40 + c.a * 40, 262, 186, 0, TAU); sg.fill(); }
     else if (c.kind === 1) { for (let i = 0; i < 26; i++) { sg.strokeStyle = i % 3 ? p.accent + '88' : '#ffffffcc'; sg.lineWidth = 1 + (i % 4); sg.beginPath(); sg.moveTo(640, 272); const ang = (i / 26) * TAU + c.a; sg.lineTo(640 + Math.cos(ang) * 1400, 272 + Math.sin(ang) * 1400); sg.stroke(); } }
     else if (c.kind === 2) { sg.strokeStyle = p.accent; sg.lineWidth = 2; for (let i = -12; i <= 12; i++) { sg.beginPath(); sg.moveTo(640 + i * 20, 300); sg.lineTo(640 + i * 160, 544); sg.stroke(); } for (let j = 0; j < 8; j++) { const y = 300 + Math.pow(j / 8, 2) * 244; sg.beginPath(); sg.moveTo(0, y); sg.lineTo(1280, y); sg.stroke(); } sg.fillStyle = p.glow; sg.fillRect(0, 296, 1280, 4); }
@@ -513,7 +601,8 @@ export function init(opts = {}) {
       for (const s of bgStars) { const z = s.z + (T - 3.2) * 0.05; sg.fillStyle = `rgba(233,226,255,${s.z * 0.8})`; sg.fillRect(640 + (s.x - 640) * z, 272 + (s.y - 272) * z, 2, 2); }
       const a = fadeIO(T, 3.6, 6.4, 0.8); sg.globalAlpha = a; sg.fillStyle = '#d9ccff'; sg.font = `600 34px ${FONT_D}`; spaced(sg, 'LA MALKEVNIA', 640, 252, 14); sg.font = `400 22px ${FONT_M}`; sg.fillStyle = '#a99cd6'; spaced(sg, 'PRESENTA', 640, 304, 10); sg.globalAlpha = 1;
     } else if (T < 12) {
-      drawLandscape(T - 6.5, tr, f); setTint(mix(p.light, p.base, 0.5), 0.8 * smooth(6.5, 7.2, T));
+      if (tr.still) drawStill(T - 6.5, tr, f); else drawLandscape(T - 6.5, tr, f);
+      setTint(mix(p.light, p.base, 0.5), 0.8 * smooth(6.5, 7.2, T));
       const fi = 1 - smooth(6.5, 7.2, T); if (fi > 0) { sg.fillStyle = `rgba(0,0,0,${fi})`; sg.fillRect(0, 0, 1280, 544); }
     } else if (T < 13.6) { // dirección
       setTint('#120f20');
@@ -521,12 +610,13 @@ export function init(opts = {}) {
       const a = fadeIO(T, 12, 13.6, 0.35); sg.globalAlpha = a; sg.fillStyle = '#a99cd6'; sg.font = `400 24px ${FONT_M}`; spaced(sg, 'UNA PELÍCULA DE', 640, 220, 8);
       sg.fillStyle = '#f4eeff'; const dn = f.director.toUpperCase(); fitFont(sg, dn, 700, FONT_D, 64, 1100 - 6 * dn.length); spaced(sg, dn, 640, 290, 6); sg.globalAlpha = 1;
     } else if (T < 15.6) { // cortes rápidos
-      const k = Math.min(3, Math.floor((T - 13.6) / 0.5)); drawCut(tr.cuts[k], tr, k); setTint(k % 2 ? shade(p.base, -0.4) : p.glow, k % 2 ? 1 : 0.6);
+      const k = Math.min(3, Math.floor((T - 13.6) / 0.5)); drawCut(tr.cuts[k], tr, k, ((T - 13.6) % 0.5) / 0.5); setTint(k % 2 ? shade(p.base, -0.4) : p.glow, k % 2 ? 1 : 0.6);
       const fl = 1 - clamp(((T - 13.6) % 0.5) / 0.12); if (fl > 0) { sg.fillStyle = o.reducedMotion ? `rgba(0,0,0,${fl})` : `rgba(255,255,255,${fl * 0.5})`; sg.fillRect(0, 0, 1280, 544); }
     } else if (T < 21) { // título
       setTint(mix(shade(p.base, -0.35), '#ffffff', 0.15), 0.4 + 0.6 * fadeIO(T, 15.6, 21, 0.5));
       sg.fillStyle = '#05030c'; sg.fillRect(0, 0, 1280, 544);
       const neb = sg.createRadialGradient(640, 272, 20, 640, 272, 700); neb.addColorStop(0, shade(p.base, -0.35) + 'ff'); neb.addColorStop(1, '#05030c'); sg.globalAlpha = 0.9; sg.fillStyle = neb; sg.fillRect(0, 0, 1280, 544); sg.globalAlpha = 1;
+      if (tr.soft) { sg.globalAlpha = 0.55; sg.imageSmoothingQuality = 'high'; cover(sg, tr.soft, 1280, 544, 1.1 + (T - 15.6) * 0.01); sg.globalAlpha = 1; sg.fillStyle = 'rgba(5,3,12,.55)'; sg.fillRect(0, 0, 1280, 544); }
       for (const s of bgStars) { const z = 1 + (T - 15.6) * 0.04 * s.z; sg.fillStyle = `rgba(233,226,255,${s.z * 0.6})`; sg.fillRect(640 + (s.x - 640) * z, 272 + (s.y - 272) * z, 2, 2); }
       const a = fadeIO(T, 15.6, 21, 0.5); sg.globalAlpha = a;
       const sp = 4 + (T - 15.6) * 2.2;
@@ -542,10 +632,15 @@ export function init(opts = {}) {
       setTint('#100d1e');
       sg.fillStyle = '#05030c'; sg.fillRect(0, 0, 1280, 544);
       const a = fadeIO(T, 21, TRAILER_LEN, 0.6); sg.globalAlpha = a;
-      sg.fillStyle = '#a99cd6'; sg.font = `400 24px ${FONT_M}`; spaced(sg, 'EN LA FILMOTECA DE A BORDO', 640, 220, 6);
-      sg.fillStyle = '#f4eeff'; sg.font = `700 44px ${FONT_D}`; spaced(sg, FORMAT[f.format] || 'FORMATO DIGITAL', 640, 284, 8);
-      sg.fillStyle = '#7fd6ff'; sg.font = `400 22px ${FONT_B}`; sg.fillText(`Valoración del capitán: ${f.rating ?? '–'}/10`, 640, 344);
-      sg.globalAlpha = 1;
+      sg.save(); sg.shadowColor = p.glow; sg.shadowBlur = 30; sg.drawImage(posterCanvas(state.index), 250, 92, 240, 360); sg.restore();
+      sg.textAlign = 'left';
+      sg.fillStyle = '#a99cd6'; sg.font = `400 22px ${FONT_M}`; spaced(sg, 'EN LA FILMOTECA DE A BORDO', 560, 190, 5, 'left');
+      const tb = titleBlock(sg, f.title.toUpperCase(), FONT_D, 46, 560, 2); sg.fillStyle = '#f4eeff';
+      tb.lines.forEach((l, i) => { sg.font = `700 ${tb.size}px ${FONT_D}`; sg.fillText(l, 560, 250 + i * tb.size * 1.1); });
+      const yb = 250 + tb.lines.length * tb.size * 1.1 + 10;
+      sg.fillStyle = '#d9ccff'; sg.font = `400 24px ${FONT_B}`; sg.fillText([f.year, FORMAT[f.format], runtimeText(f.runtime)].filter(Boolean).join('  ·  '), 560, yb);
+      sg.fillStyle = '#7fd6ff'; sg.font = `400 22px ${FONT_B}`; sg.fillText(`Nota del capitán: ${f.rating ?? '–'}/10`, 560, yb + 44);
+      sg.textAlign = 'center'; sg.globalAlpha = 1;
     }
     // grano, rayas y viñeta
     sg.globalCompositeOperation = 'overlay'; sg.globalAlpha = 0.16; sg.drawImage(grain[Math.floor(state.time * 24) % 3], 0, 0, 1280, 544);
@@ -589,8 +684,10 @@ export function init(opts = {}) {
   // Algunos navegadores no dejan reproducir con sonido fuera de un clic: se reintenta en silencio.
   const playVideo = () => { const v = video; if (!v) return; v.play().catch(() => { if (video === v && !v.muted) { v.muted = true; v.play().catch(() => {}); } }); };
   function select(i, { restart = true, notify = true } = {}) {
-    state.index = ((i % films.length) + films.length) % films.length;
-    trailer = makeTrailer(films[state.index]); drawIdleCache(); drawConsole();
+    state.index = ((i % films.length) + films.length) % films.length; state.selTime = 0;
+    trailer = makeTrailer(films[state.index], trailer);
+    if (o.followPosters && slots.length && !slots.some(sl => sl.filmIndex === state.index)) { state.posterPage = Math.floor(state.index / slots.length); fillSlots(); }
+    drawIdleCache(); drawConsole();
     if (state.mode === 'proyeccion' && restart) { T = LEADER_LEN; loadVideo(); playVideo(); }
     if (notify) o.onSelect?.(films[state.index], state.index);
   }
@@ -636,6 +733,7 @@ export function init(opts = {}) {
   const scrAvg = new THREE.Color(0x9b7bff);
   function update(dt = 1 / 60) {
     dt = Math.min(dt, 0.1); state.time += dt;
+    state.selTime += dt; if (trailer && !trailer.requested && (state.selTime > 0.35 || state.mode === 'proyeccion')) requestStill(trailer);
     const target = state.mode === 'proyeccion' ? 0.05 : 1;
     state.level += (target - state.level) * Math.min(1, dt * (target < state.level ? 0.9 : 1.6));
     const L = state.level, dark = 1 - L;
@@ -702,6 +800,7 @@ export function init(opts = {}) {
     group.parent?.remove(group);
     for (const d of disposables) d.dispose?.();
     for (const v of posterCache.values()) v.t.dispose();
+    dropStill(trailer);
     posterCache.clear(); pickables.length = 0; slots.length = 0; hovered = null;
   }
 
@@ -721,4 +820,19 @@ export function init(opts = {}) {
   };
 }
 
-export default { init };
+// Convierte las fichas de la base de datos de Malkevnia (las del importador: kind, creator, cover_url, details…)
+// en películas para la sala, ordenadas por nota (de mayor a menor), luego año y título.
+export function filmsFromFichas(fichas) {
+  const list = Array.isArray(fichas) ? fichas : fichas?.fichas || [];
+  return list.filter(f => f && f.kind === 'film' && !f.hidden).map(f => {
+    const d = f.details || {};
+    return {
+      title: f.title, director: f.creator || '', year: f.year ?? undefined, rating: f.rating ?? undefined, color: f.color || undefined,
+      poster: f.cover_url || undefined, backdrop: d.backdrop_url ? d.backdrop_url.replace('/t/p/w1280/', '/t/p/w780/') : undefined,
+      tagline: d.tagline || undefined, synopsis: f.synopsis || undefined, genres: f.genres || undefined, runtime: d.runtime || undefined,
+      format: d.format || undefined, type: d.type || undefined, slug: f.slug,
+    };
+  }).sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0) || (b.year ?? 0) - (a.year ?? 0) || a.title.localeCompare(b.title, 'es'));
+}
+
+export default { init, filmsFromFichas };

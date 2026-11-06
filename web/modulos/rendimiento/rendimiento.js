@@ -400,8 +400,9 @@ export function render(renderer, scene, camera, composer) {
  *  3) con margen sostenido sube la resolución y, después, el preset (sin pasar del techo).
  * Sólo cuenta los frames en los que la app ha renderizado de verdad (renderer.info.render.frame),
  * así que una escena en pausa no se toma como "va sobrado".
- * Si sube a un nivel que luego no aguanta, ese nivel queda bloqueado 30 s, luego 60 s, 120 s…
- * y tras tres fallos, hasta recargar la página.
+ * Si sube a un nivel que luego no aguanta, lo deshace enseguida y no lo vuelve a intentar en 30 s,
+ * luego 60 s, 120 s… (máximo 10 min). Igual con la resolución: si una subida no cabe, se deshace al
+ * momento y ese techo se respeta un tiempo creciente.
  *
  * @param {WebGLRenderer} renderer
  * @param {number} [fpsObjetivo=60]  el que el visitante elija en el panel tiene prioridad
@@ -425,8 +426,10 @@ export function autoTune(renderer, fpsObjetivo = 60, opts = {}) {
   let vis = [], visSuma = 0;   // ventana de ~1 s para mostrar fps
   let ven = [], venSuma = 0;   // ventana de decisiones: se vacía tras cada cambio
   let tLento = 0, tHolgado = 0, tEnMin = 0, enfriamiento = 1, tHz = 0;
-  let esperaEscala = 2.5, ultimaSubidaEscala = -Infinity, ultimoRebote = -Infinity;
-  let bloqueos = {};           // índice de nivel -> { hasta, espera, fallos }
+  let bloqueos = {};           // índice de nivel -> { hasta, espera }: niveles que no aguantó
+  let techos = {};             // nivel -> { escala, hasta, espera }: resolución que no cupo en ese nivel
+  let subida = null;           // última subida de resolución { t, desde, hasta }, por si hay que deshacerla
+  let subidaNivel = null;      // última subida de nivel { t, desde }, ídem
 
   const vaciar = () => { ven = []; venSuma = 0; tLento = 0; tHolgado = 0; tEnMin = 0; };
 
@@ -443,8 +446,8 @@ export function autoTune(renderer, fpsObjetivo = 60, opts = {}) {
       ctl.reiniciar(); emitir('objetivo');
     },
     pausar(b = true) { ctl.pausado = !!b; vaciar(); },
-    /** Olvida bloqueos y esperas (útil al cambiar de escena o de sala pesada). */
-    reiniciar() { bloqueos = {}; esperaEscala = 2.5; vaciar(); enfriamiento = 0.5; },
+    /** Olvida bloqueos y techos aprendidos (útil al cambiar de escena o al entrar en una sala más ligera o más pesada). */
+    reiniciar() { bloqueos = {}; techos = {}; subida = null; subidaNivel = null; vaciar(); enfriamiento = 0.5; },
     stop() { cancelAnimationFrame(raf); if (st.tuner === ctl) st.tuner = null; },
   };
   st.tuner = ctl;
@@ -462,6 +465,16 @@ export function autoTune(renderer, fpsObjetivo = 60, opts = {}) {
       st.escala = Math.round(clamp(prAntes / Math.min(dpr(), a2.pixelRatioMax), a2.escalaMin, 1) * 100) / 100;
     }
     applyPreset(st.renderer, st.scene, nuevo);
+    subida = null; subidaNivel = null;
+  }
+  function bajarNivel(a, nuevo, texto) {
+    // el nivel del que se baja queda bloqueado 30 s, luego 60, 120… hasta 10 min entre intentos
+    const idx = NIVELES.indexOf(a.nombre), t = ahora();
+    const espera = Math.min((bloqueos[idx]?.espera || 15) * 2, 600);
+    bloqueos[idx] = { hasta: t + espera, espera };
+    cambiarNivel(nuevo);
+    decidir(`Calidad ${a.nombre} → ${nuevo} · ${texto}`, 'baja-preset');
+    vaciar(); enfriamiento = 1.5;
   }
 
   function tick(now) {
@@ -498,34 +511,47 @@ export function autoTune(renderer, fpsObjetivo = 60, opts = {}) {
     const t = ahora();
     const fpsTxt = `${Math.round(1000 / media)} de ${Math.round(obj)} fps`;
 
-    if (ctl.activo && !enMin && tLento > 0.5) {
+    if (auto && subidaNivel && tLento > 0.5 && t - subidaNivel.t < 8) {
+      // el nivel recién subido no aguanta: se deshace enseguida en vez de bajar resolución poco a poco
+      bajarNivel(a, subidaNivel.desde, `${a.nombre} no llega a ${Math.round(obj)} fps`);
+    } else if (ctl.activo && !enMin && tLento > 0.5) {
       const antes = st.escala;
-      fijarEscala(antes * clamp(Math.sqrt(presupuesto / media), 0.75, 0.95), a.escalaMin); // coste ∝ píxeles ∝ escala²
-      if (t - ultimaSubidaEscala < 4) { esperaEscala = Math.min(esperaEscala * 2, 40); ultimoRebote = t; }
-      decidir(`Resolución ${pct(antes)} → ${pct(st.escala)} · ${fpsTxt}`, 'baja-escala');
+      if (subida && t - subida.t < 5 && Math.abs(antes - subida.hasta) < 0.005) {
+        // la última subida no cabía (con vsync se pasa de 60 a 30 de golpe): se deshace y ese techo
+        // se recuerda 60 s, luego 120 s, 240 s… para no volver a dar el tirón cada pocos segundos
+        const espera = Math.min((techos[a.nombre]?.espera || 30) * 2, 600);
+        techos[a.nombre] = { escala: subida.hasta, hasta: t + espera, espera };
+        fijarEscala(subida.desde, a.escalaMin);
+        decidir(`Resolución ${pct(antes)} → ${pct(st.escala)} · al ${pct(antes)} no llega a ${Math.round(obj)} fps`, 'baja-escala');
+      } else {
+        fijarEscala(antes * clamp(Math.sqrt(presupuesto / media), 0.75, 0.95), a.escalaMin); // coste ∝ píxeles ∝ escala²
+        decidir(`Resolución ${pct(antes)} → ${pct(st.escala)} · ${fpsTxt}`, 'baja-escala');
+      }
+      subida = null;
       vaciar(); enfriamiento = 0.3;
     } else if (auto && enMin && tEnMin > 1.2 && idx > iSuelo) {
-      const nuevo = NIVELES[idx - 1];
-      const b = bloqueos[idx] || { espera: 30, fallos: 0 };
-      const fallos = b.fallos + 1;
-      bloqueos[idx] = { hasta: fallos >= 3 ? Infinity : t + b.espera, espera: Math.min(b.espera * 2, 300), fallos };
-      cambiarNivel(nuevo);
-      decidir(`Calidad ${a.nombre} → ${nuevo} · ${fpsTxt}`, 'baja-preset');
-      vaciar(); enfriamiento = 1.5;
-    } else if (ctl.activo && st.escala < 1 && tHolgado > esperaEscala) {
-      const antes = st.escala;
-      fijarEscala(Math.max(antes * 1.1, antes + 0.05), a.escalaMin);
-      ultimaSubidaEscala = t;
-      decidir(`Resolución ${pct(antes)} → ${pct(st.escala)} · hay margen`, 'sube-escala');
-      vaciar(); enfriamiento = 0.3;
+      bajarNivel(a, NIVELES[idx - 1], fpsTxt);
+    } else if (ctl.activo && st.escala < 1 && tHolgado > 2.5) {
+      const antes = st.escala, techo = techos[a.nombre];
+      let meta = Math.min(1, Math.max(antes * 1.1, antes + 0.05));
+      if (techo && antes >= techo.escala - 0.005) delete techos[a.nombre]; // ya lo superó: ese techo no vale
+      else if (techo && techo.hasta > t) {
+        const hueco = techo.escala - antes; // se prueba a mitad de camino, y si queda poco no compensa el tirón
+        meta = hueco < 0.05 ? antes : Math.min(meta, antes + hueco / 2);
+      } else if (techo) meta = Math.min(meta, techo.escala); // caducado: se reintenta ese mismo valor
+      if (meta > antes + 0.005) {
+        fijarEscala(meta, a.escalaMin);
+        subida = { t, desde: antes, hasta: st.escala };
+        decidir(`Resolución ${pct(antes)} → ${pct(st.escala)} · hay margen`, 'sube-escala');
+        vaciar(); enfriamiento = 0.3;
+      } else tHolgado = 0; // ya está justo por debajo del techo conocido: se queda aquí
     } else if (auto && (st.escala >= 1 || !ctl.activo) && tHolgado > 6 && idx >= 0 && idx < iTecho && !(bloqueos[idx + 1]?.hasta > t)) {
       const nuevo = NIVELES[idx + 1];
       cambiarNivel(nuevo);
+      subidaNivel = { t, desde: a.nombre };
       decidir(`Calidad ${a.nombre} → ${nuevo} · estable a ${Math.round(obj)} fps`, 'sube-preset');
       vaciar(); enfriamiento = 1.5;
     }
-    // si la resolución deja de rebotar, la espera para subirla vuelve poco a poco a lo normal
-    if (esperaEscala > 2.5 && t - ultimoRebote > 30) { esperaEscala = Math.max(2.5, esperaEscala / 2); ultimoRebote = t; }
   }
 
   raf = requestAnimationFrame(tick);
