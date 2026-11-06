@@ -42,7 +42,7 @@ El CSV propio admite comas o punto y coma y estas columnas (en español o inglé
   Sin clave, las pelis y series salen tal cual, marcadas como *pendientes*.
 - **Open Library** (libros): sin clave. Busca por ISBN y, si no, por título y autor (quitando coletillas de
   Goodreads como «(Mistborn, #2)» o «(Spanish Edition)»). Completa sinopsis, temas, páginas, año de primera
-  publicación, id de la obra e ISBN. La portada de Goodreads se conserva si ya la había; la de Open Library queda
+  publicación e id de la obra (el ISBN no, porque puede ser de otra edición). La portada de Goodreads se conserva si ya la había; la de Open Library queda
   en `meta.cover_url_openlibrary`. Va a una petición por segundo, como pide Open Library.
 
 Las respuestas se guardan en `cache/`, así que repetir la importación es casi instantáneo y no gasta peticiones.

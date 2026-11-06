@@ -48,3 +48,11 @@ test('estados y valores fuera de rango', () => {
   assert.equal(f.year, null)
   assert.equal(f.color, null)
 })
+
+test('dos ediciones de Goodreads de la misma obra no se juntan', () => {
+  const l = deduplicar([
+    crearFicha({ kind: 'book', title: 'Ciudad Permutación', external_ids: { goodreads: 1, openlibrary: '/works/OL1W' } }),
+    crearFicha({ kind: 'book', title: 'Permutation City', external_ids: { goodreads: 2, openlibrary: '/works/OL1W' } }),
+  ])
+  assert.equal(l.length, 2)
+})

@@ -87,12 +87,17 @@ export function fusionar(a, b) {
   })
 }
 
+// Dos entradas de la misma fuente con ids distintos son dos fichas de verdad (dos ediciones en Goodreads,
+// por ejemplo), aunque TMDB u Open Library las lleven a la misma obra.
+const IDS_PROPIOS = ['filmaffinity', 'goodreads', 'anilist']
+const distintas = (a, b) => IDS_PROPIOS.some((k) => a.external_ids[k] != null && b.external_ids[k] != null && a.external_ids[k] !== b.external_ids[k])
+
 // Quita duplicados entre fuentes y garantiza slugs únicos por tipo.
 export function deduplicar(fichas) {
   const porClave = new Map()
   const lista = []
   for (const f of fichas) {
-    const idx = claves(f).map((k) => porClave.get(k)).find((i) => i !== undefined)
+    const idx = claves(f).map((k) => porClave.get(k)).find((i) => i !== undefined && !distintas(lista[i], f))
     if (idx === undefined) {
       lista.push(f)
       for (const k of claves(f)) porClave.set(k, lista.length - 1)

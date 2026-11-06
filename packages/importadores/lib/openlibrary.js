@@ -1,6 +1,6 @@
 // Enriquecimiento de libros con Open Library (https://openlibrary.org/developers/api). No necesita clave.
 // Busca por ISBN si lo hay y, si no, por título y autor; completa portada, sinopsis, temas, páginas,
-// año de primera publicación e IDs (obra de Open Library e ISBN).
+// año de primera publicación e id de la obra en Open Library (el ISBN solo si venía de la fuente: el de Open Library puede ser de otra edición).
 import { getJson, limitador } from './cache.js'
 import { similar } from './texto.js'
 
@@ -53,7 +53,8 @@ export function crearOpenLibrary({ cache, sinRed = false, ritmoMs = 1000 } = {})
     if (!candidatos.length) return { ...f, match: { provider: 'openlibrary', estado: 'sin-resultado', candidatos: [] } }
     const resumen = candidatos.slice(0, 3).map((c) => ({ id: c.d.key, titulo: c.d.title, autor: c.d.author_name?.[0] || null, año: c.d.first_publish_year || null, score: Math.round(c.score * 100) / 100 }))
     const [mejor, segundo] = candidatos
-    const seguro = mejor.score >= 0.85 && (!segundo || mejor.score - segundo.score >= 0.05 || mejor.d.porIsbn)
+    // Open Library tiene a menudo la misma obra repetida: con título y autor exactos no se duda.
+    const seguro = mejor.score >= 0.95 || (mejor.score >= 0.85 && (!segundo || mejor.score - segundo.score >= 0.05))
     if (!seguro) return { ...f, match: { provider: 'openlibrary', estado: 'revisar', candidatos: resumen } }
     return aplicar(f, mejor.d, await obra(mejor.d.key), { provider: 'openlibrary', estado: 'auto', id: mejor.d.key, score: Math.round(mejor.score * 100) / 100, candidatos: resumen })
   }
@@ -65,7 +66,7 @@ export function puntuar(f, docs) {
   const titulo = tituloLimpio(f.title)
   return docs
     .map((d) => {
-      const t = Math.max(similar(titulo, d.title), d.subtitle ? similar(titulo, `${d.title} ${d.subtitle}`) : 0)
+      const t = Math.max(similar(titulo, tituloLimpio(d.title)), d.subtitle ? similar(titulo, `${d.title} ${d.subtitle}`) : 0)
       const autores = d.author_name || []
       const a = f.creator ? Math.max(0, ...autores.map((n) => similar(f.creator.split(',')[0], n))) : 0.5
       let score = 0.7 * t + 0.3 * a
@@ -98,7 +99,7 @@ function aplicar(f, d, w, match) {
       first_published: d.first_publish_year || null,
       ...(portada && f.cover_url && portada !== f.cover_url ? { cover_url_openlibrary: portada } : {}),
     },
-    external_ids: { ...f.external_ids, openlibrary: d.key, isbn: f.external_ids.isbn || (d.isbn || []).find((i) => i.length === 13) || null },
+    external_ids: { ...f.external_ids, openlibrary: d.key },
     sources: [...new Set([...f.sources, 'openlibrary'])],
     match,
   }
