@@ -1,8 +1,12 @@
 ---
 import Nave from '../layouts/Nave.astro';
+import { ruta, traductor } from '../i18n';
+
+const idioma = Astro.locals.idioma ?? 'es';
+const t = traductor(idioma);
 ---
-<Nave titulo="Sector desconocido">
-  <p class="etiqueta">Error 404</p>
-  <h1>Este sector no aparece en las cartas</h1>
-  <p>La ruta que buscas no existe en La Malkevnia. <a href="/">Vuelve al puente</a>.</p>
+<Nave titulo={t('Sector desconocido')} traducida={false} noindex>
+  <p class="etiqueta">{t('Error 404')}</p>
+  <h1>{t('Este sector no aparece en las cartas')}</h1>
+  <p>{t('La ruta que buscas no existe en La Malkevnia.')} <a href={ruta(idioma, '/')}>{t('Vuelve al puente')}</a>.</p>
 </Nave>

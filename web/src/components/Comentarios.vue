@@ -6,7 +6,13 @@ import { computed, onMounted, ref } from 'vue';
  * en producción lo publica el proxy; en desarrollo, el proxy de Vite de astro.config).
  * Todo comentario nuevo queda pendiente hasta que el capitán lo aprueba en /admin.
  */
-const props = defineProps<{ slug: string }>();
+const props = defineProps<{
+  slug: string;
+  /** Idioma de la página ('es' por defecto) y sus traducciones (las pasa la página desde modulos/i18n/textos.json). */
+  idioma?: string;
+  textos?: Record<string, string>;
+}>();
+const t = (es: string) => props.textos?.[es] ?? es;
 
 interface Comentario {
   id: number;
@@ -31,7 +37,7 @@ const respondiendoA = ref<Comentario | null>(null);
 const enviando = ref(false);
 const aviso = ref<{ tipo: 'ok' | 'error'; texto: string } | null>(null);
 
-const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
+const fmt = new Intl.DateTimeFormat(props.idioma === 'en' ? 'en-GB' : 'es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
 /**
  * Hilos de un nivel: cada comentario cuelga de su raíz, aunque responda a una respuesta
  * (el panel deja contestar a cualquiera). Si su padre no es visible, pasa a ser raíz.
@@ -82,8 +88,8 @@ async function enviar() {
       }),
     });
     const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error ?? 'No se ha podido enviar el comentario.');
-    aviso.value = { tipo: 'ok', texto: d.message ?? 'Recibido. Aparecerá cuando el capitán lo apruebe.' };
+    if (!r.ok) throw new Error(d.error ? t(d.error) : t('No se ha podido enviar el comentario.'));
+    aviso.value = { tipo: 'ok', texto: d.message ? t(d.message) : t('Recibido. Aparecerá cuando el capitán lo apruebe.') };
     texto.value = '';
     respondiendoA.value = null;
   } catch (e) {
@@ -98,22 +104,22 @@ onMounted(cargar);
 
 <template>
   <section class="comentarios" aria-labelledby="t-comentarios">
-    <h2 id="t-comentarios" class="etiqueta">Transmisiones de la tripulación</h2>
-    <p v-if="estado === 'cargando'" class="tenue">Sintonizando…</p>
-    <p v-else-if="estado === 'error'" class="tenue">Los comentarios no están disponibles ahora mismo.</p>
+    <h2 id="t-comentarios" class="etiqueta">{{ t('Transmisiones de la tripulación') }}</h2>
+    <p v-if="estado === 'cargando'" class="tenue">{{ t('Sintonizando…') }}</p>
+    <p v-else-if="estado === 'error'" class="tenue">{{ t('Los comentarios no están disponibles ahora mismo.') }}</p>
     <template v-else>
-      <p v-if="!lista.length" class="tenue">Aún no hay comentarios.</p>
+      <p v-if="!lista.length" class="tenue">{{ t('Aún no hay comentarios.') }}</p>
       <ol class="hilo">
         <li v-for="c in raices" :key="c.id">
           <article class="comentario" :class="{ capitan: c.is_captain }">
             <header>
               <a v-if="webSegura(c.website)" :href="webSegura(c.website)!" rel="nofollow ugc noopener" target="_blank">{{ c.author }}</a>
               <strong v-else>{{ c.author }}</strong>
-              <span v-if="c.is_captain" class="insignia">capitán</span>
+              <span v-if="c.is_captain" class="insignia">{{ t('capitán') }}</span>
               <time :datetime="c.created_at">{{ fmt.format(new Date(c.created_at)) }}</time>
             </header>
             <p class="cuerpo">{{ c.body }}</p>
-            <button v-if="abiertos" type="button" class="responder" @click="respondiendoA = c">Responder</button>
+            <button v-if="abiertos" type="button" class="responder" @click="respondiendoA = c">{{ t('Responder') }}</button>
           </article>
           <ol v-if="respuestas(c.id).length" class="hilo respuestas">
             <li v-for="r in respuestas(c.id)" :key="r.id">
@@ -121,7 +127,7 @@ onMounted(cargar);
                 <header>
                   <a v-if="webSegura(r.website)" :href="webSegura(r.website)!" rel="nofollow ugc noopener" target="_blank">{{ r.author }}</a>
                   <strong v-else>{{ r.author }}</strong>
-                  <span v-if="r.is_captain" class="insignia">capitán</span>
+                  <span v-if="r.is_captain" class="insignia">{{ t('capitán') }}</span>
                   <time :datetime="r.created_at">{{ fmt.format(new Date(r.created_at)) }}</time>
                 </header>
                 <p class="cuerpo">{{ r.body }}</p>
@@ -133,19 +139,19 @@ onMounted(cargar);
 
       <form v-if="abiertos" class="formulario panel" @submit.prevent="enviar">
         <p v-if="respondiendoA" class="respondiendo">
-          Respondiendo a <strong>{{ respondiendoA.author }}</strong>
-          <button type="button" @click="respondiendoA = null">cancelar</button>
+          {{ t('Respondiendo a') }} <strong>{{ respondiendoA.author }}</strong>
+          <button type="button" @click="respondiendoA = null">{{ t('cancelar') }}</button>
         </p>
-        <label><span>Nombre</span><input v-model="autor" required maxlength="80" autocomplete="name" /></label>
-        <label><span>Web <span class="tenue">(opcional)</span></span><input v-model="web" type="url" maxlength="200" autocomplete="url" /></label>
+        <label><span>{{ t('Nombre') }}</span><input v-model="autor" required maxlength="80" autocomplete="name" /></label>
+        <label><span>{{ t('Web') }} <span class="tenue">{{ t('(opcional)') }}</span></span><input v-model="web" type="url" maxlength="200" autocomplete="url" /></label>
         <label class="trampa" aria-hidden="true">No rellenar<input v-model="trampa" tabindex="-1" autocomplete="off" /></label>
-        <label><span>Comentario</span><textarea v-model="texto" required maxlength="5000" rows="4"></textarea></label>
+        <label><span>{{ t('Comentario') }}</span><textarea v-model="texto" required maxlength="5000" rows="4"></textarea></label>
         <div class="acciones">
-          <button type="submit" :disabled="enviando">{{ enviando ? 'Transmitiendo…' : 'Enviar' }}</button>
+          <button type="submit" :disabled="enviando">{{ enviando ? t('Transmitiendo…') : t('Enviar') }}</button>
           <p v-if="aviso" :class="['aviso', aviso.tipo]" role="status">{{ aviso.texto }}</p>
         </div>
       </form>
-      <p v-else class="tenue">Los comentarios de esta entrada están cerrados.</p>
+      <p v-else class="tenue">{{ t('Los comentarios de esta entrada están cerrados.') }}</p>
     </template>
   </section>
 </template>

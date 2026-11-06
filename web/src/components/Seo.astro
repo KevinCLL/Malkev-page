@@ -1,0 +1,63 @@
+---
+import { IDIOMAS, LOCALE_OG, ruta, type Idioma } from '../i18n';
+import type { ImagenSocial } from '../lib/social';
+
+/**
+ * Metadatos para buscadores y redes: canónica, versiones por idioma (hreflang),
+ * Open Graph, Twitter y datos estructurados (JSON-LD).
+ */
+interface Props {
+  idioma: Idioma;
+  titulo: string;
+  descripcion: string;
+  /** Ruta de la página sin prefijo de idioma ('/bitacora'). */
+  rutaBase: string;
+  /** Canónica si no es la propia página (p. ej. una entrada vista en inglés → la original). */
+  canonica?: string;
+  /** Hay versión en todos los idiomas (enlaces hreflang). */
+  traducida: boolean;
+  imagen: ImagenSocial;
+  tipo: 'website' | 'article';
+  articulo?: { publicado: Date; etiquetas?: string[]; seccion?: string };
+  datos?: Record<string, unknown>[];
+  noindex?: boolean;
+}
+
+const { idioma, titulo, descripcion, rutaBase, traducida, imagen, tipo, articulo, datos = [], noindex = false } = Astro.props;
+const site = Astro.site ?? new URL('https://malkevnia.com');
+const absoluta = (r: string) => new URL(r, site).href;
+const canonica = absoluta(Astro.props.canonica ?? ruta(idioma, rutaBase));
+const otros = IDIOMAS.filter((i) => i !== idioma);
+const tarjeta = imagen.ancho && imagen.alto && imagen.ancho / imagen.alto > 1.4 ? 'summary_large_image' : 'summary';
+// Dentro de <script> el JSON no puede cerrar la etiqueta: se escapa "<".
+const jsonLd = datos.length ? JSON.stringify(datos.length === 1 ? datos[0] : { '@context': 'https://schema.org', '@graph': datos.map(({ '@context': _c, ...d }) => d) }).replace(/</g, '\\u003c') : null;
+---
+<link rel="canonical" href={canonica} />
+{traducida && IDIOMAS.map((i) => <link rel="alternate" hreflang={i} href={absoluta(ruta(i, rutaBase))} />)}
+{traducida && <link rel="alternate" hreflang="x-default" href={absoluta(rutaBase)} />}
+{noindex && <meta name="robots" content="noindex, follow" />}
+
+<meta property="og:site_name" content="La Malkevnia" />
+<meta property="og:title" content={titulo} />
+<meta property="og:description" content={descripcion} />
+<meta property="og:type" content={tipo} />
+<meta property="og:url" content={canonica} />
+<meta property="og:locale" content={LOCALE_OG[idioma]} />
+{traducida && otros.map((i) => <meta property="og:locale:alternate" content={LOCALE_OG[i]} />)}
+<meta property="og:image" content={absoluta(imagen.src)} />
+{imagen.tipo && <meta property="og:image:type" content={imagen.tipo} />}
+{imagen.ancho && <meta property="og:image:width" content={String(imagen.ancho)} />}
+{imagen.alto && <meta property="og:image:height" content={String(imagen.alto)} />}
+<meta property="og:image:alt" content={imagen.alt} />
+{articulo && <meta property="article:published_time" content={articulo.publicado.toISOString()} />}
+{articulo && <meta property="article:author" content="Malkev" />}
+{articulo?.seccion && <meta property="article:section" content={articulo.seccion} />}
+{articulo?.etiquetas?.map((e) => <meta property="article:tag" content={e} />)}
+
+<meta name="twitter:card" content={tarjeta} />
+<meta name="twitter:title" content={titulo} />
+<meta name="twitter:description" content={descripcion} />
+<meta name="twitter:image" content={absoluta(imagen.src)} />
+<meta name="twitter:image:alt" content={imagen.alt} />
+
+{jsonLd && <script type="application/ld+json" set:html={jsonLd} />}

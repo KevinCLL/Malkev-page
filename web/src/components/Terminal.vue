@@ -2,17 +2,34 @@
 import { nextTick, ref } from 'vue';
 
 interface Destino { slug: string; ruta: string; nombre: string }
-interface Entrada { slug: string; titulo: string }
-const props = defineProps<{ salas: Destino[]; entradas: Entrada[] }>();
+interface Entrada { slug: string; titulo: string; ruta: string }
+const props = defineProps<{
+  salas: Destino[];
+  entradas: Entrada[];
+  /** Traducciones (español → idioma de la página) del espacio "terminal" de modulos/i18n/textos.json. */
+  textos?: Record<string, string>;
+}>();
+const t = (es: string, vars: Record<string, string> = {}) =>
+  (props.textos?.[es] ?? es).replace(/\{(\w+)\}/g, (m, k: string) => vars[k] ?? m);
 
 const lineas = ref<string[]>([
-  'MALKEVNIA OS v0.1 · ordenador de a bordo',
-  'Escribe «ayuda» para ver los comandos.',
+  t('MALKEVNIA OS v0.1 · ordenador de a bordo'),
+  t('Escribe «ayuda» para ver los comandos.'),
 ]);
 const orden = ref('');
 const pantalla = ref<HTMLElement | null>(null);
 
 const normal = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+
+/** Cada comando en los dos idiomas: se entiende el que escribas. */
+const COMANDOS: Record<string, string> = {
+  ayuda: 'ayuda', help: 'ayuda',
+  salas: 'salas', rooms: 'salas',
+  ir: 'ir', go: 'ir',
+  bitacora: 'bitacora', log: 'bitacora',
+  buscar: 'buscar', search: 'buscar',
+  limpiar: 'limpiar', clear: 'limpiar',
+};
 
 function ejecutar() {
   const txt = orden.value.trim();
@@ -21,9 +38,9 @@ function ejecutar() {
   lineas.value.push(`> ${txt}`);
   const [cmd, ...resto] = txt.split(/\s+/);
   const arg = normal(resto.join(' '));
-  switch (normal(cmd)) {
+  switch (COMANDOS[normal(cmd)]) {
     case 'ayuda':
-      lineas.value.push('salas · ir <sala> · buscar <texto> · bitacora · limpiar');
+      lineas.value.push(t('salas · ir <sala> · buscar <texto> · bitacora · limpiar'));
       break;
     case 'salas':
       props.salas.forEach((s) => lineas.value.push(`  ${s.slug.padEnd(20)} ${s.nombre}`));
@@ -31,21 +48,21 @@ function ejecutar() {
     case 'ir': {
       const d = props.salas.find((s) => s.slug === arg || normal(s.nombre).includes(arg));
       if (d && arg) {
-        lineas.value.push(`Rumbo a ${d.nombre}…`);
+        lineas.value.push(t('Rumbo a {sala}…', { sala: d.nombre }));
         window.location.href = d.ruta;
-      } else lineas.value.push('No conozco esa sala. Prueba «salas».');
+      } else lineas.value.push(t('No conozco esa sala. Prueba «salas».'));
       break;
     }
     case 'bitacora':
       props.entradas.slice(0, 5).forEach((e) => lineas.value.push(`  ${e.titulo}`));
-      lineas.value.push('Abre una con «buscar <texto>».');
+      lineas.value.push(t('Abre una con «buscar <texto>».'));
       break;
     case 'buscar': {
       const r = props.entradas.filter((e) => normal(e.titulo).includes(arg)).slice(0, 8);
-      if (!arg || !r.length) lineas.value.push('Sin resultados.');
+      if (!arg || !r.length) lineas.value.push(t('Sin resultados.'));
       else if (r.length === 1) {
-        lineas.value.push(`Abriendo «${r[0].titulo}»…`);
-        window.location.href = `/bitacora/${r[0].slug}`;
+        lineas.value.push(t('Abriendo «{titulo}»…', { titulo: r[0].titulo }));
+        window.location.href = r[0].ruta;
       } else r.forEach((e) => lineas.value.push(`  ${e.titulo}`));
       break;
     }
@@ -53,7 +70,7 @@ function ejecutar() {
       lineas.value = [];
       break;
     default:
-      lineas.value.push(`Comando desconocido: ${cmd}`);
+      lineas.value.push(t('Comando desconocido: {comando}', { comando: cmd }));
   }
   nextTick(() => pantalla.value?.scrollTo({ top: pantalla.value.scrollHeight }));
 }
@@ -61,11 +78,11 @@ function ejecutar() {
 
 <template>
   <div class="terminal panel">
-    <div ref="pantalla" class="pantalla" aria-live="polite">
+    <div ref="pantalla" class="pantalla" role="log" aria-live="polite">
       <p v-for="(l, i) in lineas" :key="i">{{ l }}</p>
     </div>
     <form @submit.prevent="ejecutar">
-      <label for="orden" class="prompt">capitán@malkevnia:~$</label>
+      <label for="orden" class="prompt">{{ t('capitán@malkevnia:~$') }}</label>
       <input id="orden" v-model="orden" autocomplete="off" spellcheck="false" autofocus />
     </form>
   </div>

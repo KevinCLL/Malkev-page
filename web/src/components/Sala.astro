@@ -2,29 +2,68 @@
 import Nave from '../layouts/Nave.astro';
 import { NAVE_UNIFICADA, sala as buscarSala, salas } from '../lib/salas';
 import { montaje } from '../lib/modulos';
+import { NOMBRE_IDIOMA, ruta, traductor } from '../i18n';
 
 /**
  * Esqueleto común de una sala. Monta a pantalla completa lo que le toque (ver montaje():
  * la nave unificada abierta en esta sala, o el módulo suelto); si aún no hay nada, enseña
  * un marcador y lo que haya en el slot (contenido provisional servido desde Astro).
  */
-interface Props { slug: string }
+interface Props {
+  slug: string;
+  /** Datos estructurados (JSON-LD) extra de la página. */
+  datos?: Record<string, unknown>[];
+}
+const idioma = Astro.locals.idioma ?? 'es';
+const t = traductor(idioma);
+const otro = idioma === 'es' ? 'en' : 'es';
 const s = buscarSala(Astro.props.slug);
+const { datos } = Astro.props;
 const m = montaje(s);
+const nombre = t(s.nombre);
+const resumen = t(s.resumen);
+
+/** Los módulos leen el idioma de ?lang= (modulos/i18n/i18n.js); va antes del fragmento. */
+const conIdioma = (src: string) => {
+  if (idioma === 'es') return src;
+  const [sinFragmento, fragmento] = src.split('#', 2);
+  return `${sinFragmento}${sinFragmento.includes('?') ? '&' : '?'}lang=${idioma}${fragmento !== undefined ? `#${fragmento}` : ''}`;
+};
 
 // Para la nave unificada: id de sala de la nave → ruta y título de la web, y así la URL
 // sigue al visitante cuando camina de una sala a otra (la nave avisa por postMessage).
 const rutas = Object.fromEntries(
   salas
     .filter((x) => x.nave?.startsWith('sala='))
-    .map((x) => [x.nave!.slice('sala='.length), { ruta: x.ruta, titulo: `${x.nombre} · La Malkevnia` }]),
+    .map((x) => [x.nave!.slice('sala='.length), { ruta: ruta(idioma, x.ruta), titulo: `${t(x.nombre)} · La Malkevnia` }]),
 );
-const base = `/modulos/${NAVE_UNIFICADA}/index.html`;
+const base = conIdioma(`/modulos/${NAVE_UNIFICADA}/index.html`);
+const alternativas = ['plano', 'ordenador', 'bitacora'].filter((x) => x !== s.slug).map((x) => buscarSala(x));
 ---
 {m ? (
-  <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug} inmersivo>
-    <h1 class="solo-lectores">{s.nombre}</h1>
-    <iframe class="modulo" src={m.src} title={s.nombre} allow="fullscreen; autoplay; gyroscope; accelerometer; xr-spatial-tracking; clipboard-write"></iframe>
+  <Nave titulo={nombre} descripcion={resumen} sala={s.slug} datos={datos} inmersivo>
+    <h1 class="solo-lectores">{nombre}</h1>
+    {/* Mandos de la web para teclado y lectores de pantalla: invisibles hasta que reciben el foco. */}
+    <nav class="mandos-sala panel" aria-label={t('Mandos de la web')}>
+      <a href={ruta(idioma, '/')}>◂ {t('Puente')}</a>
+      <a href={ruta(otro, s.ruta)} hreflang={otro} lang={otro} data-cambiar-idioma={otro}>{NOMBRE_IDIOMA[otro]}</a>
+      <button type="button" data-calma aria-pressed="false">{t('Calma')}</button>
+      <a href="#escena">{t('Ir a la escena 3D')}</a>
+    </nav>
+    <p id="descripcion-escena" class="solo-lectores">
+      {t('Escena 3D interactiva: muévete con WASD o las flechas, mira con el ratón y usa los objetos con la tecla E. Si prefieres texto, tienes')}{' '}
+      {alternativas.map((a, i) => (
+        <>{i > 0 && (i === alternativas.length - 1 ? ` ${t('y')} ` : ', ')}<a href={ruta(idioma, a.ruta)}>{t(a.nombre)}</a></>
+      ))}.
+    </p>
+    <iframe
+      id="escena"
+      class="modulo"
+      src={conIdioma(m.src)}
+      title={nombre}
+      aria-describedby="descripcion-escena"
+      allow="fullscreen; autoplay; gyroscope; accelerometer; xr-spatial-tracking; clipboard-write"
+    ></iframe>
     {m.unificada ? (
       <script is:inline define:vars={{ rutas, base }}>
         const marco = document.querySelector('iframe.modulo');
@@ -43,25 +82,34 @@ const base = `/modulos/${NAVE_UNIFICADA}/index.html`;
         });
       </script>
     ) : (
-      <a class="volver panel" href="/">◂ Puente</a>
+      <a class="volver panel" href={ruta(idioma, '/')}>◂ {t('Puente')}</a>
     )}
+    <script is:inline>
+      // "Ir a la escena 3D": el foco entra en el iframe para que el teclado mueva la nave.
+      document.querySelector('a[href="#escena"]')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const f = document.getElementById('escena');
+        f?.focus();
+        try { f?.contentWindow?.focus(); } catch {}
+      });
+    </script>
   </Nave>
 ) : (
-  <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug}>
+  <Nave titulo={nombre} descripcion={resumen} sala={s.slug} datos={datos}>
     <section class="cabecera">
-      <p class="etiqueta">{s.cubierta} · {s.slug}</p>
-      <h1><span aria-hidden="true">{s.icono}</span> {s.nombre}</h1>
-      <p class="resumen">{s.resumen}</p>
+      <p class="etiqueta">{t(s.cubierta)} · {s.slug}</p>
+      <h1><span aria-hidden="true">{s.icono}</span> {nombre}</h1>
+      <p class="resumen">{resumen}</p>
     </section>
     <slot />
     {(s.modulo || s.nave !== undefined) && (
       <aside class="obras panel">
-        <p class="etiqueta">Sala en obras</p>
+        <p class="etiqueta">{t('Sala en obras')}</p>
         <p>
           {s.modulo ? (
-            <>Esta sala se llenará con el módulo <code>{s.modulo}</code> o con la nave unificada. En cuanto exista una de las dos, aparecerá aquí a pantalla completa.</>
+            <>{t('Esta sala se llenará con el módulo')} <code>{s.modulo}</code> {t('o con la nave unificada. En cuanto exista una de las dos, aparecerá aquí a pantalla completa.')}</>
           ) : (
-            <>Esta sala vive dentro de la nave unificada. En cuanto esté lista, aparecerá aquí a pantalla completa.</>
+            <>{t('Esta sala vive dentro de la nave unificada. En cuanto esté lista, aparecerá aquí a pantalla completa.')}</>
           )}
         </p>
       </aside>
@@ -70,9 +118,13 @@ const base = `/modulos/${NAVE_UNIFICADA}/index.html`;
 )}
 
 <style>
-  .solo-lectores { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
   .modulo { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; z-index: 1; }
   .volver { position: fixed; z-index: 2; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; color: var(--text); text-decoration: none; font: 600 13px var(--f-mono); }
+  /* Fuera de la vista hasta que se llega con el tabulador; entonces aparece arriba, centrada. */
+  .mandos-sala { position: fixed; z-index: 30; top: calc(10px + env(safe-area-inset-top, 0px)); left: 50%; display: flex; flex-wrap: wrap; gap: 6px; padding: 8px; transform: translate(-50%, calc(-100% - 24px)); }
+  .mandos-sala:focus-within { transform: translate(-50%, 0); }
+  .mandos-sala a, .mandos-sala button { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--line); background: rgba(7, 5, 15, 0.6); color: var(--text); font: 600 13px var(--f-mono); text-decoration: none; cursor: pointer; }
+  .mandos-sala button[aria-pressed='true'] { background: var(--accent); color: var(--void); }
   .cabecera h1 { font-size: clamp(28px, 5vw, 44px); margin: 6px 0 8px; }
   .resumen { color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
   .obras { margin-top: 32px; padding: 16px 18px; border-style: dashed; }

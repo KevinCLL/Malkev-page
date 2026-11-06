@@ -2,6 +2,7 @@ import type { APIRoute } from 'astro';
 import { readFile, stat } from 'node:fs/promises';
 import { extname, join, normalize, sep } from 'node:path';
 import { DIR_MODULOS } from '../../lib/modulos';
+import { firmaI18n, idiomaDeModulo, inyectarI18n } from '../../lib/i18n-modulos';
 
 const TIPOS: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
@@ -60,16 +61,25 @@ function alternativas(rel: string): string[] {
 // Sirve los ficheros de `modulos/` (la nave 3D, la Kallax…) sin salirse de esa carpeta.
 // Con ETag: el navegador revalida y, si no ha cambiado, recibe un 304 sin cuerpo (los .bin
 // de la filmoteca pesan cientos de KB cada uno).
-export const GET: APIRoute = async ({ params, request }) => {
+// Las páginas HTML llevan delante el script de idiomas y preferencias (lib/i18n-modulos.ts):
+// su ETag incluye el idioma y la versión de los textos.
+export const GET: APIRoute = async ({ params, request, url }) => {
   const rel = normalize(params.ruta ?? '').replace(/\\/g, '/').replace(/^\/+/, '');
   const tipo = TIPOS[extname(rel).toLowerCase()];
   if (!tipo || rel.startsWith('..')) return new Response('No encontrado', { status: 404 });
   for (const r of [rel, ...alternativas(rel)]) {
     const f = await localizar(r);
     if (!f) continue;
-    const cabeceras = { 'Content-Type': tipo, 'Cache-Control': 'public, max-age=300', ETag: f.etag };
-    if (request.headers.get('if-none-match') === f.etag) return new Response(null, { status: 304, headers: cabeceras });
+    const firma = tipo.startsWith('text/html') && !r.startsWith('i18n/') ? await firmaI18n() : null;
+    const idioma = idiomaDeModulo(url);
+    const etag = firma ? `${f.etag.slice(0, -1)}-${idioma}-${firma}"` : f.etag;
+    const cabeceras = { 'Content-Type': tipo, 'Cache-Control': 'public, max-age=300', ETag: etag };
+    if (request.headers.get('if-none-match') === etag) return new Response(null, { status: 304, headers: cabeceras });
     try {
+      if (firma) {
+        const html = inyectarI18n(await readFile(f.fichero, 'utf8'), { idioma, modulo: r.split('/')[0], firma });
+        return new Response(html, { headers: cabeceras });
+      }
       return new Response(new Uint8Array(await readFile(f.fichero)), { headers: cabeceras });
     } catch {
       break;

@@ -21,6 +21,8 @@ jobs:
           cache: npm
           cache-dependency-path: web/package-lock.json
       - run: npm ci
+      - name: Textos en inglés (modulos/i18n/textos.json)
+        run: npm run textos:comprobar
       - run: npx astro check
       - run: npm run build
 

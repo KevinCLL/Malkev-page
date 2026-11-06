@@ -1,70 +1,219 @@
 ---
 import { salas } from '../lib/salas';
 import Estrellas from '../components/Estrellas.astro';
+import Seo from '../components/Seo.astro';
+import { NOMBRE_IDIOMA, ruta, separarIdioma, traductor } from '../i18n';
+import { imagenSocial, type ImagenSocial } from '../lib/social';
 
 interface Props {
+  /** Título ya traducido. */
   titulo: string;
+  /** Descripción ya traducida. */
   descripcion?: string;
   sala?: string;
   /** Sin cabecera ni pie: para módulos a pantalla completa. */
   inmersivo?: boolean;
+  /** Imagen para redes; por defecto la de la sala (src/assets/social). */
+  imagen?: ImagenSocial;
+  tipo?: 'website' | 'article';
+  articulo?: { publicado: Date; etiquetas?: string[]; seccion?: string };
+  /** Datos estructurados (JSON-LD) de la página. */
+  datos?: Record<string, unknown>[];
+  /** Canónica si no es la propia página. */
+  canonica?: string;
+  /** false si la página no existe de verdad en otro idioma (sin enlaces hreflang). */
+  traducida?: boolean;
+  noindex?: boolean;
 }
-const { titulo, descripcion = 'Notas, pensamientos y comentarios de Malkev, a bordo de La Malkevnia.', sala, inmersivo = false } = Astro.props;
+
+const idioma = Astro.locals.idioma ?? 'es';
+const t = traductor(idioma);
+const otro = idioma === 'es' ? 'en' : 'es';
+const { resto: rutaBase } = separarIdioma(Astro.url.pathname);
+const {
+  titulo,
+  descripcion = t('Notas, pensamientos y comentarios de Malkev, a bordo de La Malkevnia.'),
+  sala,
+  inmersivo = false,
+  tipo = 'website',
+  articulo,
+  datos,
+  canonica,
+  traducida = true,
+  noindex = false,
+} = Astro.props;
 const tituloCompleto = titulo === 'La Malkevnia' ? titulo : `${titulo} · La Malkevnia`;
-const canonica = new URL(Astro.url.pathname, Astro.site);
+const imagen = Astro.props.imagen ?? imagenSocial(sala, idioma, t('La Malkevnia, una nave espacial violeta que cruza el espacio en calma'));
 const enMenu = salas.filter((s) => !['puente', 'consola'].includes(s.slug));
+const alInicio = ruta(idioma, '/');
 ---
 <!doctype html>
-<html lang="es">
+<html lang={idioma} data-idioma={idioma}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <title>{tituloCompleto}</title>
     <meta name="description" content={descripcion} />
-    <link rel="canonical" href={canonica} />
-    <link rel="alternate" type="application/rss+xml" title="Bitácora de La Malkevnia" href="/feed.xml" />
+    <Seo
+      idioma={idioma}
+      titulo={tituloCompleto}
+      descripcion={descripcion}
+      rutaBase={rutaBase}
+      canonica={canonica}
+      traducida={traducida}
+      imagen={imagen}
+      tipo={tipo}
+      articulo={articulo}
+      datos={datos}
+      noindex={noindex}
+    />
+    <link rel="alternate" type="application/rss+xml" title={t('Bitácora de La Malkevnia')} href="/feed.xml" />
+
+    {/* App instalable (PWA) e iconos */}
+    <link rel="manifest" href={ruta(idioma, '/manifest.webmanifest')} />
+    <link rel="icon" href="/favicon.ico" sizes="48x48" />
     <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
-    <meta property="og:title" content={tituloCompleto} />
-    <meta property="og:description" content={descripcion} />
-    <meta property="og:type" content="website" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <meta name="theme-color" content="#07050f" />
+    <meta name="color-scheme" content="dark" />
+    <meta name="apple-mobile-web-app-title" content="Malkevnia" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+    <link rel="stylesheet" crossorigin href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
     {/* Si un módulo (dentro de su iframe) navega a otra página de la web, esa página
         sale del iframe y ocupa la ventana, en vez de quedar anidada. Para incrustar una
         página a propósito (p. ej. en una pantalla de la nave), añade ?embebido a su URL. */}
     <script is:inline>if (window.top !== window.self && !new URLSearchParams(location.search).has('embebido')) { try { window.top.location.replace(location.href); } catch {} }</script>
+    {/* Modo calma (movimiento reducido) elegido por el visitante: se aplica antes de pintar. */}
+    <script is:inline>try { var m = localStorage.getItem('malkevnia:movimiento'); if (m === 'reducido' || m === 'normal') document.documentElement.dataset.movimiento = m; } catch (e) {}</script>
   </head>
   <body class:list={{ inmersivo }}>
+    <a class="saltar" href="#contenido">{t('Saltar al contenido')}</a>
     {!inmersivo && <Estrellas />}
     {!inmersivo && (
       <header class="casco">
-        <a class="marca" href="/" aria-label="Volver al puente">
+        <a class="marca" href={alInicio} aria-label={t('La Malkevnia: volver al puente')}>
           <span class="punto" aria-hidden="true"></span>LA MALKEVNIA
         </a>
-        <nav aria-label="Salas de la nave">
+        <nav aria-label={t('Salas de la nave')}>
           <ul>
             {enMenu.map((s) => (
               <li>
-                <a href={s.ruta} aria-current={s.slug === sala ? 'page' : undefined}>{s.nombre}</a>
+                <a href={ruta(idioma, s.ruta)} aria-current={s.slug === sala ? 'page' : undefined}>{t(s.nombre)}</a>
               </li>
             ))}
           </ul>
         </nav>
+        <div class="mandos">
+          <a class="mando" href={ruta(otro, rutaBase)} hreflang={otro} lang={otro} data-cambiar-idioma={otro}>
+            <span aria-hidden="true">{otro.toUpperCase()}</span><span class="solo-lectores">{NOMBRE_IDIOMA[otro]}</span>
+          </a>
+          <button type="button" class="mando" data-calma aria-pressed="false" title={t('Reduce las animaciones y el movimiento de la nave')}>
+            <span aria-hidden="true">≈</span> {t('Calma')}
+          </button>
+        </div>
       </header>
     )}
-    <main id="contenido">
+    <main id="contenido" tabindex="-1">
       <slot />
     </main>
     {!inmersivo && (
       <footer class="pie">
-        <span>Rumbo estable · soporte vital nominal</span>
-        <a href="/feed.xml">RSS</a>
+        <span>{t('Rumbo estable · soporte vital nominal')}</span>
+        <span class="enlaces">
+          <button type="button" class="instalar" data-instalar hidden>{t('Instalar la nave')}</button>
+          <a href="/feed.xml">RSS</a>
+        </span>
       </footer>
+    )}
+    {idioma === 'es' && !inmersivo && (
+      <aside class="sugerencia panel" lang="en" aria-label="Language" data-sugerencia hidden>
+        <span>This ship also speaks English.</span>
+        <a href={ruta('en', rutaBase)} hreflang="en" data-cambiar-idioma="en">Switch to English</a>
+        <button type="button" data-cerrar-sugerencia aria-label="Close">×</button>
+      </aside>
     )}
   </body>
 </html>
+
+<script>
+  // Preferencias compartidas con los módulos de la nave (mismas claves en modulos/i18n/i18n.js).
+  const CLAVE_IDIOMA = 'malkevnia:idioma';
+  const CLAVE_MOVIMIENTO = 'malkevnia:movimiento';
+  const guardar = (k: string, v: string) => { try { localStorage.setItem(k, v); } catch {} };
+  const leer = (k: string) => { try { return localStorage.getItem(k); } catch { return null; } };
+  const raiz = document.documentElement;
+  const idioma = raiz.dataset.idioma ?? 'es';
+
+  // Idioma: recordar el elegido (los módulos lo usan si se abren sueltos).
+  guardar(CLAVE_IDIOMA, idioma);
+  document.querySelectorAll<HTMLAnchorElement>('[data-cambiar-idioma]').forEach((a) =>
+    a.addEventListener('click', () => guardar(CLAVE_IDIOMA, a.dataset.cambiarIdioma!)),
+  );
+
+  // Sugerir el inglés a quien no tiene el español entre sus idiomas (una sola vez).
+  const sugerencia = document.querySelector<HTMLElement>('[data-sugerencia]');
+  const hablaEspanol = (navigator.languages ?? [navigator.language]).some((l) => l?.toLowerCase().startsWith('es'));
+  if (sugerencia && !hablaEspanol && !leer('malkevnia:sugerencia-idioma')) {
+    sugerencia.hidden = false;
+    sugerencia.querySelector('[data-cerrar-sugerencia]')?.addEventListener('click', () => {
+      sugerencia.hidden = true;
+      guardar('malkevnia:sugerencia-idioma', 'vista');
+    });
+  }
+
+  // Modo calma: sin elección guardada manda prefers-reduced-motion.
+  const sistema = matchMedia('(prefers-reduced-motion: reduce)');
+  const calmado = () => (raiz.dataset.movimiento ? raiz.dataset.movimiento === 'reducido' : sistema.matches);
+  const botones = document.querySelectorAll<HTMLButtonElement>('[data-calma]');
+  const pintar = () => botones.forEach((b) => b.setAttribute('aria-pressed', String(calmado())));
+  pintar();
+  sistema.addEventListener('change', pintar);
+  botones.forEach((b) =>
+    b.addEventListener('click', () => {
+      const valor = calmado() ? 'normal' : 'reducido';
+      raiz.dataset.movimiento = valor;
+      guardar(CLAVE_MOVIMIENTO, valor);
+      pintar();
+      // Los módulos (mismo origen) se enteran por el evento storage; este aviso es para los iframes ya abiertos.
+      document.querySelectorAll('iframe').forEach((f) => f.contentWindow?.postMessage({ fuente: 'malkevnia', evento: 'preferencias', detalle: { movimiento: valor } }, location.origin));
+    }),
+  );
+  addEventListener('storage', (e) => {
+    if (e.key === CLAVE_MOVIMIENTO && (e.newValue === 'reducido' || e.newValue === 'normal')) {
+      raiz.dataset.movimiento = e.newValue;
+      pintar();
+    }
+  });
+
+  // Instalar la app (Chrome, Edge, Android): botón propio en el pie cuando el navegador lo ofrece.
+  const instalar = document.querySelector<HTMLButtonElement>('[data-instalar]');
+  let aviso: (Event & { prompt?: () => Promise<void> }) | null = null;
+  addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    aviso = e;
+    if (instalar) instalar.hidden = false;
+  });
+  instalar?.addEventListener('click', async () => {
+    await aviso?.prompt?.();
+    aviso = null;
+    instalar.hidden = true;
+  });
+  addEventListener('appinstalled', () => { if (instalar) instalar.hidden = true; });
+
+  // Service worker: modo sin conexión y caché de la nave. Solo en producción; en desarrollo
+  // se quita cualquiera que quedara de una prueba anterior para no servir páginas viejas.
+  if ('serviceWorker' in navigator) {
+    if (import.meta.env.PROD) {
+      addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch((e) => console.warn('[pwa]', e)));
+    } else {
+      navigator.serviceWorker.getRegistrations().then((rs) => rs.forEach((r) => r.unregister()));
+    }
+  }
+</script>
 
 <style is:global>
   :root {
@@ -97,13 +246,19 @@ const enMenu = salas.filter((s) => !['puente', 'consola'].includes(s.slug));
   :focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 4px; }
   h1, h2, h3 { font-family: var(--f-display); letter-spacing: 0.03em; line-height: 1.2; text-wrap: balance; }
   main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; position: relative; z-index: 1; }
+  main:focus { outline: none; }
   body.inmersivo main { max-width: none; padding: 0; }
   .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); }
   .etiqueta { font: 600 11px var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+  .solo-lectores { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip-path: inset(50%); white-space: nowrap; border: 0; }
+
+  /* Enlace para saltar directamente al contenido con el teclado: aparece al recibir el foco. */
+  .saltar { position: fixed; z-index: 50; top: 8px; left: 8px; padding: 10px 16px; border-radius: 10px; background: var(--accent); color: var(--void); font: 600 14px var(--f-body); text-decoration: none; transform: translateY(-160%); }
+  .saltar:focus { transform: none; color: var(--void); }
 
   .casco {
     position: sticky; top: 0; z-index: 10;
-    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    display: flex; gap: 12px 16px; align-items: center; flex-wrap: wrap;
     padding: 12px 16px; background: rgba(7, 5, 15, 0.82); border-bottom: 1px solid var(--line);
     backdrop-filter: blur(8px);
   }
@@ -115,6 +270,23 @@ const enMenu = salas.filter((s) => !['puente', 'consola'].includes(s.slug));
   .casco li a { display: block; white-space: nowrap; padding: 6px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; }
   .casco li a:hover { color: var(--text); background: rgba(181, 155, 255, 0.08); }
   .casco li a[aria-current='page'] { color: var(--text); background: rgba(181, 155, 255, 0.16); }
-  .pie { display: flex; justify-content: space-between; gap: 16px; padding: 16px; font: 12px var(--f-mono); color: var(--muted); border-top: 1px solid var(--line); position: relative; z-index: 1; }
-  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+  .mandos { display: flex; gap: 6px; margin-left: auto; }
+  .mando { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 4px 10px; border: 1px solid var(--line); border-radius: 999px; background: transparent; color: var(--muted); font: 600 12px var(--f-mono); letter-spacing: 0.08em; text-decoration: none; cursor: pointer; }
+  .mando:hover { color: var(--text); border-color: var(--accent); }
+  .mando[aria-pressed='true'] { color: var(--void); background: var(--accent); border-color: var(--accent); }
+
+  .pie { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; padding: 16px; font: 12px var(--f-mono); color: var(--muted); border-top: 1px solid var(--line); position: relative; z-index: 1; }
+  .pie .enlaces { display: flex; gap: 16px; align-items: center; }
+  .instalar { font: inherit; color: var(--accent); background: none; border: 0; padding: 0; cursor: pointer; text-decoration: underline; }
+  .instalar[hidden] { display: none; }
+
+  .sugerencia { position: fixed; z-index: 20; left: 50%; bottom: calc(16px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); width: max-content; max-width: calc(100vw - 32px); display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; padding: 10px 12px 10px 16px; font-size: 14px; }
+  .sugerencia[hidden] { display: none; }
+  .sugerencia button { background: none; border: 0; color: var(--muted); font-size: 20px; line-height: 1; cursor: pointer; padding: 4px 8px; }
+
+  /* Movimiento reducido: lo pide el sistema (salvo que el visitante elija "normal") o el botón Calma. */
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-movimiento='normal']) *, :root:not([data-movimiento='normal']) *::before, :root:not([data-movimiento='normal']) *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
+  }
+  :root[data-movimiento='reducido'] *, :root[data-movimiento='reducido'] *::before, :root[data-movimiento='reducido'] *::after { animation: none !important; transition: none !important; scroll-behavior: auto !important; }
 </style>

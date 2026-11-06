@@ -15,7 +15,10 @@
     "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
     "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
     "modulos:sync": "node scripts/sync-modulos.mjs",
-    "assets:link": "node scripts/link-assets.mjs"
+    "assets:link": "node scripts/link-assets.mjs",
+    "textos:comprobar": "node scripts/comprobar-textos.mjs",
+    "iconos": "node scripts/generar-iconos.mjs",
+    "imagenes:sociales": "node scripts/imagenes-sociales.mjs"
   },
   "dependencies": {
     "@astrojs/node": "^11.1.11",

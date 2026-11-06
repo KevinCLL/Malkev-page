@@ -1,0 +1,68 @@
+---
+import Nave from '../layouts/Nave.astro';
+import { ruta, traductor } from '../i18n';
+
+// Página que el service worker enseña cuando no hay red y la página pedida no está guardada.
+const idioma = Astro.locals.idioma;
+const t = traductor(idioma);
+---
+<Nave titulo={t('Sin contacto con la base')} descripcion={t('La nave ha perdido la señal. Las salas que ya visitaste siguen a bordo.')} noindex>
+  <section class="sin-senal">
+    <p class="etiqueta">{t('Comunicaciones · sin señal')}</p>
+    <h1>{t('Sin contacto con la base')}</h1>
+    <p class="intro">
+      {t('La Malkevnia sigue su rumbo, pero ahora mismo no llega la señal. Las salas que ya visitaste viajan a bordo y puedes volver a ellas sin conexión.')}
+    </p>
+    <p><button type="button" class="reintentar" data-reintentar>{t('Reintentar')}</button></p>
+    <section aria-labelledby="t-a-bordo" data-a-bordo hidden>
+      <h2 id="t-a-bordo" class="etiqueta">{t('Disponible sin conexión')}</h2>
+      <ul data-lista></ul>
+    </section>
+    <p class="volver"><a href={ruta(idioma, '/')}>◂ {t('Volver al puente')}</a></p>
+  </section>
+</Nave>
+
+<script>
+  document.querySelector('[data-reintentar]')?.addEventListener('click', () => location.reload());
+  // Al volver la red, se recarga sola.
+  addEventListener('online', () => location.reload());
+
+  // Lista de páginas guardadas por el service worker (caché "malkevnia-paginas-…").
+  (async () => {
+    if (!('caches' in window)) return;
+    const nombres = (await caches.keys()).filter((n) => n.startsWith('malkevnia-paginas-'));
+    const vistas = new Map<string, string>();
+    for (const n of nombres) {
+      const cache = await caches.open(n);
+      for (const req of await cache.keys()) {
+        const url = new URL(req.url);
+        if (url.origin !== location.origin || url.pathname.includes('sin-conexion')) continue;
+        const res = await cache.match(req);
+        const html = res ? await res.text() : '';
+        const titulo = html.match(/<title>([^<]*)<\/title>/)?.[1]?.replace(/&amp;/g, '&').replace(/&#39;|&#x27;/g, "'").replace(/&quot;/g, '"') ?? url.pathname;
+        vistas.set(url.pathname + url.search, titulo);
+      }
+    }
+    if (!vistas.size) return;
+    const lista = document.querySelector('[data-lista]')!;
+    for (const [href, titulo] of [...vistas].sort((a, b) => a[1].localeCompare(b[1]))) {
+      const li = document.createElement('li');
+      const a = document.createElement('a');
+      a.href = href;
+      a.textContent = titulo;
+      li.append(a);
+      lista.append(li);
+    }
+    document.querySelector<HTMLElement>('[data-a-bordo]')!.hidden = false;
+  })();
+</script>
+
+<style>
+  .sin-senal { max-width: 62ch; }
+  .sin-senal h1 { font-size: clamp(30px, 6vw, 48px); margin: 8px 0 12px; }
+  .intro { color: var(--muted); font-size: 18px; }
+  .reintentar { font: 700 14px var(--f-display); letter-spacing: 0.12em; color: var(--void); background: var(--accent); border: 0; border-radius: 999px; padding: 12px 24px; cursor: pointer; }
+  [data-a-bordo] ul { padding-left: 1.2em; }
+  [data-a-bordo] li { margin: 4px 0; }
+  .volver { margin-top: 32px; font: 13px var(--f-mono); }
+</style>

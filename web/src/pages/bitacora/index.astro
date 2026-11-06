@@ -1,18 +1,26 @@
 ---
 import Sala from '../../components/Sala.astro';
 import { listarEntradas } from '../../lib/bitacora';
+import { sala } from '../../lib/salas';
+import { fechas, ruta, traductor } from '../../i18n';
+import { blog } from '../../lib/datos-estructurados';
 
+const idioma = Astro.locals.idioma;
+const t = traductor(idioma);
 const entradas = await listarEntradas();
-const anyoDe = new Intl.DateTimeFormat('es-ES', { year: 'numeric', timeZone: 'Europe/Madrid' });
+const anyoDe = fechas(idioma, { year: 'numeric' });
 const porAnyo = new Map<number, typeof entradas>();
 for (const e of entradas) {
   const y = Number(anyoDe.format(e.fecha));
   porAnyo.set(y, [...(porAnyo.get(y) ?? []), e]);
 }
-const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' });
+const fmt = fechas(idioma, { day: 'numeric', month: 'short' });
+const s = sala('bitacora');
+const datos = [blog(Astro.site ?? new URL('https://malkevnia.com'), idioma, t(s.nombre), t(s.resumen), entradas)];
 ---
-<Sala slug="bitacora">
-  {entradas.length === 0 && <p>La bitácora está vacía: falta el módulo <code>modulos/bitacora/posts.json</code> o la base de datos.</p>}
+<Sala slug="bitacora" datos={datos}>
+  {idioma !== 'es' && <p class="aviso-idioma">{t('Las entradas están escritas en español. Tu navegador puede traducirlas si lo necesitas.')}</p>}
+  {entradas.length === 0 && <p>{t('La bitácora está vacía: falta el módulo')} <code>modulos/bitacora/posts.json</code> {t('o la base de datos.')}</p>}
   {[...porAnyo].map(([anyo, lista]) => (
     <section class="anyo">
       <h2 class="etiqueta">{anyo}</h2>
@@ -21,8 +29,8 @@ const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', t
           <li>
             <time datetime={e.fecha.toISOString()}>{fmt.format(e.fecha)}</time>
             <div>
-              <a href={`/bitacora/${e.slug}`}>{e.titulo}</a>
-              {e.descripcion && <p>{e.descripcion}</p>}
+              <a href={ruta(idioma, `/bitacora/${e.slug}`)} lang="es">{e.titulo}</a>
+              {e.descripcion && <p lang="es">{e.descripcion}</p>}
             </div>
           </li>
         ))}
@@ -32,6 +40,7 @@ const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', t
 </Sala>
 
 <style>
+  .aviso-idioma { color: var(--muted); font-size: 15px; margin: 0 0 24px; }
   .anyo { margin-bottom: 28px; }
   .anyo ul { list-style: none; padding: 0; margin: 8px 0 0; }
   .anyo li { display: grid; grid-template-columns: 70px 1fr; gap: 12px; padding: 12px 0; border-bottom: 1px solid var(--line); }

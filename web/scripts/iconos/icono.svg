@@ -1,0 +1,55 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Icono maestro de La Malkevnia: la nave cruzando despacio sobre un planeta violeta.
+       Lienzo completo (sin esquinas): el script recorta las variantes redondeadas y "maskable". -->
+  <defs>
+    <radialGradient id="espacio" cx="50%" cy="30%" r="80%">
+      <stop offset="0" stop-color="#2b1b57"/>
+      <stop offset="0.5" stop-color="#150e2e"/>
+      <stop offset="1" stop-color="#07050f"/>
+    </radialGradient>
+    <radialGradient id="planeta" cx="38%" cy="18%" r="85%">
+      <stop offset="0" stop-color="#8f6cff"/>
+      <stop offset="0.45" stop-color="#4b2f9e"/>
+      <stop offset="1" stop-color="#1a1040"/>
+    </radialGradient>
+    <linearGradient id="casco" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#f3eeff"/>
+      <stop offset="1" stop-color="#b59bff"/>
+    </linearGradient>
+    <linearGradient id="estela" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#7fd6ff" stop-opacity="0.9"/>
+      <stop offset="1" stop-color="#7fd6ff" stop-opacity="0"/>
+    </linearGradient>
+    <filter id="brillo" x="-50%" y="-50%" width="200%" height="200%">
+      <feGaussianBlur stdDeviation="9"/>
+    </filter>
+  </defs>
+
+  <rect width="512" height="512" fill="url(#espacio)"/>
+
+  <!-- estrellas -->
+  <g fill="#e9e2ff">
+    <circle cx="96" cy="112" r="4" opacity="0.85"/>
+    <circle cx="410" cy="86" r="3" opacity="0.7"/>
+    <circle cx="436" cy="214" r="4.5" opacity="0.8"/>
+    <circle cx="70" cy="250" r="3" opacity="0.6"/>
+    <circle cx="160" cy="58" r="2.5" opacity="0.6"/>
+    <circle cx="352" cy="150" r="2.5" opacity="0.55"/>
+  </g>
+  <circle cx="436" cy="214" r="10" fill="#7fd6ff" opacity="0.25" filter="url(#brillo)"/>
+
+  <!-- planeta: un arco grande que asoma por abajo, con su anillo de luz -->
+  <circle cx="256" cy="700" r="330" fill="url(#planeta)"/>
+  <circle cx="256" cy="700" r="330" fill="none" stroke="#c9b6ff" stroke-width="5" opacity="0.75"/>
+  <ellipse cx="256" cy="420" rx="250" ry="34" fill="none" stroke="#7fd6ff" stroke-width="4" opacity="0.35"/>
+
+  <!-- la nave, inclinada como si subiera hacia la derecha -->
+  <g transform="rotate(32 256 256)">
+    <path d="M241 318 L271 318 L264 470 L248 470 Z" fill="url(#estela)" opacity="0.85"/>
+    <ellipse cx="256" cy="326" rx="26" ry="16" fill="#7fd6ff" opacity="0.6" filter="url(#brillo)"/>
+    <path d="M256 84 C268 120 280 190 286 244 L352 330 L352 352 L288 322 L276 334 L236 334 L224 322 L160 352 L160 330 L226 244 C232 190 244 120 256 84 Z" fill="url(#casco)"/>
+    <path d="M256 84 C244 120 232 190 226 244 L160 330 L160 352 L224 322 L236 334 L256 334 Z" fill="#ffffff" opacity="0.16"/>
+    <ellipse cx="256" cy="206" rx="13" ry="30" fill="#7fd6ff"/>
+    <ellipse cx="252" cy="196" rx="4" ry="12" fill="#ffffff" opacity="0.75"/>
+  </g>
+</svg>
