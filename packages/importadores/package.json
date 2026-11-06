@@ -1,0 +1,17 @@
+{
+  "name": "@malkevnia/importadores",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Importa la filmoteca y la biblioteca de Malkev (Filmaffinity, Goodreads, AniList, CSV) a JSON normalizado y SQL, con datos de TMDB y Open Library.",
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "malkevnia-importar": "bin/importar.js"
+  },
+  "scripts": {
+    "importar": "node --env-file-if-exists=.env bin/importar.js",
+    "test": "node --test test/*.test.js"
+  }
+}
