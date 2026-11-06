@@ -76,6 +76,7 @@ color:var(--bx-text);font-family:var(--bx-body);color-scheme:dark}
   padding:max(16px,env(safe-area-inset-top,0px)) max(16px,env(safe-area-inset-right,0px)) max(16px,env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));
   background:radial-gradient(ellipse at 50% 30%,rgba(70,40,120,.45),rgba(5,3,12,.9) 70%);backdrop-filter:blur(6px);
   opacity:0;transition:opacity .35s ease}
+.bx-reader[hidden]{display:none}
 .bx-reader.bx-on{opacity:1}
 .bx-sheet{position:relative;width:min(780px,100%);max-height:100%;display:grid;grid-template-rows:auto 1fr auto;
   background:linear-gradient(180deg,rgba(40,24,66,.94),rgba(16,10,32,.96));border:1px solid var(--bx-line);border-radius:14px;
@@ -467,13 +468,13 @@ export function createHoloWall(THREE, opts = {}) {
     if (beams) { ring.remove(beams); beams.geometry.dispose(); beams = null; }
     panels = [];
     const slice = list.slice(page * perPage, page * perPage + perPage);
-    const perRowNow = Math.min(o.perRow, Math.ceil(slice.length / o.rows) || 1);
+    const perRowNow = Math.max(1, Math.ceil(slice.length / o.rows));
     const pts = [];
     slice.forEach((post, idx) => {
-      // de izquierda a derecha y de arriba abajo: col = idx % perRow
-      const row = Math.floor(idx / perRowNow), col = idx % perRowNow;
-      const inRow = Math.min(perRowNow, slice.length - row * perRowNow);
-      const a = slotAngle(col, inRow);
+      // por columnas, de izquierda a derecha: arriba la más reciente, abajo la siguiente
+      const cols = Math.ceil(slice.length / o.rows);
+      const col = Math.floor(idx / o.rows), row = idx % o.rows;
+      const a = slotAngle(col, cols);
       const y = o.baseY + (o.rows - 1 - row) * o.rowGap;
       const tex = new THREE.CanvasTexture(drawPanelCanvas(post, { color: o.color, accent: o.accent }));
       tex.colorSpace = THREE.SRGBColorSpace;
@@ -486,7 +487,7 @@ export function createHoloWall(THREE, opts = {}) {
       mesh.renderOrder = 2;
       ring.add(mesh);
       panels.push({ mesh, post, a, y, born: idx * 0.035, life: 0, seed: Math.random() * 100, s: 1 });
-      if (row === o.rows - 1 || slice.length <= perRowNow) pts.push(mesh.position.x, 0.02, mesh.position.z, mesh.position.x, y - ph / 2, mesh.position.z);
+      if (row === o.rows - 1 || idx === slice.length - 1) pts.push(mesh.position.x, 0.02, mesh.position.z, mesh.position.x, y - ph / 2, mesh.position.z);
     });
     if (pts.length) {
       const bg = new THREE.BufferGeometry();
@@ -496,7 +497,8 @@ export function createHoloWall(THREE, opts = {}) {
     }
     const half = ((perRowNow - 1) / 2) * o.spacing;
     limit = Math.max(0, half);
-    target = 0;
+    // arranca con las primeras columnas a la vista (la más reciente a la izquierda del centro)
+    target = perRowNow > 2 ? -half + o.spacing : 0;
   }
 
   const api = {

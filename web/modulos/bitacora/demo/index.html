@@ -1,0 +1,294 @@
+<title>Bitácora del capitán</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<style>
+/* Sala circular de la nave: arco de holopaneles alrededor de quien mira, índice a la derecha (hoja inferior en móvil). Un único look oscuro. */
+:root{
+  --void:#07050f; --hull:#120c24; --panel:rgba(16,10,32,.78); --line:rgba(255,194,122,.26); --line2:rgba(181,155,255,.22);
+  --text:#f3ecff; --muted:#b4a6d8; --amber:#ffc27a; --violet:#b59bff; --cyan:#7fd6ff;
+  --f-display:"Orbitron","Exo 2",system-ui,sans-serif; --f-body:"Exo 2",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--f-body)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.drag{cursor:grabbing} #c.pt{cursor:pointer}
+.hud{position:fixed;z-index:5}
+#id{top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));padding:12px 16px;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px);max-width:min(340px,calc(100vw - 32px));pointer-events:none}
+#id .eb{font:600 10px var(--f-mono);letter-spacing:.24em;color:var(--muted);text-transform:uppercase}
+#id h1{margin:4px 0 0;font:700 21px var(--f-display);letter-spacing:.05em;color:var(--amber);text-wrap:balance}
+#id p{margin:4px 0 0;font:400 13px var(--f-body);color:var(--muted)}
+#dock{bottom:calc(14px + env(safe-area-inset-bottom,0px));left:max(16px,env(safe-area-inset-left,0px));display:flex;gap:10px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 32px)}
+.pill{display:flex;align-items:center;gap:4px;padding:4px;background:var(--panel);border:1px solid var(--line);border-radius:999px;backdrop-filter:blur(8px)}
+.pill button{width:34px;height:34px;border-radius:50%;border:0;background:transparent;color:var(--text);font:600 16px var(--f-mono);cursor:pointer}
+.pill button:hover:not(:disabled){background:rgba(255,194,122,.14)}
+.pill button:disabled{opacity:.3;cursor:default}
+.pill span{font:500 12px var(--f-mono);color:var(--muted);padding:0 6px;font-variant-numeric:tabular-nums;white-space:nowrap}
+.hint{font:400 11.5px var(--f-mono);color:var(--muted);letter-spacing:.03em}
+.hint b{color:var(--text);font-weight:500}
+button:focus-visible{outline:2px solid var(--cyan);outline-offset:2px}
+#side{top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));width:340px;
+  display:grid;grid-template-rows:auto 1fr;gap:12px;padding:16px;background:var(--panel);border:1px solid var(--line2);border-radius:14px;backdrop-filter:blur(10px)}
+#side header{display:flex;justify-content:space-between;align-items:center}
+#side header .eb{font:600 10px var(--f-mono);letter-spacing:.24em;color:var(--amber);text-transform:uppercase}
+#side .mount{min-height:0}
+#toggle{display:none}
+.x{width:32px;height:32px;border-radius:50%;border:1px solid var(--line2);background:transparent;color:var(--text);cursor:pointer;display:none}
+#boot{position:fixed;inset:0;z-index:30;display:grid;place-items:center;background:var(--void);font:500 13px var(--f-mono);letter-spacing:.2em;color:var(--muted);text-transform:uppercase;transition:opacity .6s}
+#boot.off{opacity:0;pointer-events:none}
+#boot i{display:block;width:120px;height:2px;margin:14px auto 0;background:linear-gradient(90deg,transparent,var(--amber),transparent);background-size:200% 100%;animation:scan 1.4s linear infinite}
+@keyframes scan{to{background-position:-200% 0}}
+@media (prefers-reduced-motion:reduce){#boot i{animation:none}}
+body.nogl #side{left:max(16px,env(safe-area-inset-left,0px));width:auto;max-width:720px;margin:0 auto;top:calc(120px + env(safe-area-inset-top,0px))}
+body.nogl #dock{display:none}
+@media (max-width:820px){
+  #id{padding:10px 14px} #id h1{font-size:17px}
+  .hint{display:none}
+  #side{left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));top:auto;width:auto;height:min(64vh,560px);
+    transform:translateY(calc(100% + 30px));transition:transform .35s cubic-bezier(.2,.8,.2,1)}
+  #side.open{transform:none}
+  #toggle{display:block;position:fixed;z-index:5;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));
+    padding:11px 18px;border-radius:999px;border:1px solid var(--amber);background:var(--panel);color:var(--text);font:600 13px var(--f-mono);letter-spacing:.08em;backdrop-filter:blur(8px);cursor:pointer}
+  .x{display:block}
+  body.nogl #side{transform:none;height:auto;top:calc(110px + env(safe-area-inset-top,0px))}
+  body.nogl #toggle,body.nogl .x{display:none}
+}
+</style>
+
+<canvas id="c" aria-label="Sala de la bitácora: holopaneles con las entradas del blog"></canvas>
+
+<div class="hud" id="id">
+  <div class="eb">La Malkevnia · Cubierta 2</div>
+  <h1>Bitácora del capitán</h1>
+  <p id="sub">Sintonizando entradas…</p>
+</div>
+
+<div class="hud" id="dock">
+  <div class="pill" role="group" aria-label="Páginas del muro">
+    <button type="button" id="prev" aria-label="Página anterior">‹</button>
+    <span id="pg">1 / 1</span>
+    <button type="button" id="next" aria-label="Página siguiente">›</button>
+  </div>
+  <div class="hint"><b>Arrastra</b> para girar · <b>toca</b> un panel para leer · <b>/</b> buscar</div>
+</div>
+
+<aside class="hud" id="side" aria-label="Índice de la bitácora">
+  <header><span class="eb">Índice de entradas</span><button type="button" class="x" id="closeSide" aria-label="Cerrar el índice">✕</button></header>
+  <div class="mount" id="mount"></div>
+</aside>
+<button type="button" id="toggle" aria-controls="side" aria-expanded="false">Índice</button>
+
+<div id="boot"><div>Sintonizando la bitácora<i></i></div></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { loadPosts, createReader, createBrowser, createHoloWall } from './bitacora.js';
+
+const $ = (id) => document.getElementById(id);
+const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const posts = await loadPosts('./posts.json');
+const years = [...new Set(posts.map((p) => p.year))];
+$('sub').textContent = `${posts.length} entradas de malkevnia.com, de ${Math.min(...years)} a ${Math.max(...years)}`;
+$('toggle').textContent = `Índice · ${posts.length}`;
+
+// tipografías listas antes de pintar los paneles en canvas
+await Promise.race([
+  Promise.all(['600 40px "Exo 2"', '300 23px "Exo 2"', '600 19px "JetBrains Mono"', '500 18px "JetBrains Mono"'].map((f) => document.fonts.load(f))),
+  new Promise((r) => setTimeout(r, 2500)),
+]).catch(() => {});
+
+const side = $('side');
+const setSide = (open) => { side.classList.toggle('open', open); $('toggle').setAttribute('aria-expanded', String(open)); };
+$('toggle').onclick = () => setSide(!side.classList.contains('open'));
+$('closeSide').onclick = () => setSide(false);
+
+let wall = null;
+const reader = createReader({
+  posts,
+  onOpen: (p) => { browser.setCurrent(p.id); if (location.hash.slice(1) !== p.id) history.replaceState(null, '', '#' + p.id); },
+  onClose: () => { history.replaceState(null, '', location.pathname + location.search); },
+});
+const browser = createBrowser({
+  posts, container: $('mount'),
+  onSelect: (p) => { reader.open(p); wall && wall.focus(p); if (matchMedia('(max-width:820px)').matches) setSide(false); },
+  onFilter: (list) => { if (wall) { wall.setPosts(list); pager(); } },
+});
+
+// ------------------------------------------------------------ escena
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), antialias: true, powerPreference: 'high-performance' });
+} catch (e) {
+  document.body.classList.add('nogl');
+  $('c').remove();
+  $('boot').classList.add('off');
+  openFromHash();
+  throw e;
+}
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.outputColorSpace = THREE.SRGBColorSpace;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07050f);
+scene.fog = new THREE.FogExp2(0x07050f, 0.035);
+const camera = new THREE.PerspectiveCamera(62, 1, 0.05, 200);
+camera.position.set(0, 1.5, 0.35);
+const look = new THREE.Vector3(0, 1.45, -3);
+camera.lookAt(look);
+
+const anim = [];
+// estrellas
+{
+  const n = 2600, pos = new Float32Array(n * 3), col = new Float32Array(n * 3);
+  const tint = [new THREE.Color(0xd8ccff), new THREE.Color(0xffd9a0), new THREE.Color(0x9fe0ff)];
+  for (let i = 0; i < n; i++) {
+    const u = Math.random() * 2 - 1, th = Math.random() * Math.PI * 2, r = 60 + Math.random() * 40, s = Math.sqrt(1 - u * u);
+    pos.set([Math.cos(th) * s * r, Math.abs(u) * r * 0.9 - 4, Math.sin(th) * s * r], i * 3);
+    const c = tint[i % 7 === 0 ? 1 : i % 5 === 0 ? 2 : 0].clone().multiplyScalar(0.5 + Math.random() * 0.5);
+    col.set([c.r, c.g, c.b], i * 3);
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  g.setAttribute('color', new THREE.BufferAttribute(col, 3));
+  const stars = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.28, vertexColors: true, fog: false, transparent: true, opacity: 0.9, depthWrite: false }));
+  scene.add(stars);
+  if (!reduced) anim.push((t) => { stars.rotation.y = t * 0.004; });
+}
+
+// nebulosa suave al fondo
+{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 256;
+  const g = cv.getContext('2d'), gr = g.createRadialGradient(128, 128, 0, 128, 128, 128);
+  gr.addColorStop(0, 'rgba(150,100,255,.55)'); gr.addColorStop(.45, 'rgba(90,50,170,.22)'); gr.addColorStop(1, 'rgba(0,0,0,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 256, 256);
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace;
+  for (const [x, y, z, s, c] of [[-30, 14, -55, 70, 0xffffff], [40, 22, -40, 50, 0xffc8a0], [10, 30, 50, 80, 0x9fd8ff]]) {
+    const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, color: c, transparent: true, opacity: 0.32, depthWrite: false, fog: false, blending: THREE.AdditiveBlending }));
+    sp.position.set(x, y, z); sp.scale.set(s, s * 0.6, 1); scene.add(sp);
+  }
+}
+
+// cubierta: disco con anillos y rejilla tenue
+{
+  const cv = document.createElement('canvas'); cv.width = cv.height = 1024;
+  const g = cv.getContext('2d'), C = 512;
+  const gr = g.createRadialGradient(C, C, 0, C, C, C);
+  gr.addColorStop(0, '#1d1238'); gr.addColorStop(.6, '#120b24'); gr.addColorStop(1, 'rgba(7,5,15,0)');
+  g.fillStyle = gr; g.fillRect(0, 0, 1024, 1024);
+  g.strokeStyle = 'rgba(181,155,255,.10)'; g.lineWidth = 2;
+  for (let r = 60; r < 500; r += 56) { g.beginPath(); g.arc(C, C, r, 0, Math.PI * 2); g.stroke(); }
+  for (let k = 0; k < 24; k++) { const a = k / 24 * Math.PI * 2; g.beginPath(); g.moveTo(C + Math.cos(a) * 60, C + Math.sin(a) * 60); g.lineTo(C + Math.cos(a) * 480, C + Math.sin(a) * 480); g.stroke(); }
+  g.strokeStyle = 'rgba(255,194,122,.22)'; g.lineWidth = 3; g.beginPath(); g.arc(C, C, 52, 0, Math.PI * 2); g.stroke();
+  const tex = new THREE.CanvasTexture(cv); tex.colorSpace = THREE.SRGBColorSpace; tex.anisotropy = 8;
+  const floor = new THREE.Mesh(new THREE.CircleGeometry(7, 96), new THREE.MeshBasicMaterial({ map: tex, transparent: true }));
+  floor.rotation.x = -Math.PI / 2; scene.add(floor);
+}
+
+// polvo en suspensión
+const dust = (() => {
+  const n = 260, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) pos.set([(Math.random() - .5) * 9, Math.random() * 3.4, (Math.random() - .5) * 9], i * 3);
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ size: 0.018, color: 0xffd9a0, transparent: true, opacity: 0.45, depthWrite: false, blending: THREE.AdditiveBlending }));
+  scene.add(p); return p;
+})();
+
+// muro de holopaneles
+wall = createHoloWall(THREE, { posts: browser.filtered, reducedMotion: reduced });
+scene.add(wall.group);
+
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.45, 0.55, 0.62);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false); composer.setSize(w, h);
+  camera.aspect = w / h;
+  camera.fov = w / h < 0.8 ? 68 : w / h < 1.2 ? 66 : 62;
+  // en escritorio el índice ocupa la derecha: desplaza el centro óptico hacia la zona libre
+  const off = w > 820 && !document.body.classList.contains('nogl') ? 178 : 0;
+  if (off) camera.setViewOffset(w + off * 2, h, off * 2, 0, w, h); else camera.clearViewOffset();
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+function pager() {
+  $('pg').textContent = `${wall.page + 1} / ${wall.pages}`;
+  $('prev').disabled = wall.page === 0;
+  $('next').disabled = wall.page >= wall.pages - 1;
+}
+$('prev').onclick = () => { wall.prevPage(); pager(); };
+$('next').onclick = () => { wall.nextPage(); pager(); };
+pager();
+
+// ------------------------------------------------------------ interacción
+const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const canvas = $('c');
+let down = null, lastX = 0, moved = 0;
+function pickAt(x, y) {
+  ndc.set((x / innerWidth) * 2 - 1, -(y / innerHeight) * 2 + 1);
+  ray.setFromCamera(ndc, camera);
+  return wall.pick(ray);
+}
+canvas.addEventListener('pointerdown', (e) => { down = e.pointerId; lastX = e.clientX; moved = 0; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', (e) => {
+  if (down === e.pointerId) {
+    const dx = e.clientX - lastX; lastX = e.clientX; moved += Math.abs(dx);
+    if (moved > 6) { canvas.classList.add('drag'); wall.spin(-dx * 0.0011 * (camera.fov / 62)); }
+  } else if (e.pointerType === 'mouse') {
+    const p = pickAt(e.clientX, e.clientY);
+    wall.hover(p); canvas.classList.toggle('pt', !!p);
+  }
+});
+const end = (e) => {
+  if (down !== e.pointerId) return;
+  down = null; canvas.classList.remove('drag');
+  if (moved <= 6 && e.type === 'pointerup') {
+    const p = pickAt(e.clientX, e.clientY);
+    if (p) { wall.focus(p); reader.open(p); }
+  }
+};
+canvas.addEventListener('pointerup', end);
+canvas.addEventListener('pointercancel', end);
+canvas.addEventListener('wheel', (e) => { e.preventDefault(); wall.spin((e.deltaY + e.deltaX) * 0.00035); }, { passive: false });
+addEventListener('keydown', (e) => {
+  if (reader.isOpen || e.target.closest('input,textarea')) return;
+  if (e.key === 'ArrowLeft') wall.spin(-0.03);
+  else if (e.key === 'ArrowRight') wall.spin(0.03);
+  else if (e.key === 'PageDown') { wall.nextPage(); pager(); }
+  else if (e.key === 'PageUp') { wall.prevPage(); pager(); }
+  else if (e.key === '/') { e.preventDefault(); setSide(true); browser.focusSearch(); }
+});
+
+function openFromHash() {
+  const id = decodeURIComponent(location.hash.slice(1));
+  if (!id) { reader.isOpen && reader.close(); return; }
+  const p = posts.find((x) => x.id === id);
+  if (p) { wall && wall.focus(p); if (reader.current !== p) reader.open(p); }
+}
+addEventListener('hashchange', openFromHash);
+
+// ------------------------------------------------------------ bucle
+const clock = new THREE.Clock();
+let t = 0;
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.05); t += dt;
+  wall.update(t, dt);
+  anim.forEach((f) => f(t));
+  if (!reduced) { dust.rotation.y = t * 0.01; dust.position.y = Math.sin(t * 0.2) * 0.05; camera.position.y = 1.5 + Math.sin(t * 0.35) * 0.015; }
+  composer.render();
+});
+requestAnimationFrame(() => { $('boot').classList.add('off'); openFromHash(); });
+</script>

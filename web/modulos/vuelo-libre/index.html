@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Vuelo libre</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+:root{--void:#07050f;--text:#e9e2ff;--muted:#a99cd6;--accent:#b59bff;--glow:#7fd6ff;color-scheme:dark}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--text);font-family:"Exo 2",system-ui,sans-serif}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:crosshair}
+.intro{position:fixed;inset:0;z-index:20;display:grid;place-items:center;padding:24px 16px;background:radial-gradient(ellipse at 50% 45%,rgba(40,22,90,.35),rgba(7,5,15,.82) 75%);transition:opacity .9s}
+.intro.out{opacity:0;pointer-events:none}
+.box{max-width:560px;text-align:center}
+.eb{font:600 11px "JetBrains Mono",monospace;letter-spacing:.3em;color:var(--muted);text-transform:uppercase}
+h1{font:700 clamp(30px,6vw,52px) "Orbitron",sans-serif;letter-spacing:.06em;margin:10px 0 8px;text-shadow:0 0 28px rgba(181,155,255,.55);text-wrap:balance}
+p{font:400 16px/1.6 "Exo 2",sans-serif;color:#cbbff0;margin:0 auto 22px;max-width:46ch;text-wrap:pretty}
+.keys{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px 18px;text-align:left;font:400 12px "JetBrains Mono",monospace;color:var(--muted);margin:0 auto 26px;max-width:440px}
+.keys b{color:var(--text);font-weight:600;display:inline-block;min-width:64px}
+button{cursor:pointer;padding:13px 30px;background:rgba(120,90,230,.45);border:1px solid var(--accent);border-radius:999px;color:var(--text);font:600 15px "JetBrains Mono",monospace;letter-spacing:.12em;text-transform:uppercase;box-shadow:0 0 24px rgba(181,155,255,.35);transition:transform .2s,background .2s}
+button:hover{background:rgba(140,110,250,.65);transform:translateY(-1px)}
+button:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.err{position:fixed;inset:0;display:none;place-items:center;padding:16px;text-align:center;z-index:30;background:var(--void)}
+@media (max-width:560px){.keys{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<canvas id="c" aria-label="Vista 3D del vuelo de La Malkevnia"></canvas>
+<div class="intro" id="intro">
+  <div class="box">
+    <div class="eb">La Malkevnia · sistema Malkevnia</div>
+    <h1>Modo vuelo libre</h1>
+    <p>Toma los mandos de la nave, cruza el sistema y aterriza junto al museo de cada planeta: juegos de mesa, cine, libros, manga, rol y la bitácora.</p>
+    <div class="keys">
+      <div><b>Ratón</b>dirigir</div><div><b>W / S</b>acelerar · frenar</div>
+      <div><b>Mayús</b>turbo</div><div><b>Q / E</b>girar sobre sí</div>
+      <div><b>Tab</b>cambiar objetivo</div><div><b>J</b>salto al objetivo</div>
+      <div><b>L</b>aterrizar · despegar</div><div><b>C</b>cámara de cabina</div>
+    </div>
+    <button id="go">Despegar</button>
+  </div>
+</div>
+<div class="err" id="err"><p>Tu navegador no ha podido arrancar WebGL, así que la nave se queda en el hangar. Prueba con otro navegador o equipo.</p></div>
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import { init } from './vuelo-libre.js';
+let vuelo;
+try {
+  vuelo = init(document.getElementById('c'), {
+    onVisit: p => console.log('[vuelo] visitar museo', p.id),
+  });
+  vuelo.preview();
+} catch (e) { console.error(e); document.getElementById('err').style.display = 'grid'; }
+document.getElementById('go').addEventListener('click', () => {
+  document.getElementById('intro').classList.add('out');
+  vuelo?.start();
+});
+window.__vuelo = vuelo;
+</script>
+</body>
+</html>

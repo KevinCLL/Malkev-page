@@ -1,0 +1,282 @@
+<title>Controles de la nave</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Lienzo 3D a pantalla completa con un HUD fino en las esquinas; estética de la nave Malkevnia (un solo tema oscuro). */
+:root{
+  --void:#0b0717; --hull:#1a1233; --glass:rgba(26,18,51,.62); --line:rgba(185,163,255,.35);
+  --lav:#b9a3ff; --ink:#efe9ff; --mute:#a99cc9; --ok:#8ff0c9; --warn:#ffc58a;
+  --f-display:"Orbitron","Eurostile",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--ink);font:13px/1.45 var(--f-mono);overflow:hidden;overscroll-behavior:none;-webkit-tap-highlight-color:transparent}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;z-index:30;display:flex;gap:8px;align-items:flex-start;pointer-events:none}
+.hud>*{pointer-events:auto}
+.tl{top:calc(env(safe-area-inset-top,0px) + 12px);left:max(16px,env(safe-area-inset-left,0px));flex-direction:column}
+.tr{top:calc(env(safe-area-inset-top,0px) + 12px);right:max(16px,env(safe-area-inset-right,0px));flex-direction:column;align-items:flex-end}
+.panel{background:var(--glass);border:1px solid var(--line);border-radius:10px;padding:8px 12px;-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px)}
+h1{margin:0;font:700 13px/1.2 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--lav)}
+.sub{color:var(--mute);font-size:11px;margin-top:2px}
+.seg{display:flex;border:1px solid var(--line);border-radius:8px;overflow:hidden;background:var(--glass)}
+.seg button,.chip{font:600 11px/1 var(--f-mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink);background:transparent;border:0;padding:10px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--lav);color:#160c33}
+.chip{border:1px solid var(--line);border-radius:8px;background:var(--glass)}
+.chip.on{border-color:var(--ok);color:var(--ok)}
+button:focus-visible{outline:2px solid var(--lav);outline-offset:2px}
+.read{font-size:11px;color:var(--mute);font-variant-numeric:tabular-nums;max-width:min(260px,60vw);text-align:right}
+.read b{color:var(--ink);font-weight:600}
+.read .msg{display:block;margin-top:4px;color:var(--warn);text-align:right}
+.read .msg:empty{display:none}
+#help{position:fixed;z-index:25;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);
+  max-width:min(440px,calc(100vw - 32px));text-align:center;color:var(--mute);font-size:11px;pointer-events:none}
+#help b{color:var(--ink)}
+.touch #help{bottom:calc(env(safe-area-inset-bottom,0px) + 170px)}
+#toast{position:fixed;z-index:40;left:50%;top:50%;transform:translate(-50%,-50%);font:700 14px var(--f-display);letter-spacing:.12em;color:var(--lav);text-shadow:0 0 12px rgba(185,163,255,.7);opacity:0;transition:opacity .4s;pointer-events:none;text-align:center}
+@media (prefers-reduced-motion:reduce){#toast{transition:none}}
+@media (max-height:460px){.touch #help{display:none}}
+</style>
+
+<canvas id="c" aria-label="Sala de pruebas en 3D"></canvas>
+
+<div class="hud tl">
+  <div class="panel"><h1>Sala de pruebas</h1><div class="sub">Cubierta 2 · Malkevnia</div></div>
+  <div class="seg" role="group" aria-label="Modo de control">
+    <button id="mWalk" aria-pressed="true">A pie</button>
+    <button id="mFly" aria-pressed="false">Vuelo libre</button>
+  </div>
+</div>
+
+<div class="hud tr">
+  <button class="chip" id="gyro">Giroscopio: apagado</button>
+  <div class="panel read" aria-live="polite">
+    Joystick <b id="rJoy">0.00 · 0.00</b><br>
+    Rumbo <b id="rYaw">0°</b> · Cabeceo <b id="rPitch">0°</b><br>
+    Balizas <b id="rBeacons">0 / 5</b>
+    <span class="msg" id="gyroMsg"></span>
+  </div>
+</div>
+
+<div id="help"></div>
+<div id="toast"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { init as initControls, isTouchDevice } from './controles-moviles.js';
+
+const $ = id => document.getElementById(id);
+const TOUCH = isTouchDevice();
+if (TOUCH) document.documentElement.classList.add('touch');
+
+/* ---------- Escena ---------- */
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0b0717);
+scene.fog = new THREE.Fog(0x0b0717, 18, 60);
+const camera = new THREE.PerspectiveCamera(72, 1, 0.05, 400);
+camera.rotation.order = 'YXZ';
+
+scene.add(new THREE.HemisphereLight(0x9d86ff, 0x1a1233, 0.9));
+const key = new THREE.PointLight(0xc4a8ff, 60, 30, 1.6); key.position.set(0, 5.5, 0); scene.add(key);
+const rim = new THREE.PointLight(0x6ad7ff, 25, 20, 1.6); rim.position.set(-7, 2, -7); scene.add(rim);
+
+const W = 9; // media anchura de la sala
+const mat = (c, e = 0, r = .8) => new THREE.MeshStandardMaterial({ color: c, emissive: e, roughness: r, metalness: .25 });
+// suelo con rejilla
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x1c1436));
+floor.rotation.x = -Math.PI / 2; scene.add(floor);
+const grid = new THREE.GridHelper(W * 2, 18, 0x6b4fd8, 0x35266b); grid.position.y = .01; scene.add(grid);
+// techo
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W * 2, W * 2), mat(0x140e29));
+ceil.rotation.x = Math.PI / 2; ceil.position.y = 6; scene.add(ceil);
+// paredes, con un ventanal en la del fondo
+const wallM = mat(0x241a45);
+function wall(w, h, x, y, z, ry) { const m = new THREE.Mesh(new THREE.PlaneGeometry(w, h), wallM); m.position.set(x, y, z); m.rotation.y = ry; scene.add(m); }
+wall(W * 2, 6, 0, 3, W, Math.PI); wall(W * 2, 6, W, 3, 0, -Math.PI / 2); wall(W * 2, 6, -W, 3, 0, Math.PI / 2);
+wall(W * 2, 1.2, 0, .6, -W, 0); wall(W * 2, 1.4, 0, 5.3, -W, 0); wall(4, 3.4, -7, 2.9, -W, 0); wall(4, 3.4, 7, 2.9, -W, 0);
+const frame = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(10.2, 3.6, .15)), new THREE.LineBasicMaterial({ color: 0x8f74ff }));
+frame.position.set(0, 2.9, -W); scene.add(frame);
+// tiras de luz
+for (const s of [-1, 1]) { const strip = new THREE.Mesh(new THREE.BoxGeometry(W * 2, .06, .06), new THREE.MeshBasicMaterial({ color: 0xb9a3ff })); strip.position.set(0, 5.9, s * (W - .1)); scene.add(strip); }
+// columnas y cajas
+const colliders = [];
+for (const [x, z] of [[-4.5, -3], [4.5, -3], [-4.5, 4], [4.5, 4]]) {
+  const p = new THREE.Mesh(new THREE.CylinderGeometry(.45, .55, 6, 20), mat(0x2f2259)); p.position.set(x, 3, z); scene.add(p);
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.6, .03, 8, 32), new THREE.MeshBasicMaterial({ color: 0xb9a3ff })); ring.rotation.x = Math.PI / 2; ring.position.set(x, 1.2, z); scene.add(ring);
+  colliders.push({ x, z, r: .55 });
+}
+for (const [x, z, s] of [[7, -6.5, 1.2], [6, -7, .8], [-7.2, 6.8, 1], [-6.6, 7.2, .7]]) {
+  const b = new THREE.Mesh(new THREE.BoxGeometry(s, s, s), mat(0x3a2a6e, 0x120a30)); b.position.set(x, s / 2, z); b.rotation.y = x; scene.add(b);
+  colliders.push({ x, z, r: s * .75 });
+}
+// estrellas y planeta al otro lado del ventanal
+const starG = new THREE.BufferGeometry(), sp = [];
+for (let i = 0; i < 2500; i++) { const v = new THREE.Vector3().randomDirection().multiplyScalar(120 + Math.random() * 150); sp.push(v.x, v.y, v.z); }
+starG.setAttribute('position', new THREE.Float32BufferAttribute(sp, 3));
+const stars = new THREE.Points(starG, new THREE.PointsMaterial({ color: 0xe9e0ff, size: .9, sizeAttenuation: true, fog: false }));
+scene.add(stars);
+const planet = new THREE.Mesh(new THREE.SphereGeometry(14, 48, 32), new THREE.MeshStandardMaterial({ color: 0x9a7fe8, emissive: 0x3a1f70, roughness: 1, fog: false }));
+planet.position.set(-20, 6, -70); scene.add(planet);
+
+// balizas a recoger para comprobar que el movimiento es preciso
+const beacons = [];
+const bGeo = new THREE.OctahedronGeometry(.32);
+for (const [x, y, z] of [[0, 1.4, -5], [6.5, 1.4, 1], [-6.5, 1.4, -1], [0, 4.4, 5], [-2, 1.4, 7]]) {
+  const m = new THREE.Mesh(bGeo, new THREE.MeshBasicMaterial({ color: 0x8ff0c9 }));
+  m.position.set(x, y, z); scene.add(m);
+  const halo = new THREE.PointLight(0x8ff0c9, 3, 3); halo.position.copy(m.position); scene.add(halo);
+  beacons.push({ m, halo, got: false });
+}
+
+/* ---------- Estado del jugador ---------- */
+const player = { pos: new THREE.Vector3(0, 1.65, 6), yaw: 0, pitch: 0, vy: 0 };
+let mode = 'walk';
+const move = { x: 0, y: 0 }, keys = {};
+let lift = 0; // -1 bajar, +1 subir (vuelo)
+
+function look(dYaw, dPitch) {
+  player.yaw += dYaw;
+  player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch + dPitch));
+}
+
+/* ---------- Controles táctiles (el módulo) ---------- */
+const ctl = initControls(canvas, {
+  onMove: (x, y) => { move.x = x; move.y = y; },
+  onLook: look,
+  onTap: () => toast('Toque'),
+  onGyroChange: s => paintGyro(s),
+  buttons: [],
+});
+function setButtons() {
+  ctl.setButtons(mode === 'fly'
+    ? [{ id: 'up', label: 'Subir', onPress: () => lift = 1, onRelease: () => lift = 0 },
+       { id: 'down', label: 'Bajar', onPress: () => lift = -1, onRelease: () => lift = 0 }]
+    : [{ id: 'jump', label: 'Saltar', onPress: jump }]);
+}
+setButtons();
+ctl.setEnabled(TOUCH);
+
+/* ---------- Escritorio: WASD + arrastrar ratón ---------- */
+addEventListener('keydown', e => { keys[e.code] = true; if (e.code === 'Space' && mode === 'walk') jump(); });
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+canvas.addEventListener('pointermove', e => { if (e.pointerType === 'mouse' && e.buttons & 1) look(-e.movementX * .004, -e.movementY * .004); });
+
+function jump() { if (mode === 'walk' && player.pos.y <= 1.66) player.vy = 4.2; }
+
+/* ---------- Modo ---------- */
+function setMode(m) {
+  mode = m;
+  $('mWalk').setAttribute('aria-pressed', m === 'walk');
+  $('mFly').setAttribute('aria-pressed', m === 'fly');
+  if (m === 'walk') { player.vy = 0; }
+  lift = 0; setButtons(); paintHelp();
+  toast(m === 'fly' ? 'Vuelo libre' : 'A pie');
+}
+$('mWalk').onclick = () => setMode('walk');
+$('mFly').onclick = () => setMode('fly');
+
+function paintHelp() {
+  $('help').innerHTML = TOUCH
+    ? `<b>Pulgar izquierdo</b> para moverte · <b>arrastra a la derecha</b> para mirar${mode === 'fly' ? ' · <b>Subir/Bajar</b> con los botones' : ''}`
+    : `Estás en un ordenador: <b>WASD</b> para moverte, <b>arrastra</b> con el ratón para mirar${mode === 'fly' ? ', <b>Q/E</b> para bajar y subir' : ', <b>Espacio</b> para saltar'}. Ábrelo en el móvil para probar los controles táctiles.`;
+}
+paintHelp();
+
+/* ---------- Giroscopio ---------- */
+function paintGyro(s) {
+  const b = $('gyro');
+  b.classList.toggle('on', s === 'on');
+  b.textContent = 'Giroscopio: ' + ({ on: 'encendido', off: 'apagado', denied: 'sin permiso', unavailable: 'no disponible' }[s] || s);
+  $('gyroMsg').textContent =
+    s === 'denied' ? 'Permiso denegado. En iPhone se vuelve a pedir al recargar la página.' :
+    s === 'unavailable' ? (TOUCH ? 'El visor de Claude no deja leer el giroscopio. En malkevnia.com funcionará; aquí prueba el joystick y el arrastre.' : 'Este equipo no tiene giroscopio.') : '';
+}
+$('gyro').onclick = async () => {
+  if (ctl.gyroState === 'on') return ctl.disableGyro();
+  $('gyro').textContent = 'Giroscopio: buscando…';
+  await ctl.enableGyro();
+};
+
+/* ---------- Avisos ---------- */
+let toastT;
+function toast(t) { const n = $('toast'); n.textContent = t; n.style.opacity = 1; clearTimeout(toastT); toastT = setTimeout(() => n.style.opacity = 0, 900); }
+
+/* ---------- Bucle ---------- */
+function resize() { const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w / h; camera.fov = w < h ? 80 : 70; camera.updateProjectionMatrix(); }
+addEventListener('resize', resize); resize();
+
+const fwd = new THREE.Vector3(), right = new THREE.Vector3(), dir = new THREE.Vector3();
+let last = performance.now(), got = 0;
+const deg = r => Math.round(((r * 180 / Math.PI) % 360 + 540) % 360 - 180);
+
+function step(now) {
+  const dt = Math.min((now - last) / 1000, .05); last = now;
+  // entrada combinada: joystick o teclado
+  let mx = move.x + (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0);
+  let my = move.y + (keys.KeyW ? 1 : 0) - (keys.KeyS ? 1 : 0);
+  const l = Math.hypot(mx, my); if (l > 1) { mx /= l; my /= l; }
+  const up = lift + (keys.KeyE ? 1 : 0) - (keys.KeyQ ? 1 : 0);
+
+  if (mode === 'walk') {
+    const speed = 3.6 * (keys.ShiftLeft ? 1.7 : 1);
+    fwd.set(-Math.sin(player.yaw), 0, -Math.cos(player.yaw));
+    right.set(-fwd.z, 0, fwd.x);
+    dir.copy(fwd).multiplyScalar(my).addScaledVector(right, mx).multiplyScalar(speed * dt);
+    tryMove(dir.x, dir.z);
+    player.vy -= 12 * dt; player.pos.y += player.vy * dt;
+    if (player.pos.y < 1.65) { player.pos.y = 1.65; player.vy = 0; }
+  } else {
+    const speed = 5;
+    camera.getWorldDirection(fwd);
+    right.crossVectors(fwd, camera.up).normalize();
+    dir.copy(fwd).multiplyScalar(my).addScaledVector(right, mx).addScaledVector(camera.up, up).multiplyScalar(speed * dt);
+    player.pos.add(dir);
+    player.pos.x = THREE.MathUtils.clamp(player.pos.x, -W + .4, W - .4);
+    player.pos.z = THREE.MathUtils.clamp(player.pos.z, -W + .4, W - .4);
+    player.pos.y = THREE.MathUtils.clamp(player.pos.y, .4, 5.6);
+  }
+
+  camera.position.copy(player.pos);
+  camera.rotation.set(player.pitch, player.yaw, 0);
+
+  for (const b of beacons) {
+    if (b.got) continue;
+    b.m.rotation.y += dt * 1.5; b.m.position.y += Math.sin(now / 400 + b.m.position.x) * .002;
+    if (b.m.position.distanceTo(player.pos) < .9) {
+      b.got = true; b.m.visible = false; b.halo.visible = false; got++;
+      toast(got === beacons.length ? 'Todas las balizas. Controles calibrados' : `Baliza ${got} de ${beacons.length}`);
+    }
+  }
+  stars.rotation.y += dt * .004;
+
+  $('rJoy').textContent = `${mx.toFixed(2)} · ${my.toFixed(2)}`;
+  $('rYaw').textContent = deg(-player.yaw) + '°';
+  $('rPitch').textContent = deg(player.pitch) + '°';
+  $('rBeacons').textContent = `${got} / ${beacons.length}`;
+
+  renderer.render(scene, camera);
+  requestAnimationFrame(step);
+}
+
+function blocked(x, z) {
+  if (Math.abs(x) > W - .35 || Math.abs(z) > W - .35) return true;
+  for (const c of colliders) if ((x - c.x) ** 2 + (z - c.z) ** 2 < (c.r + .3) ** 2) return true;
+  return false;
+}
+function tryMove(dx, dz) {
+  const p = player.pos;
+  if (!blocked(p.x + dx, p.z + dz)) { p.x += dx; p.z += dz; return; }
+  if (!blocked(p.x + dx, p.z)) p.x += dx; else if (!blocked(p.x, p.z + dz)) p.z += dz;
+}
+
+requestAnimationFrame(step);
+</script>

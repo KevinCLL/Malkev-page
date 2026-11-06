@@ -1,0 +1,22 @@
+<title>Viaje de La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Michroma&family=Jura:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root { color-scheme: dark; --void: #05030c; }
+html, body { height: 100%; }
+body { margin: 0; background: var(--void); color: #ece6ff; overflow: hidden; }
+#stage { position: fixed; inset: 0; }
+#c { position: absolute; inset: 0; width: 100%; height: 100%; display: block; touch-action: none; }
+</style>
+<div id="stage"><canvas id="c"></canvas></div>
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+<script type="module">
+import { createUniverse } from './universo.js';
+const q = new URLSearchParams(location.search);
+const u = createUniverse({ canvas: document.getElementById('c'), container: document.getElementById('stage') });
+u.start();
+if (q.get('at') != null) u.goToPlanet(+q.get('at'), { instant: true });
+else if (q.get('go') != null) u.launch();
+window.__u = u;
+</script>

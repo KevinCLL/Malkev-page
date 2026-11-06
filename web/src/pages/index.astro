@@ -1,10 +1,11 @@
 ---
 import Nave from '../layouts/Nave.astro';
 import { salas } from '../lib/salas';
-import { moduloMontable } from '../lib/modulos';
+import { urlModulo } from '../lib/modulos';
 import { listarEntradas } from '../lib/bitacora';
 
 const destinos = salas.filter((s) => s.slug !== 'puente');
+const operativa = (s: (typeof salas)[number]) => s.slug === 'bitacora' || urlModulo(s) !== null;
 const ultimas = (await listarEntradas()).slice(0, 3);
 const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' });
 ---
@@ -27,9 +28,7 @@ const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' });
             <span class="icono" aria-hidden="true">{s.icono}</span>
             <span class="nombre">{s.nombre}</span>
             <span class="txt">{s.resumen}</span>
-            <span class="estado" data-listo={moduloMontable(s.modulo) || !s.modulo || s.slug === 'bitacora'}>
-              {moduloMontable(s.modulo) || !s.modulo || s.slug === 'bitacora' ? 'Operativa' : 'En obras'}
-            </span>
+            <span class="estado" data-listo={operativa(s)}>{operativa(s) ? 'Operativa' : 'En obras'}</span>
           </a>
         </li>
       ))}

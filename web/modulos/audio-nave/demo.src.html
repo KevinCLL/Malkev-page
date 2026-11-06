@@ -1,0 +1,304 @@
+<title>Sonido de La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Sans:wght@400;500&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: consola de a bordo — plano de la nave arriba, mezclador y efectos debajo, en paneles tipo instrumento */
+:root {
+  --void: #0d0a1a;        /* fondo: espacio */
+  --hull: #17122b;        /* paneles */
+  --hull-2: #211a3d;      /* controles */
+  --line: #3a2f63;        /* bordes */
+  --ink: #e9e4ff;         /* texto */
+  --ink-dim: #a69cd1;     /* texto secundario */
+  --glow: #b79bff;        /* acento púrpura */
+  --warm: #ffc27a;        /* luz cálida (activo) */
+  --f-display: "Chakra Petch", "Segoe UI", system-ui, sans-serif;
+  --f-body: "IBM Plex Sans", system-ui, -apple-system, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { background: var(--void); color: var(--ink); }
+body {
+  font: 15px/1.5 var(--f-body);
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 24px 40px;
+  background:
+    radial-gradient(1200px 500px at 80% -10%, #2a1c5a55, transparent 60%),
+    radial-gradient(800px 400px at 0% 110%, #3b1d4f44, transparent 60%),
+    var(--void);
+  min-height: 100%;
+}
+#stars { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+main { position: relative; z-index: 1; max-width: 1080px; margin: 0 auto; display: grid; gap: 18px; }
+header { display: flex; flex-wrap: wrap; align-items: end; justify-content: space-between; gap: 12px 24px; }
+h1 { font: 600 clamp(26px, 4vw, 36px)/1.1 var(--f-display); letter-spacing: 0.01em; margin: 0; text-wrap: balance; }
+.sub { color: var(--ink-dim); margin: 6px 0 0; max-width: 60ch; }
+.label { font: 500 11px/1 var(--f-mono); text-transform: uppercase; letter-spacing: 0.14em; color: var(--ink-dim); }
+.panel { background: color-mix(in oklab, var(--hull) 92%, transparent); border: 1px solid var(--line); border-radius: 10px; padding: 16px; min-width: 0; }
+.panel h2 { font: 600 15px/1.2 var(--f-display); letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 12px; color: var(--glow); }
+
+button { font: inherit; color: var(--ink); background: var(--hull-2); border: 1px solid var(--line); border-radius: 7px; padding: 9px 14px; cursor: pointer; transition: border-color .15s, background .15s; }
+button:hover { border-color: var(--glow); }
+button:focus-visible, input:focus-visible, select:focus-visible, .room:focus-visible { outline: 2px solid var(--warm); outline-offset: 2px; }
+button[aria-pressed="true"] { background: color-mix(in oklab, var(--glow) 28%, var(--hull-2)); border-color: var(--glow); }
+button:disabled { opacity: .45; cursor: not-allowed; }
+
+#power { font: 600 15px/1 var(--f-display); letter-spacing: .08em; text-transform: uppercase; padding: 14px 22px; border-color: var(--glow); background: linear-gradient(180deg, #3a2a78, #251a50); box-shadow: 0 0 24px #b79bff33; }
+#power.on { background: var(--hull-2); box-shadow: none; }
+.status { display: flex; align-items: center; gap: 10px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: #4a4270; }
+.on-air .dot { background: var(--warm); box-shadow: 0 0 10px var(--warm); }
+
+/* Plano */
+.plan-wrap { overflow-x: auto; }
+#plan { display: block; width: 100%; min-width: 560px; height: auto; }
+.room rect { fill: var(--hull-2); stroke: var(--line); stroke-width: .08; transition: fill .3s, stroke .3s; }
+.room { cursor: pointer; outline: none; }
+.room:hover rect { stroke: var(--glow); }
+.room.active rect { fill: color-mix(in oklab, var(--rc) 30%, var(--hull-2)); stroke: var(--rc); stroke-width: .14; }
+.room text { fill: var(--ink-dim); font: 500 .62px var(--f-mono); text-anchor: middle; pointer-events: none; }
+.room text.k { fill: var(--ink-dim); opacity: .6; font-size: .5px; }
+.room.active text { fill: var(--ink); }
+.hull { fill: none; stroke: var(--line); stroke-width: .12; }
+#you { fill: var(--warm); transition: cx .9s ease-in-out, cy .9s ease-in-out; }
+
+.now { display: flex; flex-wrap: wrap; gap: 6px 18px; align-items: baseline; margin-top: 12px; }
+.now strong { font: 600 20px/1.2 var(--f-display); }
+.now span { color: var(--ink-dim); }
+
+.grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 18px; }
+@media (max-width: 760px) { .grid { grid-template-columns: 1fr; } }
+
+/* Mezclador */
+.faders { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 10px; }
+.fader { display: grid; justify-items: center; gap: 8px; background: var(--hull-2); border: 1px solid var(--line); border-radius: 8px; padding: 12px 6px; }
+.fader .val { font: 500 13px/1 var(--f-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+.fader label { font: 500 11px/1.2 var(--f-mono); text-transform: uppercase; letter-spacing: .1em; color: var(--ink-dim); text-align: center; }
+.fader.master { border-color: color-mix(in oklab, var(--glow) 50%, var(--line)); }
+input[type=range].v { writing-mode: vertical-lr; direction: rtl; width: 28px; height: 150px; accent-color: var(--glow); }
+@supports not (writing-mode: vertical-lr) { input[type=range].v { width: 100%; height: auto; } }
+@media (max-width: 460px) { input[type=range].v { height: 120px; } .fader { padding: 10px 2px; } }
+.mixfoot { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; align-items: center; justify-content: space-between; }
+canvas#scope { width: 100%; height: 64px; display: block; border-radius: 6px; background: #0a0815; border: 1px solid var(--line); margin-top: 12px; }
+
+/* Efectos */
+.fx { display: grid; gap: 12px; align-content: start; }
+.fx h2 { margin: 0; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; }
+.row > button { flex: 1 1 auto; }
+select { font: inherit; color: var(--ink); background: var(--hull-2); border: 1px solid var(--line); border-radius: 7px; padding: 8px 10px; }
+.check { display: flex; gap: 8px; align-items: center; color: var(--ink-dim); }
+.check input { accent-color: var(--glow); width: 16px; height: 16px; }
+kbd { font: 500 11px/1 var(--f-mono); border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 2px 5px; color: var(--ink-dim); }
+.keys { color: var(--ink-dim); font-size: 13px; line-height: 1.9; }
+.hint { color: var(--ink-dim); font-size: 13px; margin: 0; }
+footer { color: var(--ink-dim); font-size: 13px; }
+footer code { font-family: var(--f-mono); color: var(--ink); }
+@media (prefers-reduced-motion: reduce) { #you { transition: none; } }
+</style>
+
+<canvas id="stars" aria-hidden="true"></canvas>
+<main>
+  <header>
+    <div>
+      <div class="label">La Malkevnia · cubierta principal</div>
+      <h1>Sonido de a bordo</h1>
+      <p class="sub">Motores, aire, música y puertas de la nave, todo sintetizado en tu navegador. Elige una sala en el plano y ajusta cada capa.</p>
+    </div>
+    <div class="status" id="status">
+      <span class="dot" aria-hidden="true"></span>
+      <button id="power" type="button">Encender el audio</button>
+    </div>
+  </header>
+
+  <section class="panel" aria-labelledby="h-plan">
+    <h2 id="h-plan">Plano de la nave</h2>
+    <div class="plan-wrap"><svg id="plan" viewBox="0 0 37.5 15.5" role="group" aria-label="Salas de la nave"></svg></div>
+    <div class="now" aria-live="polite"><strong id="roomName">Pasillo central</strong><span id="roomMood">Tránsito tranquilo, pad suave</span></div>
+  </section>
+
+  <div class="grid">
+    <section class="panel" aria-labelledby="h-mix">
+      <h2 id="h-mix">Mezclador</h2>
+      <div class="faders" id="faders"></div>
+      <canvas id="scope" aria-hidden="true"></canvas>
+      <div class="mixfoot">
+        <button id="mute" type="button" aria-pressed="false">Silenciar todo</button>
+        <span class="hint">Los volúmenes se recuerdan en este navegador.</span>
+      </div>
+    </section>
+
+    <section class="panel fx" aria-labelledby="h-fx">
+      <h2 id="h-fx">Efectos</h2>
+      <div class="row">
+        <button id="doorOpen" type="button">Abrir puerta</button>
+        <button id="doorClose" type="button">Cerrar puerta</button>
+      </div>
+      <div class="row">
+        <button id="step" type="button">Un paso</button>
+        <button id="walk" type="button" aria-pressed="false">Caminar</button>
+        <button id="beep" type="button">Pitido</button>
+      </div>
+      <div class="row" style="align-items:center">
+        <label class="label" for="surface">Suelo</label>
+        <select id="surface">
+          <option value="metal">Chapa</option>
+          <option value="rejilla">Rejilla</option>
+          <option value="moqueta">Moqueta</option>
+        </select>
+      </div>
+      <label class="check"><input type="checkbox" id="travel" checked> Al cambiar de sala, abrir puerta y caminar</label>
+      <div class="keys">
+        <kbd>1</kbd>–<kbd>9</kbd> salas · <kbd>P</kbd> puerta · <kbd>Espacio</kbd> paso · <kbd>W</kbd> caminar · <kbd>M</kbd> silenciar
+      </div>
+    </section>
+  </div>
+
+  <footer>Sin samples ni ficheros de audio: osciladores, ruido filtrado y una reverb generada con la Web Audio API. El mismo motor está en <code>modulos/audio-nave/audio-nave.js</code>, listo para la nave 3D.</footer>
+</main>
+
+<script type="module">
+/*__MODULE__*/
+
+// ───── Demo ─────
+const A = AudioNave; window.AudioNave = AudioNave;
+const $ = (id) => document.getElementById(id);
+const PLAN = [
+  { id:'maquinas',   x0:1,  x1:6,  z0:1, z1:14, color:'#8f7bff' },
+  { id:'recreativa', x0:8,  x1:13, z0:1, z1:5,  color:'#ff6ad5' },
+  { id:'proyeccion', x0:15, x1:20, z0:1, z1:5,  color:'#b48cff' },
+  { id:'bitacora',   x0:22, x1:27, z0:1, z1:5,  color:'#ffc27a' },
+  { id:'pasillo',    x0:7,  x1:28, z0:6.5, z1:8.5, color:'#a48bff' },
+  { id:'juegos',     x0:8,  x1:13, z0:10,z1:14, color:'#9b7bff' },
+  { id:'biblioteca', x0:15, x1:20, z0:10,z1:14, color:'#ffb36b' },
+  { id:'ordenador',  x0:22, x1:27, z0:10,z1:14, color:'#6affc8' },
+  { id:'puente',     x0:29, x1:36, z0:1, z1:14, color:'#7fd6ff' },
+];
+const ORDER = ['puente','pasillo','maquinas','recreativa','proyeccion','bitacora','juegos','biblioteca','ordenador'];
+const SHORT = { maquinas:'Máquinas', recreativa:'Recreativa', proyeccion:'Proyección', bitacora:'Bitácora', pasillo:'Pasillo central', juegos:'Juegos', biblioteca:'Biblioteca', ordenador:'Ordenador', puente:'Puente' };
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('plan');
+const el = (n, a) => { const e = document.createElementNS(NS, n); for (const k in a) e.setAttribute(k, a[k]); return e; };
+svg.append(el('path', { class: 'hull', d: 'M0.4 0.4 H33 L37.1 4 V11.5 L33 15.1 H0.4 Z' }));
+const roomEls = {};
+PLAN.forEach((r) => {
+  const g = el('g', { class: 'room', tabindex: '0', role: 'button', 'aria-label': A.ROOMS[r.id].name, style: `--rc:${r.color}` });
+  g.append(el('rect', { x: r.x0, y: r.z0, width: r.x1 - r.x0, height: r.z1 - r.z0, rx: .35 }));
+  const cx = (r.x0 + r.x1) / 2, cy = (r.z0 + r.z1) / 2;
+  const n = ORDER.indexOf(r.id) + 1;
+  const t = el('text', { x: cx, y: cy + (r.id === 'pasillo' ? .22 : .2) }); t.textContent = r.id === 'pasillo' ? `${SHORT[r.id]} · ${n}` : SHORT[r.id]; g.append(t);
+  if (r.id !== 'pasillo') { const k = el('text', { class: 'k', x: cx, y: cy + .95 }); k.textContent = n; g.append(k); }
+  g.addEventListener('click', () => goTo(r.id));
+  g.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); goTo(r.id); } });
+  svg.append(g); roomEls[r.id] = { g, cx, cy };
+});
+const you = el('circle', { id: 'you', r: .32, cx: roomEls.pasillo.cx, cy: roomEls.pasillo.cy }); svg.append(you);
+
+// Mezclador
+const FADERS = [['master','Maestro'],['motores','Motores'],['ambiente','Ambiente'],['musica','Música'],['efectos','Efectos']];
+let saved = {}; try { saved = JSON.parse(localStorage.getItem('audio-nave-vol') || '{}'); } catch {}
+for (const [k, v] of Object.entries(saved)) if (typeof v === 'number') A.setVolume(k, v);
+FADERS.forEach(([k, name]) => {
+  const d = document.createElement('div'); d.className = 'fader' + (k === 'master' ? ' master' : '');
+  const pct = Math.round(A.getVolume(k) * 100);
+  d.innerHTML = `<span class="val" id="v-${k}">${pct}</span><input class="v" type="range" min="0" max="100" value="${pct}" id="f-${k}" aria-label="Volumen de ${name}"><label for="f-${k}">${name}</label>`;
+  $('faders').append(d);
+  d.querySelector('input').addEventListener('input', (e) => {
+    const v = e.target.value / 100; A.setVolume(k, v); $('v-' + k).textContent = e.target.value;
+    try { localStorage.setItem('audio-nave-vol', JSON.stringify(A.getState().volumes)); } catch {}
+  });
+});
+
+let current = 'pasillo', busy = false;
+function showRoom(id) {
+  current = id;
+  Object.entries(roomEls).forEach(([k, r]) => r.g.classList.toggle('active', k === id));
+  $('roomName').textContent = A.ROOMS[id].name; $('roomMood').textContent = A.ROOMS[id].mood;
+  you.setAttribute('cx', roomEls[id].cx); you.setAttribute('cy', roomEls[id].cy + (id === 'pasillo' ? 0 : -1.2));
+}
+showRoom('pasillo');
+
+const fxButtons = ['doorOpen','doorClose','step','walk','beep','mute'].map($);
+const setEnabled = (on) => fxButtons.forEach((b) => b.disabled = !on);
+setEnabled(false);
+const surface = () => $('surface').value;
+
+async function power() {
+  if (A.getState().running) { await A.dispose(); $('power').textContent = 'Encender el audio'; $('power').classList.remove('on'); $('status').classList.remove('on-air'); setEnabled(false); $('walk').setAttribute('aria-pressed','false'); return; }
+  try { await A.init({ room: current }); } catch (e) { $('roomMood').textContent = 'No se pudo iniciar el audio: ' + e.message; return; }
+  $('power').textContent = 'Apagar'; $('power').classList.add('on'); $('status').classList.add('on-air'); setEnabled(true);
+  if (A.getState().muted) A.setMuted(false); $('mute').setAttribute('aria-pressed','false');
+  drawScope();
+}
+$('power').addEventListener('click', power);
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+async function goTo(id) {
+  if (id === current || busy) return;
+  const on = A.getState().running;
+  if (!on || !$('travel').checked) { showRoom(id); A.setRoom(id); return; }
+  busy = true;
+  const wasWalking = A.getState().walking;
+  A.playDoor('open'); await sleep(550);
+  A.setWalking(true, { rate: 2.1, surface: surface() });
+  showRoom(id); A.setRoom(id, { fade: 3 });
+  await sleep(1500);
+  if (!wasWalking) A.setWalking(false);
+  A.playDoor('close');
+  busy = false;
+}
+
+$('doorOpen').onclick = () => A.playDoor('open');
+$('doorClose').onclick = () => A.playDoor('close');
+$('step').onclick = () => A.footstep({ surface: surface() });
+$('beep').onclick = () => A.beep();
+$('walk').onclick = () => { const on = !A.getState().walking; A.setWalking(on, { surface: surface() }); $('walk').setAttribute('aria-pressed', on); };
+$('surface').onchange = () => { if (A.getState().walking) A.setWalking(true, { surface: surface() }); };
+$('mute').onclick = () => { const m = !A.getState().muted; A.setMuted(m); $('mute').setAttribute('aria-pressed', m); $('mute').textContent = m ? 'Activar sonido' : 'Silenciar todo'; };
+
+document.addEventListener('keydown', (e) => {
+  if (e.target.matches('input, select') || e.metaKey || e.ctrlKey || e.altKey) return;
+  const n = parseInt(e.key, 10);
+  if (n >= 1 && n <= 9) { goTo(ORDER[n - 1]); return; }
+  if (!A.getState().running) return;
+  const k = e.key.toLowerCase();
+  if (k === 'p') A.playDoor('open');
+  else if (e.key === ' ' && !e.target.matches('button, .room')) { e.preventDefault(); A.footstep({ surface: surface() }); }
+  else if (k === 'w') $('walk').click();
+  else if (k === 'm') $('mute').click();
+});
+
+// Osciloscopio
+function drawScope() {
+  const c = $('scope'), g = c.getContext('2d'); const an = A.getAnalyser(); if (!an) return;
+  const buf = new Uint8Array(an.fftSize);
+  const css = getComputedStyle(document.documentElement);
+  const draw = () => {
+    const a = A.getAnalyser(); if (!a) { g.clearRect(0, 0, c.width, c.height); return; }
+    const w = c.width = c.clientWidth * devicePixelRatio, h = c.height = c.clientHeight * devicePixelRatio;
+    a.getByteTimeDomainData(buf);
+    g.clearRect(0, 0, w, h); g.lineWidth = 1.5 * devicePixelRatio; g.strokeStyle = css.getPropertyValue('--glow');
+    g.shadowColor = g.strokeStyle; g.shadowBlur = 8; g.beginPath();
+    for (let i = 0; i < buf.length; i += 2) { const x = (i / buf.length) * w, y = h / 2 + ((buf[i] - 128) / 128) * h * 1.6; i ? g.lineTo(x, y) : g.moveTo(x, y); }
+    g.stroke(); requestAnimationFrame(draw);
+  };
+  draw();
+}
+
+// Estrellas lentas
+(() => {
+  const c = $('stars'), g = c.getContext('2d'); let st = [];
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const size = () => { c.width = innerWidth * devicePixelRatio; c.height = innerHeight * devicePixelRatio; st = Array.from({ length: 160 }, () => ({ x: Math.random() * c.width, y: Math.random() * c.height, z: Math.random() })); };
+  size(); addEventListener('resize', size);
+  const frame = () => {
+    g.clearRect(0, 0, c.width, c.height);
+    for (const s of st) { s.x -= (0.05 + s.z * 0.25) * devicePixelRatio; if (s.x < 0) s.x = c.width; g.fillStyle = `rgba(220,210,255,${0.2 + s.z * 0.6})`; g.fillRect(s.x, s.y, (0.6 + s.z) * devicePixelRatio, (0.6 + s.z) * devicePixelRatio); }
+    if (!reduce) requestAnimationFrame(frame);
+  };
+  frame();
+})();
+</script>

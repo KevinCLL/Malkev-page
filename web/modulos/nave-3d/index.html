@@ -2,7 +2,7 @@
 <title>La Malkevnia</title>
 <meta name="claude:viewport-fit-sides" content="cover">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
 <style>
 /* Juego a pantalla completa: lienzo 3D con HUD flotante en las esquinas. Un único look oscuro (cabina de nave). */
 :root{
@@ -44,7 +44,9 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 #joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(181,155,255,.45);border:1px solid var(--accent)}
 #act{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px));pointer-events:auto;width:84px;height:84px;border-radius:50%;padding:0;font-size:11px}
 #sound{pointer-events:auto;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:8px 14px;font-size:11px}
-#uni{position:fixed;inset:0;width:100%;height:100%;z-index:30;background:#000}
+#uniWrap{position:fixed;inset:0;z-index:30;background:#000}#uniWrap canvas{width:100%;height:100%;display:block}
+#mini .mapa{width:300px}@media (max-width:640px){#mini .mapa{width:190px}}
+#termIn{position:fixed;left:-9999px;top:0;opacity:0;width:1px;height:1px}
 #fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40;transition:opacity .6s}
 .touch #help,.touch #cross{display:none}
 @media (max-width:640px){#mini canvas{width:170px}#room{min-width:0}#room .nm{font-size:14px}}
@@ -60,6 +62,7 @@ html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(
 <div id="joy" class="hud" hidden><i></i></div>
 <button id="act" class="hud btn" hidden>USAR</button>
 <button id="sound" class="hud btn ghost" hidden>Sonido: no</button>
+<textarea id="termIn" aria-label="Teclado de la consola" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
 
 <div id="start" class="screen">
   <div class="card">
@@ -480,7 +483,7 @@ function kallax(x, z, rotY) {
 // BIBLIOTECA
 {
   const b = rb('biblioteca');
-  for (const [x, rot] of [[b.x0 + .2, Math.PI / 2], [b.x1 - .2, -Math.PI / 2]]) {
+  for (const [x, rot] of [[b.x1 - .2, -Math.PI / 2]]) {   // la pared oeste es para la librería 3D
     const g = new THREE.Group(); g.position.set(x, 0, b.cz - .3); g.rotation.y = rot; scene.add(g);
     const L = 5.2;
     const sides = [[.05, 2.5, .38, -L / 2, 1.25, 0], [.05, 2.5, .38, L / 2, 1.25, 0], [L, .05, .38, 0, 2.5, 0], [L, 2.5, .02, 0, 1.25, -.18]];
@@ -509,7 +512,7 @@ function kallax(x, z, rotY) {
   anim.push(t => { ledT.offset.y = Math.floor(t * 4) * .0625; });
   // terminal central con pantalla curva
   box(2.4, .8, .8, b.cx, 0, b.cz + .3, M.metal);
-  for (let i = -1; i <= 1; i++) { const s = new THREE.Mesh(new THREE.PlaneGeometry(.8, .5), glow(0x6affc8, .5)); s.position.set(b.cx + i * .78, 1.2, b.cz + .55 + Math.abs(i) * .12); s.rotation.y = Math.PI + i * .3; scene.add(s); }
+  // la pantalla del terminal la pone el módulo ordenador-abordo (integracion.js)
   interact.push({ x: b.cx, z: b.cz, r: 1.9, label: 'Acceder a la consola del capitán', run: panelMsg('Ordenador de a bordo', 'Consola del capitán', 'Desde aquí gestionarás la nave: escribir en la bitácora, añadir juegos, libros y pelis, y moderar comentarios.') });
 }
 
@@ -537,13 +540,15 @@ function hits(px, pz) {
 }
 
 /* ---------- Entrada ---------- */
+let keyCapture = null, mapa = null, mobileCtl = null;
 let running = false, locked = false, dragLook = false, paused = false, modal = false, inUniverse = false;
 addEventListener('keydown', e => {
   if (inUniverse) return;
+  if (keyCapture && keyCapture(e)) return;
   keys[e.code] = true;
-  if (!running || modal) { if (modal && (e.code === 'Escape' || e.code === 'KeyE')) closePanel(); return; }
+  if (!running || modal) { if (!$('panel').hidden && (e.code === 'Escape' || e.code === 'KeyE')) closePanel(); return; }
   if (e.code === 'KeyE') useNearest();
-  if (e.code === 'KeyM') $('mini').hidden = !$('mini').hidden;
+  if (e.code === 'KeyM' && !mapa) $('mini').hidden = !$('mini').hidden;
 });
 addEventListener('keyup', e => { keys[e.code] = false; });
 addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
@@ -564,6 +569,7 @@ canvas.addEventListener('click', () => { if (running && !locked && !dragLook && 
 const joy = { id: null, x0: 0, y0: 0, vx: 0, vy: 0 }, lookT = { id: null, x: 0, y: 0 };
 const knob = $('joy').querySelector('i');
 canvas.addEventListener('touchstart', e => {
+  if (mobileCtl) return;
   for (const t of e.changedTouches) {
     if (t.clientX < innerWidth * .45 && joy.id === null) { joy.id = t.identifier; joy.x0 = t.clientX; joy.y0 = t.clientY; }
     else if (lookT.id === null) { lookT.id = t.identifier; lookT.x = t.clientX; lookT.y = t.clientY; }
@@ -571,6 +577,7 @@ canvas.addEventListener('touchstart', e => {
   e.preventDefault();
 }, { passive: false });
 canvas.addEventListener('touchmove', e => {
+  if (mobileCtl) return;
   for (const t of e.changedTouches) {
     if (t.identifier === joy.id) {
       let dx = t.clientX - joy.x0, dy = t.clientY - joy.y0; const l = Math.hypot(dx, dy), m = 50;
@@ -589,9 +596,9 @@ function showPanel(eb, title, text, extra) {
   modal = true; $('pEb').textContent = eb; $('pTitle').textContent = title; $('pText').textContent = text;
   $('pBtns').querySelectorAll('.extra').forEach(n => n.remove());
   if (extra) $('pBtns').prepend(extra);
-  $('panel').hidden = false; if (locked) document.exitPointerLock(); $('pClose').focus();
+  $('panel').hidden = false; if (locked) document.exitPointerLock(); mobileCtl?.setEnabled(false); $('pClose').focus();
 }
-function closePanel() { $('panel').hidden = true; modal = false; for (const k in keys) keys[k] = false; lock(); }
+function closePanel() { $('panel').hidden = true; modal = false; for (const k in keys) keys[k] = false; mobileCtl?.setEnabled(true); lock(); }
 $('pClose').addEventListener('click', closePanel);
 $('resume').addEventListener('click', () => { $('pause').hidden = true; paused = false; lock(); });
 
@@ -600,9 +607,9 @@ function useNearest() { if (nearest && !modal) nearest.run(); }
 
 /* ---------- Universo (módulo del viaje 3D) ---------- */
 let uni = null;
-async function openUniverse() {
+async function openUniverse(planetId) {
   let mod;
-  try { mod = await import('./universo.js'); }
+  try { mod = await import('./universo-3d/universo.js'); }
   catch {
     showPanel('Navegación', 'Ordenador de navegación', 'Los motores de salto aún se están calibrando. Muy pronto podrás trazar rumbo desde esta mesa y viajar por el universo de Malkevnia.');
     return;
@@ -610,20 +617,28 @@ async function openUniverse() {
   $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
   inUniverse = true; if (locked) document.exitPointerLock();
   for (const k in keys) keys[k] = false;
-  const c = document.createElement('canvas'); c.id = 'uni'; document.body.appendChild(c);
+  mobileCtl?.setEnabled(false); window.AudioNave?.setMuted(true);
+  const wrap = document.createElement('div'); wrap.id = 'uniWrap'; const c = document.createElement('canvas'); wrap.appendChild(c); document.body.appendChild(wrap);
   const exit = async () => {
     $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
     try { uni?.stop?.(); uni?.dispose?.(); } catch {}
-    uni = null; c.remove(); inUniverse = false; $('fade').style.opacity = 0; lock();
+    uni = null; wrap.remove(); inUniverse = false; clock.getDelta(); $('fade').style.opacity = 0;
+    mobileCtl?.setEnabled(true); if (audioOn) window.AudioNave?.setMuted(false); lock();
   };
-  try { uni = await (mod.createUniverse || mod.default)({ canvas: c, onExit: exit }); uni?.start?.(); }
-  catch (err) { console.error(err); c.remove(); inUniverse = false; showPanel('Navegación', 'Fallo en el salto', 'El módulo de navegación no respondió. Inténtalo de nuevo más tarde.'); }
+  try {
+    uni = (mod.createUniverse || mod.default)({ canvas: c, container: wrap, onExit: exit, intro: false });
+    await uni.ready; uni.start();
+    if (planetId) uni.goToPlanet(planetId); else uni.launch?.();
+  }
+  catch (err) { console.error(err); wrap.remove(); inUniverse = false; mobileCtl?.setEnabled(true); showPanel('Navegación', 'Fallo en el salto', 'El módulo de navegación no respondió. Inténtalo de nuevo más tarde.'); }
   $('fade').style.opacity = 0;
 }
 
 /* ---------- Sonido ambiente (opcional) ---------- */
 let audio = null;
+let audioOn = false;
 $('sound').addEventListener('click', () => {
+  if (window.AudioNave) { audioOn = !audioOn; window.AudioNave.setMuted(!audioOn); $('sound').textContent = 'Sonido: ' + (audioOn ? 'sí' : 'no'); return; }
   if (!audio) {
     const ac = new AudioContext(), out = ac.createGain(); out.gain.value = .0; out.connect(ac.destination);
     const len = ac.sampleRate * 4, buf = ac.createBuffer(1, len, ac.sampleRate), ch = buf.getChannelData(0); let l = 0;
@@ -679,6 +694,10 @@ function tick() {
       if (!hits(player.x, player.z + mz)) player.z += mz;
       player.bob += dt * Math.min(len, 1) * (sp / dt) * 2.4;
     }
+    player.moving = len > .2;
+  } else player.moving = false;
+  if (player.moving !== player._wasMoving) { player._wasMoving = player.moving; window.AudioNave?.setWalking(player.moving, { surface: lastRoom?.id === 'biblioteca' || lastRoom?.id === 'proyeccion' ? 'moqueta' : 'metal' }); }
+  {
   }
   // puertas
   for (const d of DOORS) {
@@ -698,14 +717,15 @@ function tick() {
   for (const a of anim) a(t, dt);
   // compartimento actual
   const r = roomOf(player.x, player.z);
-  if (r && r !== lastRoom) { lastRoom = r; $('roomName').textContent = r.name; $('roomSub').textContent = r.sub; }
+  if (r && r !== lastRoom) { const prev = lastRoom; lastRoom = r; $('roomName').textContent = r.name; $('roomSub').textContent = r.sub; dispatchEvent(new CustomEvent('malkevnia:room', { detail: { id: r.id, prev: prev?.id } })); }
+  mapa?.setPlayer(player.x, player.z, player.yaw);
   // interacción más cercana
   nearest = null; let best = 1e9;
   for (const it of interact) { const dd = Math.hypot(player.x - it.x, player.z - it.z); if (dd < it.r && dd < best) { best = dd; nearest = it; } }
   const pr = $('prompt');
   if (nearest && running && !modal) { pr.hidden = false; pr.innerHTML = (TOUCH ? '' : '<kbd>E</kbd>') + nearest.label; $('act').hidden = !TOUCH; }
   else { pr.hidden = true; $('act').hidden = true; }
-  if (!$('mini').hidden && (miniT += dt) > .1) { miniT = 0; drawMini(); }
+  if (!mapa && !$('mini').hidden && (miniT += dt) > .1) { miniT = 0; drawMini(); }
   composer ? composer.render() : renderer.render(scene, camera);
 }
 addEventListener('resize', () => {
@@ -715,6 +735,7 @@ addEventListener('resize', () => {
 
 $('go').addEventListener('click', () => {
   $('start').hidden = true; running = true;
+  dispatchEvent(new CustomEvent('malkevnia:start'));
   for (const id of ['room', 'mini', 'cross', 'help', 'sound']) $(id).hidden = false;
   if (TOUCH) { $('joy').hidden = false; if (innerWidth < 640) $('mini').hidden = true; }
   lock();
@@ -761,6 +782,7 @@ window.Malkevnia = { version: 1, THREE, scene, camera, renderer, player, rooms: 
   addCollider: addCol, addInteract: it => (interact.push(it), it) };
 window.__nave = { player, scene, camera };
 dispatchEvent(new CustomEvent('malkevnia:ready', { detail: window.Malkevnia }));
-// módulos integrados: se añaden aquí con import() + registerModule
+// módulos integrados (cada uno falla por separado sin romper la nave)
 tick();
+import('./integracion.js').then(m => m.default({ THREE, scene, camera, renderer, player, rooms: roomsWorld, R, rb, interact, anim, addCol, box, glow, showPanel, suspend, resume, teleport, openUniverse, useNearest, lock, look, joy, keys, TOUCH, S, H, $, get lastRoom() { return lastRoom; }, setKeyCapture: f => { keyCapture = f; }, setMapa: m => { mapa = m; }, setMobile: c => { mobileCtl = c; }, get locked() { return locked; }, setModal: v => { modal = v; }, setAudioOn: v => { audioOn = v; $('sound').textContent = 'Sonido: ' + (v ? 'sí' : 'no'); }, starLayers })).catch(e => console.warn('integración', e));
 </script>

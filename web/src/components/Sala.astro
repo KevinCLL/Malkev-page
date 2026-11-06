@@ -1,7 +1,7 @@
 ---
 import Nave from '../layouts/Nave.astro';
 import { sala as buscarSala } from '../lib/salas';
-import { moduloMontable } from '../lib/modulos';
+import { urlModulo } from '../lib/modulos';
 
 /**
  * Esqueleto común de una sala. Si el módulo de la sala ya existe en `modulos/`,
@@ -10,11 +10,11 @@ import { moduloMontable } from '../lib/modulos';
  */
 interface Props { slug: string }
 const s = buscarSala(Astro.props.slug);
-const montado = moduloMontable(s.modulo);
+const montado = urlModulo(s);
 ---
 {montado ? (
   <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug} inmersivo>
-    <iframe class="modulo" src={`/modulos/${s.modulo}/index.html`} title={s.nombre} allow="fullscreen; gyroscope; accelerometer; autoplay"></iframe>
+    <iframe class="modulo" src={montado} title={s.nombre} allow="fullscreen; gyroscope; accelerometer; autoplay"></iframe>
     <a class="volver panel" href="/">◂ Puente</a>
   </Nave>
 ) : (
@@ -30,7 +30,7 @@ const montado = moduloMontable(s.modulo);
         <p class="etiqueta">Sala en obras</p>
         <p>
           Esta sala se llenará con el módulo <code>{s.modulo}</code>. En cuanto exista{' '}
-          <code>modulos/{s.modulo}/index.html</code>, aparecerá aquí a pantalla completa.
+          <code>modulos/{s.modulo}/{s.entrada ?? 'index.html'}</code>, aparecerá aquí a pantalla completa.
         </p>
       </aside>
     )}
