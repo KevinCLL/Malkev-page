@@ -51,4 +51,19 @@ test('SQL contra PostgreSQL: inserta, no duplica, respeta lo editado y aguanta t
   assert.equal(permutation.external_ids.goodreads, 2) // dos ediciones, dos fichas
   assert.equal(vertigo.status, 'watching')
   assert.equal(vertigo.finished_on, null)
+
+  // El panel resuelve una ficha (meta.revisado) y luego se reimporta sin red: ni se pierde el veredicto
+  // ni el emparejamiento bueno pasa a «pendiente».
+  const conMatch = (estado) => deduplicar([crearFicha({ kind: 'book', title: 'Permutation City', external_ids: { goodreads: 2 }, sources: ['goodreads', 'openlibrary'], match: { provider: 'openlibrary', estado, score: 1 } })])
+  psql([], generarSql(conMatch('auto')))
+  psql(['-c', `UPDATE items SET meta = meta || '{"revisado": {"estado": "auto", "en": "2026-11-06"}}' WHERE slug = 'permutation-city'`])
+  psql([], generarSql(conMatch('pendiente')))
+  psql([], generarSql(conMatch('error')))
+  psql([], generarSql(deduplicar([crearFicha({ kind: 'book', title: 'Permutation City', external_ids: { goodreads: 2 }, sources: ['goodreads'] })]))) // --sin-enriquecer
+  const meta = JSON.parse(psql(['-c', "SELECT meta FROM items WHERE slug = 'permutation-city'"]))
+  assert.equal(meta.import.match.estado, 'auto')
+  assert.deepEqual(meta.import.sources, ['goodreads', 'openlibrary']) // las fuentes se acumulan
+  assert.deepEqual(meta.revisado, { estado: 'auto', en: '2026-11-06' })
+  psql([], generarSql(conMatch('revisar')))
+  assert.equal(JSON.parse(psql(['-c', "SELECT meta FROM items WHERE slug = 'permutation-city'"])).import.match.estado, 'revisar')
 })

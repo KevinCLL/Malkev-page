@@ -129,6 +129,17 @@ WHERE item_id IS NOT NULL AND EXISTS (SELECT 1 FROM importacion o WHERE o.item_i
     const portada = sobrescribir
       ? `COALESCE(${nuevo('cover_url')}, items.cover_url)`
       : `CASE WHEN items.cover_url IS NULL OR items.cover_url = ${nuevo('meta')} ->> 'cover_url_original' THEN COALESCE(${nuevo('cover_url')}, items.cover_url) ELSE items.cover_url END`
+    // meta: lo que ya hay gana (también meta.revisado, el veredicto del panel), salvo meta.import, que es el
+    // informe de esta importación. Una pasada que no ha buscado (sin red, sin clave, --sin-enriquecer) o que
+    // ha fallado («error») no sabe nada nuevo: no borra el emparejamiento que hubiera, para que la ficha no
+    // vuelva a «por revisar».
+    // Las fuentes se acumulan: la sinopsis de Open Library sigue ahí aunque esta pasada no lo haya consultado.
+    const importNuevo = `jsonb_set(
+      CASE WHEN COALESCE(${nuevo('meta')} #>> '{import,match,estado}', 'pendiente') IN ('pendiente', 'error') AND items.meta #> '{import,match}' IS NOT NULL
+        THEN jsonb_set(${nuevo('meta')} -> 'import', '{match}', items.meta #> '{import,match}')
+        ELSE ${nuevo('meta')} -> 'import' END,
+      '{sources}',
+      (SELECT COALESCE(jsonb_agg(DISTINCT v), '[]') FROM jsonb_array_elements(COALESCE(${nuevo('meta')} #> '{import,sources}', '[]') || COALESCE(items.meta #> '{import,sources}', '[]')) v))`
     // Lo que viene de correcciones.json (columna corregido) gana siempre: es una decisión explícita.
     const corr = (c, normal) => `CASE WHEN '${c}' = ANY(${nuevo('corregido')}) THEN ${nuevo(c)} ELSE ${normal} END`
     return `title        = ${corr('title', 'items.title')},
@@ -146,7 +157,7 @@ WHERE item_id IS NOT NULL AND EXISTS (SELECT 1 FROM importacion o WHERE o.item_i
   started_on   = COALESCE(items.started_on, ${nuevo('started_on')}),
   finished_on  = COALESCE(items.finished_on, ${nuevo('finished_on')}),
   external_ids = ${nuevo('external_ids')} || items.external_ids,
-  meta         = ${nuevo('meta')} || items.meta || jsonb_build_object('import', ${nuevo('meta')} -> 'import')`
+  meta         = ${nuevo('meta')} || items.meta || jsonb_build_object('import', ${importNuevo})`
   }
 
   out.push(`-- 2. Actualizar las que ya existían.
