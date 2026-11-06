@@ -1,0 +1,247 @@
+<title>Cartografía Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@400;500;600&family=Spectral:ital,wght@0,400;1,400&display=swap">
+<style>
+/* Layout: lienzo a pantalla completa; ficha del planeta flotando a la izquierda (abajo en móvil), mandos arriba. */
+:root{
+  --void:#08061a;          /* fondo del espacio */
+  --hull:rgba(22,16,48,.72);/* cristal de la ficha */
+  --line:rgba(176,156,255,.22);
+  --ink:#ece8ff;
+  --muted:#a59cd3;
+  --violet:#b69cff;
+  --glow:#e4d6ff;
+  --font-ui:"Chakra Petch",ui-monospace,"Segoe UI",system-ui,sans-serif;
+  --font-lore:"Spectral",Georgia,"Times New Roman",serif;
+  color-scheme:dark;
+}
+*,*::before,*::after{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--void);color:var(--ink);font-family:var(--font-ui);overflow:hidden}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;transition:filter .35s ease}
+#c.jump{filter:brightness(2.2) blur(2px)}
+.top{position:fixed;top:0;left:0;right:0;display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;
+  padding-top:calc(14px + env(safe-area-inset-top,0px));padding-bottom:10px;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  pointer-events:none;z-index:3}
+.top>*{pointer-events:auto}
+.brand{font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:var(--muted)}
+.brand b{color:var(--violet);font-weight:600}
+.controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+button,.seed input{font:500 13px/1 var(--font-ui);color:var(--ink);background:var(--hull);border:1px solid var(--line);border-radius:4px;
+  padding:9px 12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}
+button{cursor:pointer;letter-spacing:.06em}
+button:hover{border-color:var(--violet)}
+button:focus-visible,.seed input:focus-visible{outline:2px solid var(--violet);outline-offset:2px}
+button.primary{background:rgba(150,118,255,.28);border-color:rgba(182,156,255,.6);color:#fff}
+.seed{display:flex;gap:0}
+.seed input{width:9.5em;border-radius:4px 0 0 4px;font-variant-numeric:tabular-nums;letter-spacing:.08em}
+.seed button{border-radius:0 4px 4px 0;border-left:none}
+.card{position:fixed;z-index:2;left:max(16px,env(safe-area-inset-left,0px));bottom:calc(18px + env(safe-area-inset-bottom,0px));
+  width:min(400px,calc(100% - 32px));max-height:calc(100% - 120px);overflow:auto;background:var(--hull);border:1px solid var(--line);
+  border-radius:6px;padding:20px 22px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);display:flex;flex-direction:column;gap:14px}
+.desig{font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:var(--muted);display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+h1{margin:0;font-weight:600;font-size:clamp(28px,4vw,40px);line-height:1.02;letter-spacing:.02em;color:var(--glow);text-wrap:balance}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{font-size:11px;letter-spacing:.12em;text-transform:uppercase;padding:4px 8px;border:1px solid var(--line);border-radius:999px;color:var(--violet)}
+.lore{font-family:var(--font-lore);font-size:16px;line-height:1.55;color:#d9d3f5;margin:0}
+.lore em{color:var(--muted)}
+dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;margin:0;padding-top:12px;border-top:1px solid var(--line)}
+dl div{min-width:0}
+dt{font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--muted)}
+dd{margin:2px 0 0;font-size:14px;font-variant-numeric:tabular-nums}
+.moons{font-size:13px;color:var(--muted);line-height:1.5}
+.moons strong{color:var(--ink);font-weight:500}
+.hint{position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(16px + env(safe-area-inset-bottom,0px));font-size:11px;letter-spacing:.12em;color:var(--muted);z-index:2}
+.toast{position:fixed;left:50%;top:calc(70px + env(safe-area-inset-top,0px));transform:translateX(-50%);background:var(--hull);border:1px solid var(--line);
+  padding:8px 14px;border-radius:4px;font-size:12px;letter-spacing:.08em;z-index:4}
+@media (max-width:720px){
+  .card{max-height:44%;padding:16px;gap:10px}
+  h1{font-size:26px}
+  .lore{font-size:15px}
+  .hint{display:none}
+  .brand{display:none}
+  .controls{width:100%}
+  .seed{flex:1}.seed input{flex:1;width:auto;min-width:0}
+}
+@media (prefers-reduced-motion:reduce){#c{transition:none}}
+</style>
+
+<canvas id="c" aria-label="Planeta generado"></canvas>
+<header class="top">
+  <div class="brand"><b>La Malkevnia</b> · cartografía estelar</div>
+  <div class="controls">
+    <button id="prev" type="button" title="Planeta anterior (←)">←</button>
+    <button id="next" type="button" class="primary">Siguiente planeta</button>
+    <form class="seed" id="seedForm">
+      <label for="seedInput" hidden>Semilla</label>
+      <input id="seedInput" autocomplete="off" spellcheck="false" placeholder="semilla">
+      <button type="submit">Ir</button>
+    </form>
+    <button id="copy" type="button">Copiar semilla</button>
+  </div>
+</header>
+<article class="card" id="card" aria-live="polite">
+  <div class="desig"><span id="desig">MKV-0000b</span><span id="sector">Sector</span></div>
+  <h1 id="name">Planeta</h1>
+  <div class="chips" id="chips"></div>
+  <p class="lore" id="lore"></p>
+  <dl id="data"></dl>
+  <div class="moons" id="moons"></div>
+</article>
+<div class="hint">Espacio: siguiente · ← anterior · arrastra para girar</div>
+<div class="toast" id="toast" hidden></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { generatePlanet, randomSeed, normalizeSeed } from './planetas.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x08061a);
+const camera = new THREE.PerspectiveCamera(38, 1, 0.05, 400);
+camera.position.set(0, 1.2, 6.4);
+const controls = new OrbitControls(camera, canvas);
+controls.enableDamping = true; controls.enablePan = false;
+controls.minDistance = 2.2; controls.maxDistance = 16;
+controls.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches; controls.autoRotateSpeed = 0.25;
+
+// Fondo: estrellas + nebulosa suave teñida por el planeta
+const starGeo = new THREE.BufferGeometry();
+{
+  const n = 4000, pos = new Float32Array(n * 3), colA = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    const u = Math.random() * 2 - 1, t = Math.random() * Math.PI * 2, r = 150, s = Math.sqrt(1 - u * u);
+    pos.set([r * s * Math.cos(t), r * u, r * s * Math.sin(t)], i * 3);
+    const c = new THREE.Color().setHSL(0.62 + Math.random() * 0.2, 0.5, 0.6 + Math.random() * 0.4);
+    colA.set([c.r, c.g, c.b], i * 3);
+  }
+  starGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  starGeo.setAttribute('color', new THREE.BufferAttribute(colA, 3));
+}
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ size: 0.5, sizeAttenuation: true, vertexColors: true, transparent: true, opacity: 0.85 })));
+const nebMat = new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false,
+  uniforms: { uA: { value: new THREE.Color(0x3a2470) }, uB: { value: new THREE.Color(0x0d2a4a) } },
+  vertexShader: `varying vec3 vP; void main(){ vP=normalize(position); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0); }`,
+  fragmentShader: `uniform vec3 uA; uniform vec3 uB; varying vec3 vP;
+    float h(vec3 p){return fract(sin(dot(p,vec3(12.9,78.2,37.7)))*43758.5);}
+    float n3(vec3 p){vec3 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);
+      return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+                 mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z);}
+    void main(){ vec3 p=vP*2.5; float a=n3(p)*0.5+n3(p*2.1)*0.3+n3(p*4.3)*0.2;
+      float b=n3(p*1.3+7.0); vec3 c=uA*smoothstep(0.45,0.85,a)*0.22+uB*smoothstep(0.5,0.9,b)*0.18;
+      gl_FragColor=vec4(c,1.0);
+      #include <colorspace_fragment>
+    }`,
+});
+scene.add(new THREE.Mesh(new THREE.SphereGeometry(180, 32, 16), nebMat));
+
+// Estado
+let planet = null;
+const visited = [];
+let histIndex = -1;
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = (n) => n.toLocaleString('es-ES');
+
+function render(meta) {
+  $('desig').textContent = meta.designacion;
+  $('sector').textContent = `Sector ${meta.sector}`;
+  $('name').textContent = meta.nombre;
+  const chips = [meta.tipoNombre, meta.estado, ...(meta.etiquetas || [])];
+  if (meta.lunas.length) chips.push(meta.lunas.length === 1 ? '1 luna' : `${meta.lunas.length} lunas`);
+  $('chips').innerHTML = chips.map((c) => `<span class="chip">${esc(c)}</span>`).join('');
+  $('lore').textContent = meta.lore;
+  const rows = [
+    ['Radio', `${fmt(meta.radioKm)} km`], ['Masa', `${fmt(meta.masaTierras)} Tierras`],
+    ['Gravedad', `${meta.gravedad.toLocaleString('es-ES')} g · ${meta.gravedadDesc.toLowerCase()}`], ['Velocidad de escape', `${meta.velocidadEscape.toLocaleString('es-ES')} km/s`],
+    ['Temperatura media', `${fmt(meta.temperatura)} °C`], ['Duración del día', meta.duracionDiaTexto],
+    ['Atmósfera', meta.atmosfera], ['Habitabilidad', `${meta.habitabilidad} %`],
+  ];
+  $('data').innerHTML = rows.map(([k, v]) => `<div><dt>${k}</dt><dd>${esc(v)}</dd></div>`).join('');
+  $('moons').innerHTML = meta.lunas.length
+    ? 'Lunas: ' + meta.lunas.map((l) => `<strong>${esc(l.nombre)}</strong> (${esc(l.tipoNombre.toLowerCase())}, ${fmt(l.radioKm)} km)`).join(' · ')
+    : 'Sin lunas conocidas.';
+  $('seedInput').value = meta.seed;
+  document.title = `${meta.nombre} · Cartografía Malkevnia`;
+}
+
+function show(seed, push = true) {
+  seed = normalizeSeed(seed);
+  canvas.classList.add('jump');
+  setTimeout(() => canvas.classList.remove('jump'), 180);
+  if (planet) planet.dispose();
+  planet = generatePlanet(seed, { detail: innerWidth < 720 ? 'media' : 'alta' });
+  scene.add(planet.group);
+  const a = new THREE.Color(0x3a2470);
+  if (planet.visual?.atmoColor != null) a.lerp(new THREE.Color(planet.visual.atmoColor), 0.35);
+  nebMat.uniforms.uA.value.copy(a);
+  render(planet.meta);
+  if (push) { visited.splice(histIndex + 1); visited.push(seed); histIndex = visited.length - 1; }
+  if (location.hash.slice(1) !== seed) { try { window.history.replaceState(null, '', '#' + seed); } catch { location.hash = seed; } }
+  const far = planet.meta.lunas.length || planet.meta.anillos;
+  controls.maxDistance = far ? 22 : 14;
+}
+
+function next() {
+  if (histIndex < visited.length - 1) { histIndex++; show(visited[histIndex], false); }
+  else show(randomSeed());
+}
+function prev() { if (histIndex > 0) { histIndex--; show(visited[histIndex], false); } }
+
+let toastT;
+function toast(msg) { const t = $('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => (t.hidden = true), 2200); }
+
+$('next').addEventListener('click', next);
+$('prev').addEventListener('click', prev);
+$('seedForm').addEventListener('submit', (e) => { e.preventDefault(); show($('seedInput').value); });
+$('copy').addEventListener('click', async () => {
+  const s = planet.meta.seed;
+  try { await navigator.clipboard.writeText(s); toast(`Semilla «${s}» copiada`); }
+  catch { const i = $('seedInput'); i.focus(); i.select(); toast('Selecciona y copia la semilla'); }
+});
+addEventListener('keydown', (e) => {
+  if (e.target.closest && e.target.closest('input,button,form')) return;
+  if (e.code === 'Space' || e.key === 'ArrowRight') { e.preventDefault(); next(); }
+  if (e.key === 'ArrowLeft') { e.preventDefault(); prev(); }
+});
+addEventListener('hashchange', () => { const s = location.hash.slice(1); if (s && planet && s !== planet.meta.seed) show(s); });
+
+function resize() {
+  const w = innerWidth, h = innerHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  // En pantallas estrechas alejamos la cámara para que el planeta quepa
+  const want = w / h < 0.9 ? 6.4 / Math.max(0.55, (w / h) * 1.1) : 6.4;
+  if (Math.abs(camera.position.length() - want) > 0.5 && !resize.done) camera.position.setLength(want);
+  resize.done = true;
+  // Desplaza el encuadre para que el planeta no quede bajo la ficha
+  if (w >= 720) camera.setViewOffset(w, h, -Math.min(220, w * 0.16), 0, w, h);
+  else camera.setViewOffset(w, h, 0, h * 0.17, w, h);
+  camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize);
+resize();
+
+show(location.hash.length > 1 ? location.hash.slice(1) : 'malkevnia');
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  controls.update();
+  planet?.update(dt);
+  renderer.render(scene, camera);
+});
+</script>

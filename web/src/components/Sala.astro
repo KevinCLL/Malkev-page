@@ -1,0 +1,82 @@
+---
+import Nave from '../layouts/Nave.astro';
+import { NAVE_UNIFICADA, sala as buscarSala, salas } from '../lib/salas';
+import { montaje } from '../lib/modulos';
+
+/**
+ * Esqueleto común de una sala. Monta a pantalla completa lo que le toque (ver montaje():
+ * la nave unificada abierta en esta sala, o el módulo suelto); si aún no hay nada, enseña
+ * un marcador y lo que haya en el slot (contenido provisional servido desde Astro).
+ */
+interface Props { slug: string }
+const s = buscarSala(Astro.props.slug);
+const m = montaje(s);
+
+// Para la nave unificada: id de sala de la nave → ruta y título de la web, y así la URL
+// sigue al visitante cuando camina de una sala a otra (la nave avisa por postMessage).
+const rutas = Object.fromEntries(
+  salas
+    .filter((x) => x.nave?.startsWith('sala='))
+    .map((x) => [x.nave!.slice('sala='.length), { ruta: x.ruta, titulo: `${x.nombre} · La Malkevnia` }]),
+);
+const base = `/modulos/${NAVE_UNIFICADA}/index.html`;
+---
+{m ? (
+  <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug} inmersivo>
+    <h1 class="solo-lectores">{s.nombre}</h1>
+    <iframe class="modulo" src={m.src} title={s.nombre} allow="fullscreen; autoplay; gyroscope; accelerometer; xr-spatial-tracking; clipboard-write"></iframe>
+    {m.unificada ? (
+      <script is:inline define:vars={{ rutas, base }}>
+        const marco = document.querySelector('iframe.modulo');
+        // Enlace profundo: /nave#museo=thalassa abre la nave justo ahí.
+        if (location.hash.length > 1) marco.src = base + location.hash;
+        addEventListener('message', (e) => {
+          if (e.origin !== location.origin || e.source !== marco.contentWindow) return;
+          const m = e.data;
+          if (!m || m.fuente !== 'malkevnia' || m.evento !== 'room') return;
+          const id = typeof m.detalle === 'string' ? m.detalle : m.detalle && m.detalle.id;
+          const r = rutas[id];
+          if (r && r.ruta !== location.pathname) {
+            history.replaceState(null, '', r.ruta);
+            document.title = r.titulo;
+          }
+        });
+      </script>
+    ) : (
+      <a class="volver panel" href="/">◂ Puente</a>
+    )}
+  </Nave>
+) : (
+  <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug}>
+    <section class="cabecera">
+      <p class="etiqueta">{s.cubierta} · {s.slug}</p>
+      <h1><span aria-hidden="true">{s.icono}</span> {s.nombre}</h1>
+      <p class="resumen">{s.resumen}</p>
+    </section>
+    <slot />
+    {(s.modulo || s.nave !== undefined) && (
+      <aside class="obras panel">
+        <p class="etiqueta">Sala en obras</p>
+        <p>
+          {s.modulo ? (
+            <>Esta sala se llenará con el módulo <code>{s.modulo}</code> o con la nave unificada. En cuanto exista una de las dos, aparecerá aquí a pantalla completa.</>
+          ) : (
+            <>Esta sala vive dentro de la nave unificada. En cuanto esté lista, aparecerá aquí a pantalla completa.</>
+          )}
+        </p>
+      </aside>
+    )}
+  </Nave>
+)}
+
+<style>
+  .solo-lectores { position: absolute; width: 1px; height: 1px; margin: -1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+  .modulo { position: fixed; inset: 0; width: 100%; height: 100%; border: 0; display: block; z-index: 1; }
+  .volver { position: fixed; z-index: 2; right: max(16px, env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); padding: 8px 14px; color: var(--text); text-decoration: none; font: 600 13px var(--f-mono); }
+  .cabecera h1 { font-size: clamp(28px, 5vw, 44px); margin: 6px 0 8px; }
+  .resumen { color: var(--muted); max-width: 60ch; margin: 0 0 28px; }
+  .obras { margin-top: 32px; padding: 16px 18px; border-style: dashed; }
+  .obras p { margin: 0 0 6px; }
+  .obras p:last-child { color: var(--muted); }
+  code { font-family: var(--f-mono); font-size: 0.88em; color: var(--glow); }
+</style>

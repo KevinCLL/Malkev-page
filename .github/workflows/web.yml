@@ -1,0 +1,53 @@
+name: Web (Astro)
+
+on:
+  pull_request:
+    paths: ['web/**', 'assets/**', '.github/workflows/web.yml']
+  push:
+    branches: [master]
+    paths: ['web/**', 'assets/**', '.github/workflows/web.yml']
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npx astro check
+      - run: npm run build
+
+      - name: Construir la imagen Docker
+        working-directory: .
+        run: docker build -f web/Dockerfile -t malkevnia-web:ci .
+
+      # Arranca la imagen tal cual saldrá al servidor (sin BDD: plan B con el JSON del módulo)
+      # y comprueba lo básico: salud, una sala, una entrada, una redirección antigua y un módulo.
+      - name: Probar la imagen
+        working-directory: .
+        run: |
+          docker run -d --name web -p 4321:4321 malkevnia-web:ci
+          for i in $(seq 1 30); do curl -fsS http://127.0.0.1:4321/api/salud && break; sleep 1; done
+          echo
+          comprobar() { code=$(curl -s -o /dev/null -w '%{http_code}' "http://127.0.0.1:4321$1"); echo "$1 → $code"; [ "$code" = "$2" ]; }
+          comprobar / 200
+          comprobar /bitacora 200
+          comprobar /bitacora/proyecto-arca-trasfondo 200
+          comprobar /bitacora/no-existe 404
+          comprobar /blog/2026/05/25/proyecto-arca-trasfondo/ 301
+          comprobar /modulos/nave-3d/index.html 200
+          comprobar /modulos/../package.json 404
+          comprobar /assets/img/Malkevnia.png 200
+          comprobar /feed.xml 200
+          test "$(docker inspect -f '{{.State.Running}}' web)" = true
+      - name: Logs del contenedor
+        if: always()
+        working-directory: .
+        run: docker logs web || true

@@ -1,0 +1,43 @@
+// Filmoteca de EJEMPLO para la sala de cine. No es la colección real de Malkev:
+// es la misma lista de ejemplo de la POC (poc/scripts/sample-collection.js) con una frase de cartel añadida.
+// Se sustituirá por la base de datos propia (importación de Filmaffinity + datos de TMDB).
+//
+// Campos que entiende la sala: title, director, year, rating (0-10), color (#hex), format ('4k'|'bluray'|'dvd'),
+// tagline, y opcionalmente poster (URL de imagen con CORS) y trailer (URL de vídeo .mp4/.webm con CORS).
+export const PELIS_EJEMPLO = [
+  { title: 'Blade Runner', director: 'Ridley Scott', year: 1982, color: '#1d2a4d', rating: 10, format: 'bluray', tagline: 'Todos esos momentos se perderán en el tiempo, como lágrimas en la lluvia.' },
+  { title: 'Blade Runner 2049', director: 'Denis Villeneuve', year: 2017, color: '#c2652a', rating: 9, format: '4k', tagline: 'La clave del futuro está enterrada en el pasado.' },
+  { title: 'Alien, el octavo pasajero', director: 'Ridley Scott', year: 1979, color: '#1f2b24', rating: 10, format: 'bluray', tagline: 'En el espacio nadie puede oír tus gritos.' },
+  { title: 'Aliens: El regreso', director: 'James Cameron', year: 1986, color: '#2b4a5c', rating: 9, format: 'bluray', tagline: 'Esta vez es la guerra.' },
+  { title: '2001: Una odisea del espacio', director: 'Stanley Kubrick', year: 1968, color: '#e8e2d6', rating: 10, format: '4k', tagline: 'Una épica del drama y la aventura en la exploración del espacio.' },
+  { title: 'Dune', director: 'Denis Villeneuve', year: 2021, color: '#a8692f', rating: 9, format: '4k', tagline: 'Lo que es imparable no puede ser detenido.' },
+  { title: 'Dune: Parte dos', director: 'Denis Villeneuve', year: 2024, color: '#8f4a1f', rating: 9, format: '4k', tagline: 'Larga vida a los luchadores.' },
+  { title: 'Interstellar', director: 'Christopher Nolan', year: 2014, color: '#3a3f47', rating: 9, format: 'bluray', tagline: 'El fin de la Tierra no será el fin de nosotros.' },
+  { title: 'Matrix', director: 'Lana y Lilly Wachowski', year: 1999, color: '#1f5c2f', rating: 10, format: 'bluray', tagline: 'Nadie puede decirte lo que es Matrix. Tienes que verlo por ti mismo.' },
+  { title: 'Akira', director: 'Katsuhiro Ōtomo', year: 1988, color: '#c41f2a', rating: 10, format: 'bluray', tagline: 'Neo-Tokio está a punto de estallar.' },
+  { title: 'Ghost in the Shell', director: 'Mamoru Oshii', year: 1995, color: '#2a5a6a', rating: 9, format: 'bluray', tagline: 'Es hora de despertar.' },
+  { title: 'El viaje de Chihiro', director: 'Hayao Miyazaki', year: 2001, color: '#d8a24a', rating: 10, format: 'bluray', tagline: 'Al otro lado del túnel hay una ciudad de espíritus.' },
+  { title: 'La princesa Mononoke', director: 'Hayao Miyazaki', year: 1997, color: '#4f6f3a', rating: 9, format: 'bluray', tagline: 'El destino del mundo depende del valor de un guerrero.' },
+  { title: 'Nausicaä del Valle del Viento', director: 'Hayao Miyazaki', year: 1984, color: '#6f9cb8', rating: 9, format: 'dvd', tagline: 'Mil años después de los Siete Días de Fuego.' },
+  { title: 'La comunidad del anillo', director: 'Peter Jackson', year: 2001, color: '#2f4a2a', rating: 10, format: 'bluray', tagline: 'Un anillo para gobernarlos a todos.' },
+  { title: 'Las dos torres', director: 'Peter Jackson', year: 2002, color: '#3a3a2a', rating: 9, format: 'bluray', tagline: 'El viaje continúa.' },
+  { title: 'El retorno del rey', director: 'Peter Jackson', year: 2003, color: '#5c4a1f', rating: 10, format: 'bluray', tagline: 'Hay más de un camino a casa.' },
+  { title: 'La guerra de las galaxias', director: 'George Lucas', year: 1977, color: '#101830', rating: 9, format: 'dvd', tagline: 'Hace mucho tiempo, en una galaxia muy, muy lejana…' },
+  { title: 'El imperio contraataca', director: 'Irvin Kershner', year: 1980, color: '#2a3b5c', rating: 10, format: 'dvd', tagline: 'La saga continúa.' },
+  { title: 'Terminator 2', director: 'James Cameron', year: 1991, color: '#3b4f6f', rating: 9, format: 'bluray', tagline: 'No hay destino salvo el que nosotros mismos hacemos.' },
+  { title: 'Regreso al futuro', director: 'Robert Zemeckis', year: 1985, color: '#d26a1f', rating: 9, format: 'dvd', tagline: 'Es la única persona que ha llegado tarde a su propio nacimiento.' },
+  { title: 'Gattaca', director: 'Andrew Niccol', year: 1997, color: '#2f5a5a', rating: 8, format: 'dvd', tagline: 'No hay gen para el espíritu humano.' },
+  { title: 'La llegada', director: 'Denis Villeneuve', year: 2016, color: '#6f7a80', rating: 9, format: 'bluray', tagline: '¿Por qué están aquí?' },
+  { title: 'Moon', director: 'Duncan Jones', year: 2009, color: '#4a4a4a', rating: 8, format: 'dvd', tagline: 'A 250.000 millas de casa, lo más difícil de afrontar es uno mismo.' },
+  { title: 'Ex Machina', director: 'Alex Garland', year: 2014, color: '#5a1f1f', rating: 8, format: 'bluray', tagline: 'No hay vuelta atrás.' },
+  { title: 'Mad Max: Furia en la carretera', director: 'George Miller', year: 2015, color: '#c8782a', rating: 9, format: '4k', tagline: '¡Qué día tan maravilloso!' },
+  { title: 'El laberinto del fauno', director: 'Guillermo del Toro', year: 2006, color: '#3a4a2a', rating: 9, format: 'bluray', tagline: 'La inocencia tiene un poder que el mal no puede imaginar.' },
+  { title: 'La cosa', director: 'John Carpenter', year: 1982, color: '#a8c8d8', rating: 9, format: 'bluray', tagline: 'El último lugar de la Tierra en el que querrías estar.' },
+  { title: 'Brazil', director: 'Terry Gilliam', year: 1985, color: '#6a5a8f', rating: 8, format: 'dvd', tagline: 'Estamos en esto juntos.' },
+  { title: 'Origen', director: 'Christopher Nolan', year: 2010, color: '#3a4f6a', rating: 8, format: 'bluray', tagline: 'Tu mente es la escena del crimen.' },
+  { title: 'El resplandor', director: 'Stanley Kubrick', year: 1980, color: '#8f2a1f', rating: 9, format: 'bluray', tagline: 'Todo trabajo y nada de juego…' },
+  { title: 'Jurassic Park', director: 'Steven Spielberg', year: 1993, color: '#c8a22a', rating: 8, format: 'bluray', tagline: 'Una aventura de 65 millones de años.' },
+  { title: 'Los cazafantasmas', director: 'Ivan Reitman', year: 1984, color: '#e8e8e8', rating: 8, format: 'dvd', tagline: '¿A quién vas a llamar?' },
+  { title: 'Pulp Fiction', director: 'Quentin Tarantino', year: 1994, color: '#d8c02a', rating: 9, format: 'dvd', tagline: 'No sabrás los hechos hasta que veas la ficción.' },
+  { title: 'El club de la lucha', director: 'David Fincher', year: 1999, color: '#d86aa8', rating: 9, format: 'dvd', tagline: 'Primera regla: no se habla del club de la lucha.' },
+];

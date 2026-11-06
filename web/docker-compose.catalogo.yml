@@ -1,0 +1,41 @@
+# Añade la API y el panel del catálogo (packages/catalogo, PR #4) a La Malkevnia.
+# Necesita que packages/catalogo exista en el repo (cuando se fusione ese PR):
+#
+#   docker compose -f docker-compose.yml -f docker-compose.catalogo.yml up -d --build
+#
+# Con esto hay una sola base de datos: la del servicio `db`, con el esquema del catálogo.
+# La web deja de usar su esquema provisional y lee todo de la API por la red interna.
+services:
+  web:
+    environment:
+      DATABASE_URL: ""
+      CATALOGO_API_URL: http://catalogo:4400/api/v1
+    depends_on:
+      catalogo:
+        condition: service_started
+
+  catalogo:
+    build: ../packages/catalogo
+    image: malkevnia-catalogo:latest
+    init: true
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://malkevnia:${POSTGRES_PASSWORD:?Define POSTGRES_PASSWORD en .env}@db:5432/malkevnia
+      PORT: 4400
+      UPLOADS_DIR: /data/uploads
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      BGG_TOKEN: ${BGG_TOKEN:-}
+      ADMIN_USER: ${ADMIN_USER:-capitan}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    # El proxy publica /admin y /api/v1 de malkevnia.com hacia aquí (ver DESPLIEGUE.md)
+    ports:
+      - "127.0.0.1:${CATALOGO_PORT:-4400}:4400"
+    volumes:
+      - subidas:/data/uploads
+    networks: [interna]
+
+volumes:
+  subidas:

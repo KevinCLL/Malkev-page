@@ -1,0 +1,120 @@
+---
+import { salas } from '../lib/salas';
+import Estrellas from '../components/Estrellas.astro';
+
+interface Props {
+  titulo: string;
+  descripcion?: string;
+  sala?: string;
+  /** Sin cabecera ni pie: para módulos a pantalla completa. */
+  inmersivo?: boolean;
+}
+const { titulo, descripcion = 'Notas, pensamientos y comentarios de Malkev, a bordo de La Malkevnia.', sala, inmersivo = false } = Astro.props;
+const tituloCompleto = titulo === 'La Malkevnia' ? titulo : `${titulo} · La Malkevnia`;
+const canonica = new URL(Astro.url.pathname, Astro.site);
+const enMenu = salas.filter((s) => !['puente', 'consola'].includes(s.slug));
+---
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>{tituloCompleto}</title>
+    <meta name="description" content={descripcion} />
+    <link rel="canonical" href={canonica} />
+    <link rel="alternate" type="application/rss+xml" title="Bitácora de La Malkevnia" href="/feed.xml" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+    <meta property="og:title" content={tituloCompleto} />
+    <meta property="og:description" content={descripcion} />
+    <meta property="og:type" content="website" />
+    <meta name="theme-color" content="#07050f" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap" />
+    {/* Si un módulo (dentro de su iframe) navega a otra página de la web, esa página
+        sale del iframe y ocupa la ventana, en vez de quedar anidada. Para incrustar una
+        página a propósito (p. ej. en una pantalla de la nave), añade ?embebido a su URL. */}
+    <script is:inline>if (window.top !== window.self && !new URLSearchParams(location.search).has('embebido')) { try { window.top.location.replace(location.href); } catch {} }</script>
+  </head>
+  <body class:list={{ inmersivo }}>
+    {!inmersivo && <Estrellas />}
+    {!inmersivo && (
+      <header class="casco">
+        <a class="marca" href="/" aria-label="Volver al puente">
+          <span class="punto" aria-hidden="true"></span>LA MALKEVNIA
+        </a>
+        <nav aria-label="Salas de la nave">
+          <ul>
+            {enMenu.map((s) => (
+              <li>
+                <a href={s.ruta} aria-current={s.slug === sala ? 'page' : undefined}>{s.nombre}</a>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </header>
+    )}
+    <main id="contenido">
+      <slot />
+    </main>
+    {!inmersivo && (
+      <footer class="pie">
+        <span>Rumbo estable · soporte vital nominal</span>
+        <a href="/feed.xml">RSS</a>
+      </footer>
+    )}
+  </body>
+</html>
+
+<style is:global>
+  :root {
+    --void: #07050f;
+    --hull: #151026;
+    --panel: rgba(18, 12, 36, 0.72);
+    --line: rgba(170, 140, 255, 0.28);
+    --text: #e9e2ff;
+    --muted: #a99cd6;
+    --accent: #b59bff;
+    --glow: #7fd6ff;
+    --f-display: 'Orbitron', 'Exo 2', system-ui, sans-serif;
+    --f-body: 'Exo 2', system-ui, sans-serif;
+    --f-mono: 'JetBrains Mono', ui-monospace, monospace;
+    color-scheme: dark;
+  }
+  *, *::before, *::after { box-sizing: border-box; }
+  html { background: var(--void); }
+  body {
+    margin: 0;
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    background: radial-gradient(ellipse at 50% -20%, #231640 0%, var(--void) 60%) fixed;
+    color: var(--text);
+    font: 400 17px/1.65 var(--f-body);
+  }
+  a { color: var(--accent); }
+  a:hover { color: var(--glow); }
+  :focus-visible { outline: 2px solid var(--glow); outline-offset: 3px; border-radius: 4px; }
+  h1, h2, h3 { font-family: var(--f-display); letter-spacing: 0.03em; line-height: 1.2; text-wrap: balance; }
+  main { flex: 1; width: 100%; max-width: 1100px; margin: 0 auto; padding: 24px 16px 64px; position: relative; z-index: 1; }
+  body.inmersivo main { max-width: none; padding: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--line); border-radius: 14px; backdrop-filter: blur(6px); }
+  .etiqueta { font: 600 11px var(--f-mono); letter-spacing: 0.22em; text-transform: uppercase; color: var(--muted); }
+
+  .casco {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 16px; align-items: center; flex-wrap: wrap;
+    padding: 12px 16px; background: rgba(7, 5, 15, 0.82); border-bottom: 1px solid var(--line);
+    backdrop-filter: blur(8px);
+  }
+  .marca { font: 700 15px var(--f-display); letter-spacing: 0.18em; color: var(--text); text-decoration: none; display: flex; align-items: center; gap: 10px; }
+  .punto { width: 9px; height: 9px; border-radius: 50%; background: var(--glow); box-shadow: 0 0 10px var(--glow); }
+  .casco nav { flex: 1; min-width: 0; overflow-x: auto; scrollbar-width: none; -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
+  .casco nav::-webkit-scrollbar { display: none; }
+  .casco ul { list-style: none; display: flex; gap: 4px; margin: 0; padding: 0; }
+  .casco li a { display: block; white-space: nowrap; padding: 6px 10px; border-radius: 8px; color: var(--muted); text-decoration: none; font-size: 14px; }
+  .casco li a:hover { color: var(--text); background: rgba(181, 155, 255, 0.08); }
+  .casco li a[aria-current='page'] { color: var(--text); background: rgba(181, 155, 255, 0.16); }
+  .pie { display: flex; justify-content: space-between; gap: 16px; padding: 16px; font: 12px var(--f-mono); color: var(--muted); border-top: 1px solid var(--line); position: relative; z-index: 1; }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>

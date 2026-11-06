@@ -1,0 +1,320 @@
+<title>Banco de pruebas Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: lienzo a pantalla completa; telemetría abajo a la izquierda y ajustes arriba a la derecha, como instrumentos del puente.
+   Una sola estética oscura a propósito (es el espacio), con todos los colores definidos aquí. */
+:root{
+  --void:#07040f; --hull:rgba(16,11,34,.84); --text:#e9e2ff; --dim:#a99fd0; --accent:#b59bff; --line:rgba(181,155,255,.24);
+  --ok:#7fe0b4; --warn:#ffcf7a; --bad:#ff8fa8;
+  --f-display:'Chakra Petch',system-ui,sans-serif; --f-mono:'IBM Plex Mono',ui-monospace,Menlo,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{background:var(--void);color:var(--text);font:13px/1.45 var(--f-mono);overflow:hidden}
+canvas#c{position:fixed;inset:0;width:100%;height:100%;display:block}
+.hud{position:fixed;inset:0;pointer-events:none;display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:start;gap:16px;
+  padding-block:calc(16px + env(safe-area-inset-top,0px)) calc(16px + env(safe-area-inset-bottom,0px));
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.izq{display:grid;gap:12px;align-self:stretch;grid-template-rows:auto 1fr auto;min-width:0}
+.izq>*,.der>*{pointer-events:auto}
+h1{margin:0;font:600 22px/1.1 var(--f-display);letter-spacing:.08em;text-transform:uppercase;text-wrap:balance;text-shadow:0 1px 12px rgba(7,4,15,.8)}
+h1 small{display:block;font:500 11px var(--f-mono);letter-spacing:.16em;color:var(--dim);margin-top:6px}
+.tele{background:var(--hull);border:1px solid var(--line);border-radius:14px;padding:14px 16px;width:min(380px,100%);box-sizing:border-box;-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px);display:grid;gap:10px;align-self:end}
+.big{display:flex;align-items:baseline;gap:10px;font-variant-numeric:tabular-nums}
+.big b{font:600 40px/1 var(--f-display);min-width:2ch}
+.big span{color:var(--dim)}
+.pill{margin-left:auto;font-size:11px;padding:2px 8px;border-radius:999px;border:1px solid currentColor;color:var(--dim);white-space:nowrap}
+.pill[data-e=ok]{color:var(--ok)} .pill[data-e=limite]{color:var(--warn)} .pill[data-e=mal]{color:var(--bad)}
+#graf{width:100%;height:70px;display:block}
+dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:2px 14px;margin:0;font-variant-numeric:tabular-nums}
+dt{color:var(--dim)} dd{margin:0;text-align:right;overflow-wrap:anywhere}
+.carga{display:flex;align-items:center;gap:10px}
+.carga label{color:var(--dim);white-space:nowrap}
+.carga input{flex:1;min-width:0;accent-color:var(--accent);margin:0}
+.carga output{width:2ch;text-align:right;font-variant-numeric:tabular-nums}
+#log{margin:0;padding:0;list-style:none;font-size:11px;color:var(--dim);display:grid;gap:1px}
+#log li{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#log li:first-child{color:var(--text)}
+.der{display:grid;gap:8px;justify-items:end;align-content:start}
+#toggle{display:none;font:600 12px var(--f-display);letter-spacing:.12em;text-transform:uppercase;background:var(--hull);color:var(--text);border:1px solid var(--line);border-radius:999px;padding:8px 14px;cursor:pointer}
+#toggle:focus-visible,.carga input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.aviso{position:fixed;inset:0;display:grid;place-items:center;padding:24px;text-align:center;color:var(--dim)}
+@media (max-width:720px){
+  .hud{grid-template-columns:minmax(0,1fr)}
+  .der{position:fixed;z-index:2;top:calc(12px + env(safe-area-inset-top,0px));right:max(12px,env(safe-area-inset-right,0px));left:max(12px,env(safe-area-inset-left,0px))}
+  #toggle{display:block}
+  .der.cerrado .mk-rend{display:none}
+  .der .mk-rend{width:min(320px,100%)}
+  h1{font-size:16px;padding-right:110px}
+  .tele{width:100%;padding:12px 14px;gap:8px}
+  .big b{font-size:30px}
+  #graf{height:44px}
+  #log li:nth-child(n+3){display:none}
+}
+</style>
+
+<canvas id="c" aria-label="Escena de prueba: un planeta rodeado de cinturones de asteroides dentro de una nebulosa"></canvas>
+<div class="hud">
+  <div class="izq">
+    <h1>Banco de pruebas<small>La Malkevnia · modo rendimiento adaptable</small></h1>
+    <div></div>
+    <section class="tele" aria-label="Telemetría">
+      <div class="big"><b id="fps">--</b><span>fps</span><span id="ms">-- ms</span><span class="pill" id="estado">midiendo</span></div>
+      <canvas id="graf" width="760" height="140" aria-label="Tiempo de cada frame en los últimos segundos; la línea discontinua es el objetivo"></canvas>
+      <dl>
+        <dt>Calidad</dt><dd id="q">--</dd>
+        <dt>Objetivo</dt><dd id="objv">--</dd>
+        <dt>Resolución interna</dt><dd id="res">--</dd>
+        <dt>Asteroides · partículas</dt><dd id="obj">--</dd>
+      </dl>
+      <div class="carga"><label for="carga">Carga de la escena</label><input id="carga" type="range" min="1" max="10" value="5"><output id="cargaV" for="carga">5</output></div>
+      <ul id="log" aria-live="polite"><li>Detectando la GPU…</li></ul>
+    </section>
+  </div>
+  <div class="der" id="der"><button id="toggle" type="button" aria-expanded="true" aria-controls="der">Ajustes</button></div>
+</div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import * as R from './rendimiento.js';
+
+const $ = (id) => document.getElementById(id);
+const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const fmt = (n) => n.toLocaleString('es-ES');
+
+/* Renderer: el antialias del lienzo se decide al crearlo, según el preset que tocará */
+const info = R.detect();
+let renderer;
+try {
+  renderer = new THREE.WebGLRenderer({ canvas: $('c'), ...R.opcionesRenderer() });
+} catch (e) {
+  document.querySelector('.hud').hidden = true;
+  const d = document.createElement('p'); d.className = 'aviso';
+  d.textContent = 'Este navegador no puede mostrar gráficos WebGL, así que no hay escena que ajustar.';
+  document.body.append(d);
+  throw e;
+}
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x07040f);
+scene.fog = new THREE.FogExp2(0x0b0618, 0.0028);
+const camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.5, 2500);
+
+/* Nebulosa: esfera interior con ruido fbm. Es la carga de píxeles: la que alivia la resolución dinámica */
+const RUIDO = `
+  uniform float t; uniform int oct;
+  float h(vec3 p){ return fract(sin(dot(p,vec3(127.1,311.7,74.7)))*43758.5453); }
+  float n(vec3 p){ vec3 i=floor(p), f=fract(p); f=f*f*(3.-2.*f);
+    return mix(mix(mix(h(i),h(i+vec3(1,0,0)),f.x),mix(h(i+vec3(0,1,0)),h(i+vec3(1,1,0)),f.x),f.y),
+               mix(mix(h(i+vec3(0,0,1)),h(i+vec3(1,0,1)),f.x),mix(h(i+vec3(0,1,1)),h(i+vec3(1,1,1)),f.x),f.y),f.z); }
+  float fbm(vec3 p){ float v=0., a=.5; for(int k=0;k<14;k++){ if(k>=oct) break; v+=a*n(p); p=p*2.03+.17; a*=.5; } return v; }`;
+const ruidoU = { t: { value: 0 }, oct: { value: 7 } };
+const nebula = new THREE.Mesh(new THREE.SphereGeometry(1200, 48, 32), new THREE.ShaderMaterial({
+  side: THREE.BackSide, depthWrite: false, uniforms: ruidoU,
+  vertexShader: `varying vec3 vP; void main(){ vP = normalize(position); gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying vec3 vP;${RUIDO}
+    void main(){
+      vec3 p = vP*3. + vec3(t*.01, 0., t*.006);
+      float q = fbm(p + fbm(p*1.7));
+      vec3 c = mix(vec3(.02,.01,.05), vec3(.32,.16,.62), smoothstep(.35,.9,q));
+      c = mix(c, vec3(.9,.55,.85), smoothstep(.72,1.05,q)*.45);
+      gl_FragColor = vec4(c*.75, 1.);
+    }`
+}));
+scene.add(nebula);
+
+/* Planeta con su propio fbm */
+const planet = new THREE.Mesh(new THREE.SphereGeometry(40, 128, 96), new THREE.ShaderMaterial({
+  uniforms: ruidoU,
+  vertexShader: `varying vec3 vP; varying vec3 vN; void main(){ vP=position*.06; vN=normalize(normalMatrix*normal); gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `varying vec3 vP; varying vec3 vN;${RUIDO}
+    void main(){
+      float q = fbm(vP*2. + vec3(0., t*.02, 0.) + fbm(vP*4.));
+      vec3 c = mix(vec3(.18,.08,.38), vec3(.75,.55,1.), smoothstep(.3,.85,q));
+      float l = clamp(dot(vN, normalize(vec3(.6,.4,.7))),0.,1.)*.9+.1;
+      float rim = pow(1.-abs(vN.z),3.);
+      gl_FragColor = vec4(c*l + vec3(.7,.5,1.)*rim*.8, 1.);
+    }`
+}));
+scene.add(planet);
+
+/* Anillo fino: sólo a partir de calidad "alto" (userData.rendimiento.detalleMin) */
+const ring = new THREE.Mesh(new THREE.RingGeometry(52, 60, 256, 2), new THREE.MeshStandardMaterial({ color: 0x8c74d8, emissive: 0x2a1650, side: THREE.DoubleSide, transparent: true, opacity: .4, depthWrite: false }));
+ring.rotation.x = Math.PI * .5; ring.receiveShadow = true;
+ring.userData.rendimiento = { detalleMin: 'alto' };
+scene.add(ring);
+
+/* Luces: el sol y una luz puntual proyectan sombra (la puntual renderiza 6 caras: es cara) */
+scene.add(new THREE.HemisphereLight(0x9a86ff, 0x120a24, .55));
+const sun = new THREE.DirectionalLight(0xfff0ff, 2.2);
+sun.position.set(140, 90, 160); sun.castShadow = true;
+Object.assign(sun.shadow.camera, { left: -150, right: 150, top: 150, bottom: -150, near: 20, far: 600 });
+sun.shadow.bias = -0.0005;
+scene.add(sun);
+const glows = [[0xff7ad9, true], [0x7ad0ff, false]].map(([c, sombra]) => {
+  const p = new THREE.PointLight(c, 2600, 240, 2); p.castShadow = sombra;
+  p.shadow.camera.near = 1; p.shadow.camera.far = 240; p.shadow.bias = -0.002;
+  p.add(new THREE.Mesh(new THREE.SphereGeometry(2.2, 20, 14), new THREE.MeshBasicMaterial({ color: c })));
+  scene.add(p);
+  return p;
+});
+
+/* Tres cinturones de asteroides instanciados. Las matrices se calculan una vez y cada cinturón gira entero:
+   así casi todo el coste es de GPU (lo que el modo rendimiento sí puede aliviar). */
+const POR_CINTURON = 15000, CINTURONES = [];
+const roca = new THREE.IcosahedronGeometry(1, 1);
+{
+  const a = roca.attributes.position, v = new THREE.Vector3();
+  for (let i = 0; i < a.count; i++) { v.fromBufferAttribute(a, i).multiplyScalar(.7 + Math.random() * .55); a.setXYZ(i, v.x, v.y, v.z); }
+  roca.computeVertexNormals();
+}
+const matRoca = new THREE.MeshStandardMaterial({ color: 0x6d5d96, roughness: .85, metalness: .1, flatShading: true });
+const m4 = new THREE.Matrix4(), q4 = new THREE.Quaternion(), e3 = new THREE.Euler(), v3 = new THREE.Vector3(), s3 = new THREE.Vector3();
+[[66, 96, .022, .06], [100, 132, .014, -.05], [136, 170, .009, .1]].forEach(([r0, r1, vel, incl]) => {
+  const m = new THREE.InstancedMesh(roca, matRoca, POR_CINTURON);
+  for (let i = 0; i < POR_CINTURON; i++) {
+    const r = r0 + Math.random() * (r1 - r0), a = Math.random() * Math.PI * 2;
+    v3.set(Math.cos(a) * r, (Math.random() - .5) * 8 * Math.random(), Math.sin(a) * r);
+    q4.setFromEuler(e3.set(Math.random() * 6.3, Math.random() * 6.3, Math.random() * 6.3));
+    s3.setScalar(.25 + Math.random() ** 4 * 2.4);
+    m.setMatrixAt(i, m4.compose(v3, q4, s3));
+  }
+  m.castShadow = m.receiveShadow = true; m.frustumCulled = false;
+  m.rotation.x = incl; m.userData.vel = vel;
+  scene.add(m); CINTURONES.push(m);
+});
+
+/* Polvo estelar: Points marcado como partículas (el preset decide cuántas se dibujan) */
+const N_POLVO = 300000;
+const pos = new Float32Array(N_POLVO * 3), col = new Float32Array(N_POLVO * 3);
+for (let i = 0; i < N_POLVO; i++) {
+  const r = 150 + Math.random() * 650, a = Math.random() * Math.PI * 2, y = (Math.random() - .5) * 520 * Math.random();
+  pos.set([Math.cos(a) * r, y, Math.sin(a) * r], i * 3);
+  const k = Math.random(); col.set([.6 + k * .4, .5 + k * .2, 1], i * 3);
+}
+const polvoGeo = new THREE.BufferGeometry();
+polvoGeo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+polvoGeo.setAttribute('color', new THREE.BufferAttribute(col, 3));
+const polvo = new THREE.Points(polvoGeo, new THREE.PointsMaterial({ size: .8, vertexColors: true, transparent: true, opacity: .8, depthWrite: false, blending: THREE.AdditiveBlending }));
+polvo.userData.rendimiento = { particulas: true };
+scene.add(polvo);
+
+/* Postproceso */
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), .7, .5, .75);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+/* ---- Módulo de rendimiento ---- */
+const log = (txt) => {
+  const li = document.createElement('li');
+  li.textContent = `${new Date().toLocaleTimeString('es-ES')} · ${txt}`;
+  li.title = li.textContent;
+  $('log').prepend(li);
+  while ($('log').children.length > 4) $('log').lastChild.remove();
+};
+$('log').replaceChildren();
+R.applyPreset(renderer, scene, 'auto', { composer, bloom });
+log(`${info.gpu}: ${info.motivo.toLowerCase()} → empieza en ${R.ajustes().nombre}`);
+const tuner = R.autoTune(renderer, 60, { onDecision: log });
+R.panel($('der'));
+R.onChange((ev) => { if (ev.tipo === 'preset') actualizarObj(); });
+
+const der = $('der'), toggle = $('toggle');
+const abrir = (si) => { der.classList.toggle('cerrado', !si); toggle.setAttribute('aria-expanded', String(si)); };
+toggle.addEventListener('click', () => abrir(der.classList.contains('cerrado')));
+if (matchMedia('(max-width:720px)').matches) abrir(false);
+
+let carga = 5;
+function aplicarCarga() {
+  const n = Math.round(POR_CINTURON * carga / 10);
+  for (const m of CINTURONES) m.count = n;
+  ruidoU.oct.value = 2 + carga;
+  actualizarObj();
+}
+function actualizarObj() {
+  const a = R.ajustes(); if (!a) return;
+  $('obj').textContent = `${fmt(CINTURONES[0].count * CINTURONES.length)} · ${fmt(Math.floor(N_POLVO * a.particulas))}`;
+}
+$('carga').addEventListener('input', (e) => { carga = +e.target.value; $('cargaV').textContent = carga; aplicarCarga(); });
+$('carga').addEventListener('change', () => { log(`Carga de la escena a ${carga} de 10`); tuner.reiniciar(); });
+aplicarCarga();
+
+/* Gráfica del tiempo de cada frame */
+const g = $('graf').getContext('2d');
+function grafica() {
+  const W = g.canvas.width, H = g.canvas.height, h = tuner.historial, obj = 1000 / tuner.objetivoEfectivo;
+  const top = Math.max(obj * 2.5, 40), y = (v) => H - Math.min(v / top, 1) * (H - 4) - 2, dx = W / 239;
+  g.clearRect(0, 0, W, H);
+  if (h.length > 1) {
+    g.beginPath(); g.moveTo(0, H);
+    h.forEach((v, i) => g.lineTo(i * dx, y(v)));
+    g.lineTo((h.length - 1) * dx, H); g.closePath();
+    g.fillStyle = 'rgba(181,155,255,.16)'; g.fill();
+    g.beginPath(); h.forEach((v, i) => (i ? g.lineTo(i * dx, y(v)) : g.moveTo(0, y(v))));
+    g.strokeStyle = '#b59bff'; g.lineWidth = 2.5; g.stroke();
+    const u = h.length - 1; g.fillStyle = '#e9e2ff'; g.beginPath(); g.arc(u * dx, y(h[u]), 5, 0, 7); g.fill();
+  }
+  const yo = y(obj);
+  g.strokeStyle = 'rgba(233,226,255,.45)'; g.lineWidth = 1.5; g.setLineDash([8, 8]);
+  g.beginPath(); g.moveTo(0, yo); g.lineTo(W, yo); g.stroke(); g.setLineDash([]);
+  const txt = `objetivo ${obj.toFixed(1)} ms`;
+  g.font = '500 22px "IBM Plex Mono", monospace';
+  const tw = g.measureText(txt).width;
+  g.fillStyle = 'rgba(16,11,34,.85)'; g.fillRect(W - tw - 16, yo - 30, tw + 12, 26);
+  g.fillStyle = '#e9e2ff'; g.fillText(txt, W - tw - 10, yo - 10);
+}
+
+/* Bucle */
+const clock = new THREE.Clock();
+let t = 0, hudT = 0;
+function frame() {
+  requestAnimationFrame(frame);
+  const dt = Math.min(clock.getDelta(), .1); t += reduce ? dt * .2 : dt;
+  ruidoU.t.value = t;
+  const ca = t * .05;
+  camera.position.set(Math.cos(ca) * 260, 100 + Math.sin(t * .13) * 25, Math.sin(ca) * 260);
+  camera.lookAt(0, 0, 0);
+  planet.rotation.y = t * .03;
+  glows.forEach((l, i) => { const a = t * (.22 + i * .08) + i * 3, r = 92 + i * 30; l.position.set(Math.cos(a) * r, 14 * Math.sin(a * 2), Math.sin(a) * r); });
+  for (const m of CINTURONES) m.rotation.y = t * m.userData.vel;
+  polvo.rotation.y = t * .004;
+  R.render(renderer, scene, camera, composer);
+
+  if ((hudT += dt) > .25) { hudT = 0; hud(); }
+}
+function hud() {
+  const fps = tuner.fps, obj = tuner.objetivoEfectivo, a = R.ajustes(), pr = renderer.getPixelRatio();
+  $('fps').textContent = fps ? Math.round(fps) : '--';
+  $('ms').textContent = tuner.ms ? `${tuner.ms.toFixed(1)} ms` : '-- ms';
+  const auto = R.preferencias().preset === 'auto';
+  const margen = R.escala() > a.escalaMin + .005 || (auto && a.nombre !== 'bajo');
+  const est = $('estado');
+  if (!fps) { est.dataset.e = ''; est.textContent = 'midiendo'; }
+  else if (fps >= obj * .92) { est.dataset.e = 'ok'; est.textContent = 'estable'; }
+  else if (margen) { est.dataset.e = fps >= obj * .7 ? 'limite' : 'mal'; est.textContent = 'ajustando'; }
+  else { est.dataset.e = 'mal'; est.textContent = 'al mínimo'; }
+  $('q').textContent = `${a.nombre}${auto ? ' (auto)' : ''}`;
+  $('objv').textContent = `${obj} fps${tuner.hz ? ` · pantalla de ${tuner.hz} Hz` : ''}`;
+  $('res').textContent = `${fmt(Math.round(innerWidth * pr))}×${fmt(Math.round(innerHeight * pr))} · ${Math.round(R.escala() * 100)} %`;
+  grafica();
+}
+frame();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+</script>

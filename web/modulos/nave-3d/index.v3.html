@@ -1,0 +1,799 @@
+<meta charset="utf-8">
+<title>La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;500;600&family=VT323&display=swap">
+<style>
+/* Juego a pantalla completa: lienzo 3D con HUD flotante en las esquinas. Un único look oscuro (cabina de nave). */
+:root{
+  --void:#07050f; --hull:#151026; --panel:rgba(18,12,36,.72); --line:rgba(170,140,255,.28);
+  --text:#e9e2ff; --muted:#a99cd6; --accent:#b59bff; --glow:#7fd6ff;
+  --f-display:"Orbitron","Exo 2",system-ui,sans-serif; --f-body:"Exo 2",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--f-body)}
+[hidden]{display:none!important}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.hud{position:fixed;pointer-events:none;z-index:5}
+#room{top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));padding:10px 14px;background:var(--panel);border:1px solid var(--line);border-radius:10px;backdrop-filter:blur(6px);min-width:180px}
+#room .eb{font:600 10px var(--f-mono);letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+#room .nm{font:700 17px var(--f-display);letter-spacing:.04em;margin-top:3px;text-wrap:balance}
+#room .sb{font:400 13px var(--f-body);color:var(--muted);margin-top:2px}
+#mini{top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px}
+#mini canvas{display:block;width:260px;height:auto}
+#mini .eb{font:600 9px var(--f-mono);letter-spacing:.22em;color:var(--muted);margin:0 2px 6px}
+#cross{left:50%;top:50%;width:6px;height:6px;margin:-3px 0 0 -3px;border-radius:50%;background:rgba(233,226,255,.75);box-shadow:0 0 8px var(--accent)}
+#prompt{left:50%;bottom:calc(90px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);padding:9px 16px;background:var(--panel);border:1px solid var(--accent);border-radius:999px;font:600 13px var(--f-mono);letter-spacing:.06em;white-space:nowrap;max-width:calc(100vw - 32px);overflow:hidden;text-overflow:ellipsis}
+#prompt kbd{display:inline-block;border:1px solid var(--accent);border-radius:4px;padding:0 6px;margin-right:8px;color:var(--glow)}
+#help{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));font:400 11px var(--f-mono);color:var(--muted);letter-spacing:.04em;line-height:1.7;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:8px 12px}
+#help b{color:var(--text);font-weight:600}
+.screen{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 40%,rgba(60,36,120,.55),rgba(7,5,15,.92) 70%);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.card{max-width:520px;width:100%;text-align:left;display:grid;gap:18px}
+.card .eb{font:600 11px var(--f-mono);letter-spacing:.3em;color:var(--muted);text-transform:uppercase}
+.card h1{font:700 clamp(34px,8vw,60px)/1 var(--f-display);letter-spacing:.06em;margin:0;text-wrap:balance;background:linear-gradient(180deg,#fff,#b9a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+.card p{margin:0;font-size:16px;line-height:1.55;color:var(--muted);max-width:60ch}
+.card dl{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;margin:0;font:400 13px var(--f-mono)}
+.card dt{color:var(--glow)} .card dd{margin:0;color:var(--text)}
+.btn{pointer-events:auto;justify-self:start;font:700 14px var(--f-display);letter-spacing:.14em;color:var(--void);background:var(--accent);border:0;border-radius:999px;padding:14px 26px;cursor:pointer;box-shadow:0 0 24px rgba(181,155,255,.5)}
+.btn:focus-visible{outline:2px solid var(--glow);outline-offset:3px}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line);box-shadow:none}
+.row{display:flex;gap:10px;flex-wrap:wrap}
+#pause{overflow-y:auto;align-items:start;padding-block:max(24px,5vh)}
+#panel .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:24px}
+#panel h2{font:700 22px var(--f-display);letter-spacing:.05em;margin:0}
+#joy{left:calc(24px + env(safe-area-inset-left,0px));bottom:calc(28px + env(safe-area-inset-bottom,0px));width:120px;height:120px;border-radius:50%;border:1px solid var(--line);background:rgba(18,12,36,.4)}
+#joy i{position:absolute;left:50%;top:50%;width:48px;height:48px;margin:-24px 0 0 -24px;border-radius:50%;background:rgba(181,155,255,.45);border:1px solid var(--accent)}
+#act{right:calc(24px + env(safe-area-inset-right,0px));bottom:calc(40px + env(safe-area-inset-bottom,0px));pointer-events:auto;width:84px;height:84px;border-radius:50%;padding:0;font-size:11px}
+#sound{pointer-events:auto;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:8px 14px;font-size:11px}
+#uniWrap{position:fixed;inset:0;z-index:30;background:#000}#uniWrap canvas{width:100%;height:100%;display:block}
+#mini .mapa{width:340px}@media (max-width:640px){#mini .mapa{width:200px}}
+#termIn{position:fixed;left:-9999px;top:0;opacity:0;width:1px;height:1px}
+#fade{position:fixed;inset:0;background:#000;opacity:0;pointer-events:none;z-index:40;transition:opacity .6s}
+.touch #help,.touch #cross{display:none}
+@media (max-width:640px){#mini canvas{width:170px}#room{min-width:0}#room .nm{font-size:14px}}
+@media (prefers-reduced-motion:reduce){#fade{transition:none}}
+</style>
+
+<canvas id="c"></canvas>
+<div id="room" class="hud" hidden><div class="eb">Compartimento</div><div class="nm" id="roomName">Puente de mando</div><div class="sb" id="roomSub"></div></div>
+<div id="mini" class="hud" hidden><div class="eb">PLANO · CUBIERTA 1 · [M]</div><canvas id="miniC" width="520" height="220"></canvas></div>
+<div id="cross" class="hud" hidden></div>
+<div id="prompt" class="hud" hidden></div>
+<div id="help" class="hud" hidden><b>WASD</b> moverse · <b>Shift</b> correr · <b>Ratón</b> mirar · <b>E</b> usar · <b>M</b> plano · <b>Esc</b> pausa</div>
+<div id="joy" class="hud" hidden><i></i></div>
+<button id="act" class="hud btn" hidden>USAR</button>
+<button id="sound" class="hud btn ghost" hidden>Sonido: no</button>
+<textarea id="termIn" aria-label="Teclado de la consola" autocapitalize="off" autocomplete="off" spellcheck="false"></textarea>
+
+<div id="start" class="screen">
+  <div class="card">
+    <div class="eb">Nave de exploración · Tripulación 1</div>
+    <h1>LA MALKEVNIA</h1>
+    <p>Bienvenido a bordo, capitán. La cubierta principal está presurizada y en silencio. Recorre los compartimentos: el puente, la sala de juegos con las Kallax, la biblioteca, la sala de proyección… Aún están vacíos, esperando su carga.</p>
+    <dl id="ctrls">
+      <dt>WASD / flechas</dt><dd>Caminar (Shift para correr)</dd>
+      <dt>Ratón</dt><dd>Mirar alrededor</dd>
+      <dt>E</dt><dd>Usar consolas y terminales</dd>
+      <dt>M</dt><dd>Mostrar u ocultar el plano</dd>
+    </dl>
+    <div class="row"><button class="btn" id="go">EMBARCAR</button></div>
+  </div>
+</div>
+<div id="pause" class="screen" hidden>
+  <div class="card"><div class="eb">Sistemas en espera</div><h1 style="font-size:40px">PAUSA</h1><div class="row"><button class="btn" id="resume">CONTINUAR</button></div><div id="ajustes"></div></div>
+</div>
+<div id="panel" class="screen" hidden>
+  <div class="card"><div class="eb" id="pEb">Terminal</div><h2 id="pTitle"></h2><p id="pText"></p><div class="row" id="pBtns"><button class="btn" id="pClose">CERRAR</button></div></div>
+</div>
+<div id="fade"></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+
+const $ = id => document.getElementById(id);
+await Promise.race([Promise.all(['700 78px Orbitron','400 40px "JetBrains Mono"','600 9px "JetBrains Mono"'].map(f => document.fonts.load(f))).catch(() => {}), new Promise(r => setTimeout(r, 2500))]);
+let RP = null, rpInfo = null;
+try { RP = await import('./modulos/rendimiento/rendimiento.js'); rpInfo = RP.detect(); } catch (e) { console.warn('rendimiento', e); }
+const TOUCH = matchMedia('(pointer: coarse)').matches || 'ontouchstart' in window;
+if (TOUCH) document.documentElement.classList.add('touch');
+
+/* ---------- Plano de la nave (rejilla) ---------- */
+const S = 1.5, H = 3.0, DOOR_H = 2.3, EYE = 1.65, RAD = 0.32;
+const COLS = 38, ROWS = 16;
+const WALL = 1, FLOOR = 2, WIN = 3, DOOR = 4;
+const grid = [...Array(ROWS)].map(() => Array(COLS).fill(WALL));
+const carve = (x0, x1, z0, z1, v = FLOOR) => { for (let z = z0; z <= z1; z++) for (let x = x0; x <= x1; x++) grid[z][x] = v; };
+
+const ROOMS = [
+  { id:'pasillo',    name:'Pasillo central',      sub:'Cubierta principal',          x0:7,  x1:28, z0:7, z1:8,  color:0xa48bff },
+  { id:'maquinas',   name:'Sala de máquinas',     sub:'Reactor y soporte vital',     x0:1,  x1:6,  z0:1, z1:14, color:0x8f7bff },
+  { id:'recreativa', name:'Sala recreativa',      sub:'Videojuegos',                 x0:8,  x1:13, z0:1, z1:5,  color:0xff6ad5 },
+  { id:'proyeccion', name:'Sala de proyección',   sub:'Películas y series',          x0:15, x1:20, z0:1, z1:5,  color:0xb48cff },
+  { id:'bitacora',   name:'Bitácora',             sub:'El diario de a bordo',        x0:22, x1:27, z0:1, z1:5,  color:0xffc27a },
+  { id:'juegos',     name:'Sala de juegos',       sub:'Juegos de mesa · Kallax',     x0:8,  x1:13, z0:10,z1:14, color:0x9b7bff },
+  { id:'biblioteca', name:'Biblioteca',           sub:'Libros y manga',              x0:15, x1:20, z0:10,z1:14, color:0xffb36b },
+  { id:'ordenador',  name:'Ordenador de a bordo', sub:'Consola del capitán',         x0:22, x1:27, z0:10,z1:14, color:0x6affc8 },
+  { id:'puente',     name:'Puente de mando',      sub:'Rumbo y navegación',          x0:29, x1:36, z0:1, z1:14, color:0x7fd6ff },
+];
+const R = Object.fromEntries(ROOMS.map(r => [r.id, r]));
+for (const r of ROOMS) carve(r.x0, r.x1, r.z0, r.z1);
+// ventanas
+for (let z = 1; z <= 14; z++) grid[z][37] = WIN;
+for (let x = 30; x <= 35; x++) { grid[0][x] = WIN; grid[15][x] = WIN; }
+for (let x = 9; x <= 12; x++) grid[0][x] = WIN;      // recreativa
+for (let x = 16; x <= 19; x++) grid[15][x] = WIN;    // biblioteca
+// puertas: axis = dirección en la que se extiende la puerta
+const DOORS = [
+  { tiles:[[7,7],[7,8]],   axis:'z', a:'maquinas', b:'pasillo' },
+  { tiles:[[28,7],[28,8]], axis:'z', a:'pasillo',  b:'puente' },
+  { tiles:[[10,6],[11,6]], axis:'x', a:'recreativa', b:'pasillo' },
+  { tiles:[[17,6],[18,6]], axis:'x', a:'proyeccion', b:'pasillo' },
+  { tiles:[[24,6],[25,6]], axis:'x', a:'bitacora',   b:'pasillo' },
+  { tiles:[[10,9],[11,9]], axis:'x', a:'pasillo', b:'juegos' },
+  { tiles:[[17,9],[18,9]], axis:'x', a:'pasillo', b:'biblioteca' },
+  { tiles:[[24,9],[25,9]], axis:'x', a:'pasillo', b:'ordenador' },
+];
+const doorAt = {};
+for (const d of DOORS) { for (const [x, z] of d.tiles) { grid[z][x] = DOOR; doorAt[z * COLS + x] = d; } d.open = 0; }
+// las puertas de 7 y 28 están dentro del rectángulo del pasillo: ya marcadas como DOOR
+
+/* ---------- Render ---------- */
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: RP ? RP.PRESETS[rpInfo.recomendado].antialias : true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.25 : 1.6));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x05030c);
+const camera = new THREE.PerspectiveCamera(72, innerWidth / innerHeight, 0.05, 3000);
+camera.rotation.order = 'YXZ';
+
+let composer = null, bloom = null;
+if (!TOUCH || RP) {
+  composer = new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene, camera));
+  composer.addPass(bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.5, 0.82));
+  composer.addPass(new OutputPass());
+}
+
+/* ---------- Texturas procedurales ---------- */
+function tex(w, h, draw, rep = [1, 1]) {
+  const c = document.createElement('canvas'); c.width = w; c.height = h;
+  draw(c.getContext('2d'), w, h);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(...rep); t.anisotropy = 4;
+  return t;
+}
+const wallMap = tex(256, 512, (g, w, h) => {
+  g.fillStyle = '#2a2244'; g.fillRect(0, 0, w, h);
+  const grd = g.createLinearGradient(0, 0, 0, h); grd.addColorStop(0, 'rgba(255,255,255,.05)'); grd.addColorStop(1, 'rgba(0,0,0,.25)');
+  g.fillStyle = grd; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#151027'; g.lineWidth = 4;
+  [[6, 6, w - 12, 150], [6, 166, w - 12, 210], [6, 386, w - 12, 120]].forEach(r => g.strokeRect(...r));
+  g.fillStyle = '#3a3060'; g.fillRect(16, 180, w - 32, 6);
+  g.fillStyle = '#1b1530'; g.fillRect(0, 380, w, 4);
+  g.fillStyle = '#4a3f78'; for (const [x, y] of [[16, 16], [w - 16, 16], [16, 140], [w - 16, 140]]) { g.beginPath(); g.arc(x, y, 3, 0, 7); g.fill(); }
+});
+const wallEmis = tex(256, 512, (g, w, h) => {
+  g.fillStyle = '#000'; g.fillRect(0, 0, w, h);
+  g.fillStyle = '#6b4fd8'; g.fillRect(0, 376, w, 3);            // franja luminosa baja
+  g.fillStyle = '#8a74ff'; g.fillRect(28, 60, 6, 40); g.fillRect(40, 60, 6, 40);
+});
+const floorMap = tex(256, 256, (g, w, h) => {
+  g.fillStyle = '#1b1630'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#0d0a18'; g.lineWidth = 3; g.strokeRect(2, 2, w - 4, h - 4); g.strokeRect(w / 2, 2, 0.1, h);
+  g.strokeStyle = '#2b2448'; g.lineWidth = 1;
+  for (let i = 12; i < w; i += 12) { g.beginPath(); g.moveTo(i, 10); g.lineTo(i - 6, 22); g.stroke(); }
+  g.fillStyle = 'rgba(255,255,255,.03)'; g.fillRect(0, 128, w, 128);
+}, [COLS / 2, ROWS / 2]);
+const ceilMap = tex(256, 256, (g, w, h) => {
+  g.fillStyle = '#141025'; g.fillRect(0, 0, w, h);
+  g.strokeStyle = '#0a0814'; g.lineWidth = 6; g.strokeRect(0, 0, w, h);
+  g.strokeStyle = '#221b3c'; g.lineWidth = 2; g.strokeRect(24, 24, w - 48, h - 48);
+}, [COLS / 2, ROWS / 2]);
+
+/* ---------- Materiales ---------- */
+const M = {
+  wall: new THREE.MeshStandardMaterial({ map: wallMap, emissiveMap: wallEmis, emissive: 0xffffff, emissiveIntensity: .7, roughness: .75, metalness: .35 }),
+  floor: new THREE.MeshStandardMaterial({ map: floorMap, roughness: .55, metalness: .5 }),
+  ceil: new THREE.MeshStandardMaterial({ map: ceilMap, roughness: .9, metalness: .2 }),
+  metal: new THREE.MeshStandardMaterial({ color: 0x3b3260, roughness: .45, metalness: .7 }),
+  dark: new THREE.MeshStandardMaterial({ color: 0x18122b, roughness: .6, metalness: .5 }),
+  fabric: new THREE.MeshStandardMaterial({ color: 0x4b2d7a, roughness: .95 }),
+  wood: new THREE.MeshStandardMaterial({ color: 0x3a2a4f, roughness: .8, metalness: .1 }),
+  kallax: new THREE.MeshStandardMaterial({ color: 0xa9a2bc, roughness: .8 }),
+  glass: new THREE.MeshBasicMaterial({ color: 0x9fd8ff, transparent: true, opacity: .04, depthWrite: false, side: THREE.DoubleSide }),
+};
+const glow = (c, i = 1) => new THREE.MeshBasicMaterial({ color: new THREE.Color(c).multiplyScalar(i), toneMapped: false });
+
+/* ---------- Estructura: suelo, techo, paredes ---------- */
+const W = COLS * S, D = ROWS * S;
+const floor = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M.floor);
+floor.rotation.x = -Math.PI / 2; floor.position.set(W / 2, 0, D / 2); scene.add(floor);
+const ceil = new THREE.Mesh(new THREE.PlaneGeometry(W, D), M.ceil);
+ceil.rotation.x = Math.PI / 2; ceil.position.set(W / 2, H, D / 2); scene.add(ceil);
+
+const unit = new THREE.BoxGeometry(1, 1, 1); unit.translate(0, .5, 0);
+const pieces = [];
+const glassPanes = [];
+for (let z = 0; z < ROWS; z++) for (let x = 0; x < COLS; x++) {
+  const t = grid[z][x], cx = (x + .5) * S, cz = (z + .5) * S;
+  if (t === WALL) {
+    // sólo si toca algo transitable (evita cajas ocultas)
+    let n = false; for (const [dx, dz] of [[1,0],[-1,0],[0,1],[0,-1]]) { const v = grid[z+dz]?.[x+dx]; if (v && v !== WALL) n = true; }
+    if (n) pieces.push([cx, 0, cz, S, H, S]);
+  } else if (t === WIN) {
+    pieces.push([cx, 0, cz, S, .8, S]); pieces.push([cx, 2.65, cz, S, H - 2.65, S]);
+    glassPanes.push([cx, cz, x === 37 ? 'x' : 'z']);
+  } else if (t === DOOR) pieces.push([cx, DOOR_H, cz, S, H - DOOR_H, S]);
+}
+const walls = new THREE.InstancedMesh(unit, M.wall, pieces.length);
+const m4 = new THREE.Matrix4();
+pieces.forEach((p, i) => walls.setMatrixAt(i, m4.compose(new THREE.Vector3(p[0], p[1], p[2]), new THREE.Quaternion(), new THREE.Vector3(p[3], p[4], p[5]))));
+scene.add(walls);
+// cristales y montantes
+const paneGeo = new THREE.PlaneGeometry(S, 2.65 - .8);
+const mullion = new THREE.BoxGeometry(.08, 2.65 - .8, .08);
+for (const [cx, cz, ax] of glassPanes) {
+  const p = new THREE.Mesh(paneGeo, M.glass); p.position.set(cx, (.8 + 2.65) / 2, cz);
+  if (ax === 'x') p.rotation.y = Math.PI / 2; scene.add(p);
+  const m = new THREE.Mesh(mullion, M.metal);
+  m.position.set(ax === 'x' ? cx : cx - S / 2, (.8 + 2.65) / 2, ax === 'x' ? cz - S / 2 : cz); scene.add(m);
+}
+
+/* ---------- Colisiones con mobiliario ---------- */
+const colliders = [];
+const addCol = (x0, z0, x1, z1) => colliders.push([Math.min(x0, x1), Math.min(z0, z1), Math.max(x0, x1), Math.max(z0, z1)]);
+function box(w, h, d, x, y, z, mat, col = true, parent = scene) {
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat); m.position.set(x, y + h / 2, z); parent.add(m);
+  if (col) addCol(x - w / 2, z - d / 2, x + w / 2, z + d / 2);
+  return m;
+}
+const rb = id => { const r = R[id]; return { x0: r.x0 * S, x1: (r.x1 + 1) * S, z0: r.z0 * S, z1: (r.z1 + 1) * S, cx: (r.x0 + r.x1 + 1) * S / 2, cz: (r.z0 + r.z1 + 1) * S / 2 }; };
+
+/* ---------- Carteles ---------- */
+function signTex(title, sub, color, w = 1024, h = 256) {
+  const hex = '#' + new THREE.Color(color).getHexString();
+  return tex(w, h, (g) => {
+    g.fillStyle = 'rgba(10,6,22,.92)'; g.beginPath(); g.roundRect(6, 6, w - 12, h - 12, 28); g.fill();
+    g.strokeStyle = hex; g.lineWidth = 5; g.stroke();
+    g.fillStyle = hex; g.fillRect(40, h / 2 - 50, 10, 100);
+    g.fillStyle = '#f2ecff'; g.font = `700 ${sub ? 78 : 92}px Orbitron, sans-serif`; g.textBaseline = 'middle';
+    g.fillText(title.toUpperCase(), 80, sub ? h / 2 - 26 : h / 2, w - 120);
+    if (sub) { g.fillStyle = hex; g.font = '400 40px "JetBrains Mono", monospace'; g.fillText(sub, 82, h / 2 + 52, w - 120); }
+  });
+}
+function sign(title, sub, color, x, y, z, rotY, w = 2.2) {
+  const m = new THREE.Mesh(new THREE.PlaneGeometry(w, w / 4), new THREE.MeshBasicMaterial({ map: signTex(title, sub, color), transparent: true, toneMapped: false }));
+  m.position.set(x, y, z); m.rotation.y = rotY; scene.add(m); return m;
+}
+
+/* ---------- Puertas ---------- */
+const doorGeoX = new THREE.BoxGeometry(S, DOOR_H, .1), doorGeoZ = new THREE.BoxGeometry(.1, DOOR_H, S);
+for (const d of DOORS) {
+  const xs = d.tiles.map(t => (t[0] + .5) * S), zs = d.tiles.map(t => (t[1] + .5) * S);
+  d.cx = xs.reduce((a, b) => a + b) / xs.length; d.cz = zs.reduce((a, b) => a + b) / zs.length;
+  const col = R[d.a === 'pasillo' ? d.b : d.a].color;
+  const mat = new THREE.MeshStandardMaterial({ color: 0x4a3f78, roughness: .4, metalness: .7, emissive: col, emissiveIntensity: .12 });
+  d.panels = [-1, 1].map(s => {
+    const p = new THREE.Mesh(d.axis === 'x' ? doorGeoX : doorGeoZ, mat); p.position.set(d.cx, DOOR_H / 2, d.cz); scene.add(p);
+    const stripe = new THREE.Mesh(new THREE.BoxGeometry(d.axis === 'x' ? .06 : .12, 1.6, d.axis === 'x' ? .12 : .06), glow(col, 1.2));
+    stripe.position.set(d.axis === 'x' ? -s * S / 2 + s * .08 : 0, 0, d.axis === 'z' ? -s * S / 2 + s * .08 : 0); p.add(stripe);
+    p.userData.s = s; return p;
+  });
+  // carteles sobre la puerta, uno por cada lado
+  const y = (DOOR_H + H) / 2;
+  const ra = R[d.a], rbm = R[d.b];
+  if (d.axis === 'x') {
+    const zr = d.tiles[0][1];
+    // lado norte (z menor) ve el cartel de la sala del sur y viceversa
+    sign(rbm.name, rbm.sub, rbm.color, d.cx, y, zr * S - .01, Math.PI);
+    sign(ra.name, ra.sub, ra.color, d.cx, y, (zr + 1) * S + .01, 0);
+  } else {
+    const xr = d.tiles[0][0];
+    sign(rbm.name, rbm.sub, rbm.color, xr * S - .01, y, d.cz, -Math.PI / 2);
+    sign(ra.name, ra.sub, ra.color, (xr + 1) * S + .01, y, d.cz, Math.PI / 2);
+  }
+}
+
+/* ---------- Luces ---------- */
+scene.add(new THREE.HemisphereLight(0x9d8cff, 0x120c22, .55));
+scene.add(new THREE.AmbientLight(0x6050a0, .35));
+function roomLight(id, x, z, intensity = 22, mix = .55) {
+  const c = new THREE.Color(R[id].color).lerp(new THREE.Color(0xffffff), mix);
+  const l = new THREE.PointLight(c, intensity, 0, 1.6); l.position.set(x, H - .35, z); scene.add(l);
+  const panel = new THREE.Mesh(new THREE.BoxGeometry(1.2, .04, 1.2), glow(c, .36)); panel.position.set(x, H - .02, z); scene.add(panel);
+  return l;
+}
+for (const r of ROOMS) {
+  if (r.id === 'pasillo' || r.id === 'puente' || r.id === 'maquinas') continue;
+  const b = rb(r.id); roomLight(r.id, b.cx, b.cz);
+}
+{ const b = rb('pasillo'); for (const x of [14, 26, 38]) roomLight('pasillo', x, b.cz, 12, .4); }
+{ const b = rb('puente'); roomLight('puente', b.cx - 2, b.cz - 4.5, 16, .5); roomLight('puente', b.cx - 2, b.cz + 4.5, 16, .5); }
+{ const b = rb('maquinas'); roomLight('maquinas', b.cx, b.cz - 6, 14, .3); roomLight('maquinas', b.cx, b.cz + 6, 14, .3); }
+// guías luminosas del pasillo
+{
+  const b = rb('pasillo'), len = b.x1 - b.x0 + 2 * S;
+  for (const z of [b.z0 + .12, b.z1 - .12]) { const s = new THREE.Mesh(new THREE.BoxGeometry(len, .02, .05), glow(0x8f74ff, 1.4)); s.position.set((b.x0 + b.x1) / 2, .01, z); scene.add(s); }
+  const top = new THREE.Mesh(new THREE.BoxGeometry(len, .03, .12), glow(0xb9a8ff, 1.2)); top.position.set((b.x0 + b.x1) / 2, H - .02, b.cz); scene.add(top);
+}
+
+/* ---------- Exterior: estrellas, nebulosa, planeta ---------- */
+const starLayers = [];
+function stars(n, size, color) {
+  const g = new THREE.BufferGeometry(), p = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) {
+    let x, y, z; do { x = (Math.random() - .5) * 1600; y = (Math.random() - .5) * 900; z = (Math.random() - .5) * 1600; } while (Math.abs(y) < 40 && Math.abs(z - D / 2) < 80);
+    p.set([x, y, z], i * 3);
+  }
+  g.setAttribute('position', new THREE.BufferAttribute(p, 3));
+  const pts = new THREE.Points(g, new THREE.PointsMaterial({ size, color, sizeAttenuation: false, transparent: true, opacity: .9, depthWrite: false, toneMapped: false }));
+  pts.userData.rendimiento = { particulas: true };
+  scene.add(pts); starLayers.push(pts); return pts;
+}
+stars(5000, 1.4, 0xd8d0ff); stars(1200, 2.4, 0xffffff); stars(400, 3.2, 0xb9a6ff);
+const nebTex = tex(256, 256, (g, w, h) => { const r = g.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, w / 2); r.addColorStop(0, 'rgba(160,110,255,.55)'); r.addColorStop(.4, 'rgba(90,50,180,.22)'); r.addColorStop(1, 'rgba(0,0,0,0)'); g.fillStyle = r; g.fillRect(0, 0, w, h); });
+for (const [x, y, z, s, c] of [[900, 120, -500, 900, 0xb48cff], [700, -200, 600, 700, 0x6fa8ff], [-600, 250, -700, 800, 0xff6ad5], [200, 400, -900, 600, 0x8f7bff]]) {
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: nebTex, color: c, transparent: true, opacity: .55, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sp.position.set(x, y, z); sp.scale.set(s, s, 1); scene.add(sp);
+}
+const planet = new THREE.Mesh(new THREE.SphereGeometry(140, 64, 48), new THREE.ShaderMaterial({
+  uniforms: { t: { value: 0 } },
+  vertexShader: `varying vec3 vN; varying vec3 vP; void main(){ vN=normalize(normalMatrix*normal); vP=position; gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.); }`,
+  fragmentShader: `uniform float t; varying vec3 vN; varying vec3 vP;
+    void main(){ float b = sin(vP.y*.08 + sin(vP.x*.02+t*.05)*2.)*.5+.5; vec3 c = mix(vec3(.28,.14,.55), vec3(.85,.62,1.), b*b);
+      float l = clamp(dot(vN, normalize(vec3(-.6,.5,.4))),0.,1.); float rim = pow(1.-abs(vN.z),3.);
+      gl_FragColor = vec4(c*(.08+l*1.1) + vec3(.6,.5,1.)*rim*.6, 1.); }`
+}));
+planet.position.set(620, -40, -260); scene.add(planet);
+const moon = new THREE.Mesh(new THREE.SphereGeometry(18, 32, 24), new THREE.MeshBasicMaterial({ color: 0x4a4468 }));
+moon.position.set(420, 70, -120); scene.add(moon);
+
+/* ---------- Mobiliario por compartimento ---------- */
+for (const o of scene.children) o.userData.structural = true;   // lo anterior es estructura: clearRoom() no lo toca
+const anim = [];       // funciones (t, dt) para animar
+const interact = [];   // { x, z, r, label, run }
+const panelMsg = (eb, title, text) => () => showPanel(eb, title, text);
+
+// PUENTE
+{
+  const b = rb('puente');
+  // consola frontal curva
+  for (let i = -2; i <= 2; i++) {
+    const z = b.cz + i * 2.2, x = b.x1 - 1.6 - Math.abs(i) * .35;
+    const c = box(1.0, .85, 2.0, x, 0, z, M.dark);
+    c.rotation.y = -i * .12;
+    const scr = new THREE.Mesh(new THREE.PlaneGeometry(1.7, .45), glow([0x7fd6ff, 0xb59bff, 0x6affc8][(i + 3) % 3], .7));
+    scr.position.set(x - .1, 1.0, z); scr.rotation.set(-.6, -Math.PI / 2 - i * .12, 0, 'YXZ'); scene.add(scr);
+  }
+  // sillón del capitán
+  box(.8, .5, .8, b.cx + 1.2, 0, b.cz, M.fabric);
+  box(.15, .9, .8, b.cx + .8, .5, b.cz, M.fabric, false);
+  // mesa holográfica de navegación
+  const hx = b.cx - 2.6, hz = b.cz;
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.15, .9, 40), M.metal); base.position.set(hx, .45, hz); scene.add(base);
+  addCol(hx - 1.05, hz - 1.05, hx + 1.05, hz + 1.05);
+  const top = new THREE.Mesh(new THREE.CylinderGeometry(.95, .95, .03, 40), glow(0x4f8fd0, .5)); top.position.set(hx, .92, hz); scene.add(top);
+  const holo = new THREE.Group(); holo.position.set(hx, 1.55, hz); scene.add(holo);
+  const hm = new THREE.MeshBasicMaterial({ color: 0x9fe0ff, wireframe: true, transparent: true, opacity: .55, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  holo.add(new THREE.Mesh(new THREE.IcosahedronGeometry(.32, 2), hm));
+  const ring = new THREE.Mesh(new THREE.TorusGeometry(.6, .006, 6, 80), hm); ring.rotation.x = Math.PI / 2.3; holo.add(ring);
+  const sat = new THREE.Mesh(new THREE.SphereGeometry(.05, 12, 8), glow(0xffc27a, 1.5)); holo.add(sat);
+  anim.push(t => { holo.rotation.y = t * .3; sat.position.set(Math.cos(t * .9) * .6, Math.sin(t * .9) * .25, Math.sin(t * .9) * .6); holo.position.y = 1.55 + Math.sin(t * 1.3) * .04; });
+  interact.push({ x: hx, z: hz, r: 2.2, label: 'Trazar rumbo · viajar por el universo', run: () => openUniverse() });
+  sign('Puente de mando', 'Rumbo y navegación', R.puente.color, b.x0 + .02, 2.2, b.cz + 4.5, Math.PI / 2, 2.6);
+}
+// SALA DE MÁQUINAS
+{
+  const b = rb('maquinas');
+  const cx = b.cx, cz = b.cz;
+  const shell = new THREE.Mesh(new THREE.CylinderGeometry(1.3, 1.3, H, 40, 1, true), new THREE.MeshBasicMaterial({ color: 0xb59bff, transparent: true, opacity: .12, side: THREE.DoubleSide, depthWrite: false }));
+  shell.position.set(cx, H / 2, cz); scene.add(shell);
+  const core = new THREE.Mesh(new THREE.CylinderGeometry(.45, .45, H, 24), glow(0x9b7bff, 1.6)); core.position.set(cx, H / 2, cz); scene.add(core);
+  for (const y of [.1, H - .3]) { const r = new THREE.Mesh(new THREE.CylinderGeometry(1.5, 1.5, .3, 40), M.metal); r.position.set(cx, y + .15, cz); scene.add(r); }
+  const rings = [0, 1, 2].map(i => { const r = new THREE.Mesh(new THREE.TorusGeometry(.9, .03, 8, 60), glow(0x7fd6ff, 1.3)); r.rotation.x = Math.PI / 2; r.position.set(cx, .8 + i * .7, cz); scene.add(r); return r; });
+  addCol(cx - 1.5, cz - 1.5, cx + 1.5, cz + 1.5);
+  const coreLight = new THREE.PointLight(0x9b7bff, 18, 0, 1.6); coreLight.position.set(cx, 1.5, cz); scene.add(coreLight);
+  anim.push(t => { const p = .75 + Math.sin(t * 2.1) * .25; core.material.color.setRGB(.42 * p, .28 * p, 1.05 * p); coreLight.intensity = 12 + p * 10; rings.forEach((r, i) => r.position.y = .5 + ((t * .35 + i / 3) % 1) * 2.1); });
+  // tuberías
+  for (const z of [b.z0 + .5, b.z1 - .5]) { const p = new THREE.Mesh(new THREE.CylinderGeometry(.12, .12, b.x1 - b.x0, 12), M.metal); p.rotation.z = Math.PI / 2; p.position.set(cx, H - .4, z); scene.add(p); }
+  // toberas (ventiladores del motor) en el mamparo de popa
+  for (const z of [b.z0 + 3.5, b.z1 - 3.5]) {
+    const v = new THREE.Mesh(new THREE.CircleGeometry(1.0, 40), glow(0x6f8cff, .8)); v.position.set(b.x0 + .02, 1.5, z); v.rotation.y = Math.PI / 2; scene.add(v);
+    const fr = new THREE.Mesh(new THREE.TorusGeometry(1.05, .08, 10, 40), M.metal); fr.position.copy(v.position); fr.rotation.y = Math.PI / 2; scene.add(fr);
+  }
+  box(.8, 1.1, 1.6, b.x0 + 1, 0, b.cz, M.dark);
+  interact.push({ x: b.x0 + 1, z: b.cz, r: 1.8, label: 'Estado del reactor', run: panelMsg('Sala de máquinas', 'Reactor estable', 'Núcleo al 98 %. Soporte vital nominal. Aquí irá el estado técnico de la web: servidor, copias de seguridad y estadísticas.') });
+}
+// SALA RECREATIVA
+{
+  const b = rb('recreativa');
+  const cols = [0xff6ad5, 0x7fd6ff, 0xffc27a];
+  [b.x0 + .5, b.x1 - .5].forEach((x, side) => {
+    for (let i = 0; i < 3; i++) {
+      const z = b.z0 + 1.6 + i * 1.6;
+      box(.8, 1.8, .75, x, 0, z, M.dark);
+      const scr = new THREE.Mesh(new THREE.PlaneGeometry(.6, .5), glow(cols[(i + side) % 3], .55));
+      scr.position.set(x + (side ? -.41 : .41), 1.3, z); scr.rotation.y = side ? -Math.PI / 2 : Math.PI / 2; scene.add(scr);
+      const mq = new THREE.Mesh(new THREE.PlaneGeometry(.7, .14), glow(cols[(i + side + 1) % 3], 1.3));
+      mq.position.set(x + (side ? -.41 : .41), 1.68, z); mq.rotation.y = scr.rotation.y; scene.add(mq);
+    }
+  });
+  // sofá y pantalla
+  box(2.2, .45, .8, b.cx, 0, b.z1 - 1.3, M.fabric); box(2.2, .5, .2, b.cx, .45, b.z1 - .95, M.fabric, false);
+  interact.push({ x: b.cx, z: b.cz, r: 2.2, label: 'Catálogo de videojuegos', run: panelMsg('Sala recreativa', 'Videojuegos', 'Las máquinas están apagadas. Aquí aparecerá tu colección de Steam y consolas.') });
+}
+// SALA DE PROYECCIÓN
+{
+  const b = rb('proyeccion');
+  const screenT = tex(1024, 400, (g, w, h) => { const gr = g.createLinearGradient(0, 0, w, h); gr.addColorStop(0, '#1d1240'); gr.addColorStop(1, '#3b2478'); g.fillStyle = gr; g.fillRect(0, 0, w, h); g.fillStyle = '#d9ccff'; g.font = '700 64px Orbitron, sans-serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('PRÓXIMA SESIÓN', w / 2, h / 2 - 30); g.fillStyle = '#a99cd6'; g.font = '400 30px "JetBrains Mono", monospace'; g.fillText('la cartelera de a bordo se está cargando', w / 2, h / 2 + 40); });
+  const scr = new THREE.Mesh(new THREE.PlaneGeometry(6.4, 2.5), new THREE.MeshBasicMaterial({ map: screenT, toneMapped: false })); scr.position.set(b.cx, 1.55, b.z0 + .03); scene.add(scr);
+  const scrLight = new THREE.PointLight(0x9b7bff, 8, 0, 1.6); scrLight.position.set(b.cx, 1.5, b.z0 + 1.2); scene.add(scrLight);
+  for (const [z, n] of [[b.z0 + 3.4, 4], [b.z0 + 4.9, 4]]) {
+    for (let i = 0; i < n; i++) { const x = b.cx + (i - (n - 1) / 2) * 1.1; box(.8, .45, .75, x, 0, z, M.fabric, false); box(.8, .55, .15, x, .45, z + .32, M.fabric, false); }
+    addCol(b.cx - 2.3, z - .4, b.cx + 2.3, z + .42);
+  }
+  interact.push({ x: b.cx, z: b.z0 + 2.2, r: 2, label: 'Cartelera', run: panelMsg('Sala de proyección', 'Películas y series', 'Aquí irá tu catálogo propio de pelis y series, con pósters de TMDB y tus notas.') });
+}
+// BITÁCORA
+{
+  const b = rb('bitacora');
+  box(2.6, .78, .9, b.cx, 0, b.z0 + 1.0, M.wood);
+  const mon = new THREE.Mesh(new THREE.PlaneGeometry(1.2, .7), glow(0xffc27a, .45)); mon.position.set(b.cx, 1.25, b.z0 + .75); scene.add(mon);
+  box(.6, .45, .6, b.cx, 0, b.z0 + 2.0, M.fabric, false);
+  // estantes de cuadernos
+  for (const x of [b.x0 + .25, b.x1 - .25]) for (let k = 0; k < 4; k++) box(.4, .04, 3, x, .5 + k * .5, b.cz, M.wood, k === 0);
+  // libro holográfico
+  const bk = new THREE.Group(); bk.position.set(b.cx, 1.2, b.cz + .9); scene.add(bk);
+  const pm = new THREE.MeshBasicMaterial({ color: 0xffd9a0, transparent: true, opacity: .35, side: THREE.DoubleSide, blending: THREE.AdditiveBlending, depthWrite: false, toneMapped: false });
+  for (const s of [-1, 1]) { const p = new THREE.Mesh(new THREE.PlaneGeometry(.5, .65), pm); p.position.x = s * .24; p.rotation.y = s * .35; bk.add(p); }
+  const ped = new THREE.Mesh(new THREE.CylinderGeometry(.25, .3, .9, 24), M.metal); ped.position.set(b.cx, .45, b.cz + .9); scene.add(ped);
+  addCol(b.cx - .3, b.cz + .6, b.cx + .3, b.cz + 1.2);
+  anim.push(t => { bk.rotation.y = Math.sin(t * .5) * .4; bk.position.y = 1.25 + Math.sin(t * 1.1) * .03; });
+  interact.push({ x: b.cx, z: b.z0 + 1.6, r: 1.8, label: 'Abrir la bitácora', run: panelMsg('Bitácora', 'Diario de a bordo', '135 entradas desde 2010 esperan aquí. Pronto podrás leerlas y escribir nuevas desde este escritorio.') });
+}
+// SALA DE JUEGOS (Kallax)
+function kallax(x, z, rotY) {
+  const g = new THREE.Group(), w = 1.47, h = 1.47, d = .39, t = .035, ti = .016;
+  const add = (bw, bh, bd, px, py, pz) => { const m = new THREE.Mesh(new THREE.BoxGeometry(bw, bh, bd), M.kallax); m.position.set(px, py, pz); g.add(m); };
+  add(w, t, d, 0, t / 2, 0); add(w, t, d, 0, h - t / 2, 0); add(t, h, d, -w / 2 + t / 2, h / 2, 0); add(t, h, d, w / 2 - t / 2, h / 2, 0);
+  const cell = (w - 2 * t) / 4;
+  for (let i = 1; i < 4; i++) { add(ti, h - 2 * t, d, -w / 2 + t + i * cell, h / 2, 0); add(w - 2 * t, ti, d, 0, t + i * cell, 0); }
+  add(w, h, .01, 0, h / 2, -d / 2 + .005);
+  g.position.set(x, 0, z); g.rotation.y = rotY; scene.add(g);
+  return g;
+}
+{
+  const b = rb('juegos');
+  // las Kallax reales (5×5, con las cajas) las monta el módulo kallax-3d; estas vacías quedan como reserva
+  if (!window.__sinKallaxProvisional) { const k1 = kallax(b.cx - .76, b.z1 - .22, Math.PI), k2 = kallax(b.cx + .76, b.z1 - .22, Math.PI); k1.name = k2.name = 'kallax-provisional'; }
+  addCol(b.cx - 1.9, b.z1 - .45, b.cx + 1.9, b.z1);
+  // mesa de juego con sillas
+  box(1.8, .74, 1.1, b.cx, 0, b.cz - .4, M.wood);
+  const felt = new THREE.Mesh(new THREE.PlaneGeometry(1.6, .9), new THREE.MeshStandardMaterial({ color: 0x3a2470, roughness: 1 })); felt.rotation.x = -Math.PI / 2; felt.position.set(b.cx, .742, b.cz - .4); scene.add(felt);
+  for (const [dx, dz] of [[-.5, -.9], [.5, -.9], [-.5, .1], [.5, .1]]) box(.45, .45, .45, b.cx + dx, 0, b.cz - .4 + dz, M.fabric, false);
+  const lamp = new THREE.PointLight(0xffd9a0, 6, 0, 1.8); lamp.position.set(b.cx, 2.0, b.cz - .4); scene.add(lamp);
+  const shade = new THREE.Mesh(new THREE.ConeGeometry(.35, .25, 24, 1, true), glow(0xffd9a0, .8)); shade.position.set(b.cx, 2.1, b.cz - .4); scene.add(shade);
+  interact.push({ x: b.cx, z: b.z1 - 1.2, r: 2.0, label: 'Revisar las Kallax', run: panelMsg('Sala de juegos', 'Las Kallax', 'Dos Kallax 4×4 vacías, listas para recibir las cajas de tu colección de juegos de mesa.') });
+}
+// BIBLIOTECA
+{
+  const b = rb('biblioteca');
+  for (const [x, rot] of [[b.x1 - .2, -Math.PI / 2]]) {   // la pared oeste es para la librería 3D
+    const g = new THREE.Group(); g.position.set(x, 0, b.cz - .3); g.rotation.y = rot; scene.add(g);
+    const L = 5.2;
+    const sides = [[.05, 2.5, .38, -L / 2, 1.25, 0], [.05, 2.5, .38, L / 2, 1.25, 0], [L, .05, .38, 0, 2.5, 0], [L, 2.5, .02, 0, 1.25, -.18]];
+    for (let k = 0; k < 6; k++) sides.push([L, .035, .38, 0, .08 + k * .45, 0]);
+    for (const [w, h, d, px, py, pz] of sides) { const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), M.wood); m.position.set(px, py, pz); g.add(m); }
+    for (let k = -1; k <= 1; k++) { const m = new THREE.Mesh(new THREE.BoxGeometry(.03, 2.45, .38), M.wood); m.position.set(k * L / 4, 1.25, 0); g.add(m); }
+    addCol(x - .25, b.cz - .3 - L / 2, x + .25, b.cz - .3 + L / 2);
+  }
+  // sillón de lectura junto al mirador
+  box(.9, .45, .9, b.cx + .8, 0, b.z1 - 1.4, M.fabric); box(.9, .5, .18, b.cx + .8, .45, b.z1 - 1.88, M.fabric, false);
+  const lamp = new THREE.PointLight(0xffb36b, 5, 0, 1.8); lamp.position.set(b.cx - .4, 1.6, b.z1 - 1.4); scene.add(lamp);
+  box(.05, 1.5, .05, b.cx - .4, 0, b.z1 - 1.4, M.metal, false);
+  const bulb = new THREE.Mesh(new THREE.SphereGeometry(.12, 16, 12), glow(0xffc896, 1.6)); bulb.position.set(b.cx - .4, 1.55, b.z1 - 1.4); scene.add(bulb);
+  interact.push({ x: b.cx, z: b.cz - .5, r: 2.0, label: 'Consultar la biblioteca', run: panelMsg('Biblioteca', 'Libros y manga', 'Estanterías vacías. Aquí irán tus libros y mangas, con lomos generados a partir de las portadas.') });
+}
+// ORDENADOR DE A BORDO
+{
+  const b = rb('ordenador');
+  const ledT = tex(64, 256, (g, w, h) => { g.fillStyle = '#000'; g.fillRect(0, 0, w, h); for (let y = 8; y < h; y += 16) for (let x = 8; x < w; x += 14) { g.fillStyle = Math.random() < .5 ? '#6affc8' : (Math.random() < .5 ? '#7fd6ff' : '#111'); g.fillRect(x, y, 5, 3); } }, [1, 1]);
+  const ledM = new THREE.MeshBasicMaterial({ map: ledT, toneMapped: false });
+  for (let i = 0; i < 5; i++) {
+    const x = b.x0 + 1.0 + i * 1.6;
+    box(.65, 2.1, .9, x, 0, b.z1 - .5, M.dark);
+    const f = new THREE.Mesh(new THREE.PlaneGeometry(.5, 1.8), ledM); f.position.set(x, 1.05, b.z1 - .5 - .46); f.rotation.y = Math.PI; scene.add(f);
+  }
+  anim.push(t => { ledT.offset.y = Math.floor(t * 4) * .0625; });
+  // terminal central con pantalla curva
+  box(2.4, .8, .8, b.cx, 0, b.cz + .3, M.metal);
+  // la pantalla del terminal la pone el módulo ordenador-abordo (integracion.js)
+  interact.push({ x: b.cx, z: b.cz, r: 1.9, label: 'Acceder a la consola del capitán', run: panelMsg('Ordenador de a bordo', 'Consola del capitán', 'Desde aquí gestionarás la nave: escribir en la bitácora, añadir juegos, libros y pelis, y moderar comentarios.') });
+}
+
+/* ---------- Jugador ---------- */
+const player = { x: (R.puente.x0 + .6) * S, z: D / 2, yaw: -Math.PI / 2, pitch: 0, bob: 0 };
+const keys = {};
+const blocking = (x, z) => {
+  if (x < 0 || z < 0 || x >= COLS || z >= ROWS) return true;
+  const t = grid[z][x]; if (t === WALL || t === WIN) return true;
+  if (t === DOOR) return doorAt[z * COLS + x].open < .8;
+  return false;
+};
+function hits(px, pz) {
+  const tx = Math.floor(px / S), tz = Math.floor(pz / S);
+  for (let dz = -1; dz <= 1; dz++) for (let dx = -1; dx <= 1; dx++) {
+    const x = tx + dx, z = tz + dz; if (!blocking(x, z)) continue;
+    const qx = Math.max(x * S, Math.min(px, (x + 1) * S)), qz = Math.max(z * S, Math.min(pz, (z + 1) * S));
+    if ((qx - px) ** 2 + (qz - pz) ** 2 < RAD * RAD) return true;
+  }
+  for (const [x0, z0, x1, z1] of colliders) {
+    const qx = Math.max(x0, Math.min(px, x1)), qz = Math.max(z0, Math.min(pz, z1));
+    if ((qx - px) ** 2 + (qz - pz) ** 2 < RAD * RAD) return true;
+  }
+  return false;
+}
+
+/* ---------- Entrada ---------- */
+let keyCapture = null, mapa = null, mobileCtl = null;
+let running = false, locked = false, dragLook = false, paused = false, modal = false, inUniverse = false;
+addEventListener('keydown', e => {
+  if (inUniverse) return;
+  if (keyCapture && keyCapture(e)) return;
+  keys[e.code] = true;
+  if (!running || modal) { if (!$('panel').hidden && (e.code === 'Escape' || e.code === 'KeyE')) closePanel(); return; }
+  if (e.code === 'KeyE') useNearest();
+  if (e.code === 'KeyM' && !mapa) $('mini').hidden = !$('mini').hidden;
+});
+addEventListener('keyup', e => { keys[e.code] = false; });
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+function look(dx, dy, k = .0022) { player.yaw -= dx * k; player.pitch = Math.max(-1.45, Math.min(1.45, player.pitch - dy * k)); }
+document.addEventListener('mousemove', e => { if (inUniverse || modal) return; if (locked) look(e.movementX, e.movementY); else if (dragLook && e.buttons & 1) look(e.movementX, e.movementY, .004); });
+document.addEventListener('pointerlockchange', () => {
+  locked = document.pointerLockElement === canvas;
+  if (!locked && running && !modal && !inUniverse && !dragLook) { paused = true; $('pause').hidden = false; }
+});
+async function lock() {
+  if (TOUCH) return;
+  try { await canvas.requestPointerLock(); } catch { dragLook = true; $('help').innerHTML = '<b>WASD</b> moverse · <b>Shift</b> correr · <b>Arrastra</b> para mirar · <b>E</b> usar · <b>M</b> plano'; }
+}
+document.addEventListener('pointerlockerror', () => { dragLook = true; });
+canvas.addEventListener('click', () => { if (running && !locked && !dragLook && !TOUCH) lock(); });
+
+// táctil: joystick a la izquierda, mirar arrastrando a la derecha
+const joy = { id: null, x0: 0, y0: 0, vx: 0, vy: 0 }, lookT = { id: null, x: 0, y: 0 };
+const knob = $('joy').querySelector('i');
+canvas.addEventListener('touchstart', e => {
+  if (mobileCtl) return;
+  for (const t of e.changedTouches) {
+    if (t.clientX < innerWidth * .45 && joy.id === null) { joy.id = t.identifier; joy.x0 = t.clientX; joy.y0 = t.clientY; }
+    else if (lookT.id === null) { lookT.id = t.identifier; lookT.x = t.clientX; lookT.y = t.clientY; }
+  }
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchmove', e => {
+  if (mobileCtl) return;
+  for (const t of e.changedTouches) {
+    if (t.identifier === joy.id) {
+      let dx = t.clientX - joy.x0, dy = t.clientY - joy.y0; const l = Math.hypot(dx, dy), m = 50;
+      if (l > m) { dx *= m / l; dy *= m / l; }
+      joy.vx = dx / m; joy.vy = dy / m; knob.style.transform = `translate(${dx}px,${dy}px)`;
+    } else if (t.identifier === lookT.id) { look(t.clientX - lookT.x, t.clientY - lookT.y, .005); lookT.x = t.clientX; lookT.y = t.clientY; }
+  }
+  e.preventDefault();
+}, { passive: false });
+const endTouch = e => { for (const t of e.changedTouches) { if (t.identifier === joy.id) { joy.id = null; joy.vx = joy.vy = 0; knob.style.transform = ''; } if (t.identifier === lookT.id) lookT.id = null; } };
+canvas.addEventListener('touchend', endTouch); canvas.addEventListener('touchcancel', endTouch);
+$('act').addEventListener('click', () => useNearest());
+
+/* ---------- Paneles ---------- */
+function showPanel(eb, title, text, extra) {
+  modal = true; $('pEb').textContent = eb; $('pTitle').textContent = title; $('pText').textContent = text;
+  $('pBtns').querySelectorAll('.extra').forEach(n => n.remove());
+  if (extra) $('pBtns').prepend(extra);
+  $('panel').hidden = false; if (locked) document.exitPointerLock(); mobileCtl?.setEnabled(false); $('pClose').focus();
+}
+function closePanel() { $('panel').hidden = true; modal = false; for (const k in keys) keys[k] = false; mobileCtl?.setEnabled(true); lock(); }
+$('pClose').addEventListener('click', closePanel);
+$('resume').addEventListener('click', () => { $('pause').hidden = true; paused = false; lock(); });
+
+let nearest = null;
+function useNearest() { if (nearest && !modal) nearest.run(); }
+
+/* ---------- Universo (módulo del viaje 3D) ---------- */
+let uni = null;
+async function openUniverse(planetId) {
+  let mod;
+  try { mod = await import('./universo-3d/universo.js'); }
+  catch {
+    showPanel('Navegación', 'Ordenador de navegación', 'Los motores de salto aún se están calibrando. Muy pronto podrás trazar rumbo desde esta mesa y viajar por el universo de Malkevnia.');
+    return;
+  }
+  $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
+  inUniverse = true; if (locked) document.exitPointerLock();
+  for (const k in keys) keys[k] = false;
+  mobileCtl?.setEnabled(false); window.AudioNave?.setMuted(true);
+  const wrap = document.createElement('div'); wrap.id = 'uniWrap'; const c = document.createElement('canvas'); wrap.appendChild(c); document.body.appendChild(wrap);
+  const exit = async () => {
+    $('fade').style.opacity = 1; await new Promise(r => setTimeout(r, 600));
+    try { uni?.stop?.(); uni?.dispose?.(); } catch {}
+    uni = null; wrap.remove(); inUniverse = false; clock.getDelta(); $('fade').style.opacity = 0;
+    mobileCtl?.setEnabled(true); if (audioOn) window.AudioNave?.setMuted(false); lock();
+  };
+  try {
+    uni = (mod.createUniverse || mod.default)({ canvas: c, container: wrap, onExit: exit, intro: false });
+    await uni.ready; uni.start();
+    if (planetId) uni.goToPlanet(planetId); else uni.launch?.();
+  }
+  catch (err) { console.error(err); wrap.remove(); inUniverse = false; mobileCtl?.setEnabled(true); showPanel('Navegación', 'Fallo en el salto', 'El módulo de navegación no respondió. Inténtalo de nuevo más tarde.'); }
+  $('fade').style.opacity = 0;
+}
+
+/* ---------- Sonido ambiente (opcional) ---------- */
+let audio = null;
+let audioOn = false;
+$('sound').addEventListener('click', () => {
+  if (window.AudioNave) { audioOn = !audioOn; window.AudioNave.setMuted(!audioOn); $('sound').textContent = 'Sonido: ' + (audioOn ? 'sí' : 'no'); return; }
+  if (!audio) {
+    const ac = new AudioContext(), out = ac.createGain(); out.gain.value = .0; out.connect(ac.destination);
+    const len = ac.sampleRate * 4, buf = ac.createBuffer(1, len, ac.sampleRate), ch = buf.getChannelData(0); let l = 0;
+    for (let i = 0; i < len; i++) { l = (l + .02 * (Math.random() * 2 - 1)) / 1.02; ch[i] = l * 3.5; }
+    const n = ac.createBufferSource(); n.buffer = buf; n.loop = true; const f = ac.createBiquadFilter(); f.type = 'lowpass'; f.frequency.value = 380; n.connect(f).connect(out); n.start();
+    for (const [fr, g] of [[55, .05], [82.4, .025]]) { const o = ac.createOscillator(), gg = ac.createGain(); o.frequency.value = fr; gg.gain.value = g; o.connect(gg).connect(out); o.start(); }
+    audio = { ac, out, on: false };
+  }
+  audio.on = !audio.on; audio.ac.resume();
+  audio.out.gain.setTargetAtTime(audio.on ? .5 : 0, audio.ac.currentTime, .4);
+  $('sound').textContent = 'Sonido: ' + (audio.on ? 'sí' : 'no');
+});
+
+/* ---------- Plano (minimapa) ---------- */
+const mc = $('miniC'), mg = mc.getContext('2d');
+mc.width = COLS * 13 + 8; mc.height = ROWS * 13 + 8;
+const roomOf = (x, z) => { const tx = Math.floor(x / S), tz = Math.floor(z / S); return ROOMS.find(r => tx >= r.x0 && tx <= r.x1 && tz >= r.z0 && tz <= r.z1) || null; };
+function drawMini() {
+  const c = 13, o = 4; mg.clearRect(0, 0, mc.width, mc.height);
+  for (let z = 0; z < ROWS; z++) for (let x = 0; x < COLS; x++) {
+    const t = grid[z][x]; let col = null;
+    if (t === WALL) col = '#3a3160'; else if (t === WIN) col = '#7fd6ff';
+    else if (t === DOOR) col = doorAt[z * COLS + x].open > .5 ? '#6b5aa8' : '#d8ccff';
+    else { const r = ROOMS.find(r => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1); col = '#' + new THREE.Color(r.color).multiplyScalar(.22).getHexString(); }
+    mg.fillStyle = col; mg.fillRect(o + x * c, o + z * c, c, c);
+  }
+  mg.font = '600 9px "JetBrains Mono", monospace'; mg.textAlign = 'center'; mg.textBaseline = 'middle';
+  for (const r of ROOMS) { if (r.id === 'pasillo') continue; mg.fillStyle = '#' + new THREE.Color(r.color).getHexString(); const words = r.name.replace('Sala de ', '').replace('Ordenador de a bordo', 'Ordenador').replace('Puente de mando', 'Puente'); mg.fillText(words, o + (r.x0 + r.x1 + 1) / 2 * c, o + (r.z0 + r.z1 + 1) / 2 * c, (r.x1 - r.x0 + 1) * c - 4); }
+  const px = o + player.x / S * c, pz = o + player.z / S * c;
+  mg.save(); mg.translate(px, pz); mg.rotate(-player.yaw); mg.fillStyle = '#fff'; mg.beginPath(); mg.moveTo(0, -8); mg.lineTo(5, 5); mg.lineTo(-5, 5); mg.closePath(); mg.fill(); mg.restore();
+}
+
+/* ---------- Bucle ---------- */
+const clock = new THREE.Clock();
+let lastRoom = null, miniT = 0;
+function tick() {
+  requestAnimationFrame(tick);
+  if (inUniverse) return;
+  const dt = Math.min(clock.getDelta(), .05), t = clock.elapsedTime;
+  // movimiento
+  if (running && !paused && !modal) {
+    let f = 0, s = 0;
+    if (keys.KeyW || keys.ArrowUp) f += 1; if (keys.KeyS || keys.ArrowDown) f -= 1;
+    if (keys.KeyD || keys.ArrowRight) s += 1; if (keys.KeyA || keys.ArrowLeft) s -= 1;
+    f -= joy.vy; s += joy.vx;
+    const len = Math.hypot(f, s);
+    if (len > 0) {
+      if (len > 1) { f /= len; s /= len; }
+      const sp = (keys.ShiftLeft || keys.ShiftRight ? 6 : 3.4) * dt;
+      const sin = Math.sin(player.yaw), cos = Math.cos(player.yaw);
+      const mx = (-sin * f + cos * s) * sp, mz = (-cos * f - sin * s) * sp;
+      if (!hits(player.x + mx, player.z)) player.x += mx;
+      if (!hits(player.x, player.z + mz)) player.z += mz;
+      player.bob += dt * Math.min(len, 1) * (sp / dt) * 2.4;
+    }
+    player.moving = len > .2;
+  } else player.moving = false;
+  if (player.moving !== player._wasMoving) { player._wasMoving = player.moving; window.AudioNave?.setWalking(player.moving, { surface: lastRoom?.id === 'biblioteca' || lastRoom?.id === 'proyeccion' ? 'moqueta' : 'metal' }); }
+  {
+  }
+  // puertas
+  for (const d of DOORS) {
+    const near = Math.hypot(player.x - d.cx, player.z - d.cz) < 2.6;
+    d.open += ((near ? 1 : 0) - d.open) * Math.min(1, dt * 6);
+    for (const p of d.panels) {
+      const s = p.userData.s, off = s * (S / 2 + d.open * S * .92);
+      if (d.axis === 'x') p.position.x = d.cx + off; else p.position.z = d.cz + off;
+    }
+  }
+  // cámara
+  camera.position.set(player.x, EYE + Math.sin(player.bob) * .035, player.z);
+  camera.rotation.set(player.pitch, player.yaw, 0);
+  // exterior en movimiento: la nave avanza hacia +x
+  for (const [i, l] of starLayers.entries()) { const a = l.geometry.attributes.position, v = dt * (6 + i * 5); for (let k = 0; k < a.count; k++) { let x = a.array[k * 3] - v; if (x < -800) x += 1600; a.array[k * 3] = x; } a.needsUpdate = true; }
+  planet.rotation.y = t * .01; planet.material.uniforms.t.value = t;
+  for (const a of anim) a(t, dt);
+  // compartimento actual
+  const r = roomOf(player.x, player.z);
+  if (r && r !== lastRoom) { const prev = lastRoom; lastRoom = r; $('roomName').textContent = r.name; $('roomSub').textContent = r.sub; dispatchEvent(new CustomEvent('malkevnia:room', { detail: { id: r.id, prev: prev?.id } })); }
+  mapa?.setPlayer(player.x, player.z, player.yaw);
+  // interacción más cercana
+  nearest = null; let best = 1e9;
+  for (const it of interact) { const dd = Math.hypot(player.x - it.x, player.z - it.z); if (dd < it.r && dd < best) { best = dd; nearest = it; } }
+  const pr = $('prompt');
+  if (nearest && running && !modal) { pr.hidden = false; pr.innerHTML = (TOUCH ? '' : '<kbd>E</kbd>') + nearest.label; $('act').hidden = !TOUCH; }
+  else { pr.hidden = true; $('act').hidden = true; }
+  if (!mapa && !$('mini').hidden && (miniT += dt) > .1) { miniT = 0; drawMini(); }
+  if (RP) RP.render(renderer, scene, camera, composer); else composer ? composer.render() : renderer.render(scene, camera);
+}
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer?.setSize(innerWidth, innerHeight);
+});
+
+$('go').addEventListener('click', () => {
+  $('start').hidden = true; running = true;
+  dispatchEvent(new CustomEvent('malkevnia:start'));
+  for (const id of ['room', 'mini', 'cross', 'help', 'sound']) $(id).hidden = false;
+  if (TOUCH) { $('joy').hidden = false; if (innerWidth < 640) $('mini').hidden = true; }
+  lock();
+});
+if (TOUCH) $('ctrls').innerHTML = '<dt>Pulgar izquierdo</dt><dd>Caminar</dd><dt>Arrastrar a la derecha</dt><dd>Mirar alrededor</dd><dt>USAR</dt><dd>Consolas y terminales</dd>';
+
+/* ---------- API de módulos (ver README.md) ---------- */
+const frameHooks = new Set();
+anim.push((t, dt) => { for (const f of frameHooks) { try { f(t, dt); } catch (e) { console.error(e); frameHooks.delete(f); } } });
+const roomsWorld = Object.fromEntries(ROOMS.map(r => { const b = rb(r.id); return [r.id, { id: r.id, name: r.name, sub: r.sub, color: r.color, x0: b.x0, x1: b.x1, z0: b.z0, z1: b.z1, cx: b.cx, cz: b.cz, height: H }]; }));
+const inRect = (x, z, r) => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1;
+function clearRoom(id) {
+  const r = roomsWorld[id];
+  for (const o of [...scene.children]) if (!o.userData.structural && !o.userData.module && inRect(o.position.x, o.position.z, r)) scene.remove(o);
+  for (let i = colliders.length - 1; i >= 0; i--) { const c = colliders[i]; if (inRect((c[0] + c[2]) / 2, (c[1] + c[3]) / 2, r)) colliders.splice(i, 1); }
+  for (let i = interact.length - 1; i >= 0; i--) if (!interact[i].module && inRect(interact[i].x, interact[i].z, r)) interact.splice(i, 1);
+}
+const onFrame = fn => { frameHooks.add(fn); return () => frameHooks.delete(fn); };
+const suspend = () => { modal = true; if (locked) document.exitPointerLock(); for (const k in keys) keys[k] = false; };
+const resume = () => { modal = false; lock(); };
+async function registerModule(roomId, mod, opts = {}) {
+  const room = roomsWorld[roomId] || null;
+  if (room && opts.replace !== false) clearRoom(roomId);
+  const group = new THREE.Group(); group.userData.module = true; scene.add(group);
+  const mine = { cols: [], ints: [], hooks: [] };
+  const ctx = {
+    THREE, scene, group, room, rooms: roomsWorld, camera, renderer, player,
+    addCollider: (x0, z0, x1, z1) => { addCol(x0, z0, x1, z1); mine.cols.push(colliders[colliders.length - 1]); },
+    addInteract: it => { it.module = true; interact.push(it); mine.ints.push(it); return it; },
+    onFrame: fn => { const off = onFrame(fn); mine.hooks.push(off); return off; },
+    showPanel, suspend, resume, teleport,
+  };
+  await mod.mount?.(ctx);
+  if (mod.update) ctx.onFrame((t, dt) => mod.update(t, dt));
+  return { ctx, unmount() {
+    try { mod.unmount?.(); } catch (e) { console.error(e); }
+    mine.hooks.forEach(f => f()); scene.remove(group);
+    for (const c of mine.cols) { const i = colliders.indexOf(c); if (i >= 0) colliders.splice(i, 1); }
+    for (const it of mine.ints) { const i = interact.indexOf(it); if (i >= 0) interact.splice(i, 1); }
+  } };
+}
+function teleport(x, z, yaw) { player.x = x; player.z = z; if (yaw !== undefined) player.yaw = yaw; }
+window.Malkevnia = { version: 1, THREE, scene, camera, renderer, player, rooms: roomsWorld, grid, tile: S, registerModule, clearRoom, onFrame, teleport, openUniverse, showPanel, suspend, resume,
+  addCollider: addCol, addInteract: it => (interact.push(it), it) };
+window.__nave = { player, scene, camera };
+dispatchEvent(new CustomEvent('malkevnia:ready', { detail: window.Malkevnia }));
+// calidad adaptable (modulos/rendimiento)
+if (RP) try {
+  RP.applyPreset(renderer, scene, 'auto', { composer, bloom, overrides: { sombras: false } });
+  RP.autoTune(renderer, 60);
+  RP.panel($('ajustes'));
+} catch (e) { console.warn('rendimiento', e); }
+// módulos integrados (cada uno falla por separado sin romper la nave)
+tick();
+import('./integracion.js').then(m => m.default({ THREE, scene, camera, renderer, player, rooms: roomsWorld, R, rb, interact, anim, addCol, box, glow, showPanel, suspend, resume, teleport, openUniverse, useNearest, lock, look, joy, keys, TOUCH, S, H, $, get lastRoom() { return lastRoom; }, setKeyCapture: f => { keyCapture = f; }, setMapa: m => { mapa = m; }, setMobile: c => { mobileCtl = c; }, get locked() { return locked; }, setModal: v => { modal = v; }, setAway: v => { inUniverse = v; if (!v) clock.getDelta(); }, planet, moon, setAudioOn: v => { audioOn = v; $('sound').textContent = 'Sonido: ' + (v ? 'sí' : 'no'); }, starLayers })).catch(e => console.warn('integración', e));
+</script>

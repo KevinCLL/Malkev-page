@@ -1,0 +1,270 @@
+<meta charset="utf-8">
+<title>Biblioteca de La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:wght@300;400;600&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Una sola vista a pantalla completa: la sala 3D de fondo y una capa de control translúcida encima. Estética única oscura (la nave). */
+:root{
+  --void:#07050f; --hull:#151026; --panel:rgba(18,12,36,.72); --line:rgba(170,140,255,.28);
+  --text:#e9e2ff; --muted:#a99cd6; --accent:#b59bff; --glow:#7fd6ff;
+  --f-display:'Orbitron','Exo 2',system-ui,sans-serif; --f-body:'Exo 2','Segoe UI',system-ui,sans-serif; --f-mono:'JetBrains Mono',ui-monospace,monospace;
+  color-scheme:dark;
+}
+html,body{height:100%}
+body{margin:0;background:var(--void);color:var(--text);font-family:var(--f-body);overflow:hidden}
+#sala{position:fixed;inset:0}
+#sala canvas{display:block;width:100%;height:100%;touch-action:none}
+.hud{position:fixed;left:0;right:0;top:0;padding-top:max(14px,env(safe-area-inset-top,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;flex-wrap:wrap;gap:12px 20px;align-items:flex-start;justify-content:space-between;pointer-events:none;z-index:3}
+.hud>*{pointer-events:auto}
+.titulo .eti{font:600 11px/1 var(--f-mono);letter-spacing:.22em;text-transform:uppercase;color:var(--accent)}
+.titulo h1{margin:8px 0 4px;font:700 clamp(22px,3.4vw,34px)/1 var(--f-display);letter-spacing:.04em;text-shadow:0 0 24px rgba(160,120,255,.45)}
+.titulo p{margin:0;color:var(--muted);font-size:14px;max-width:46ch;font-variant-numeric:tabular-nums}
+.mandos{display:grid;gap:8px;justify-items:end;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px;backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px)}
+.fila{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.chip{font:600 12px/1 var(--f-body);color:var(--muted);background:transparent;border:1px solid var(--line);border-radius:99px;padding:7px 11px;cursor:pointer}
+.chip:hover{color:var(--text);border-color:rgba(181,155,255,.55)}
+.chip[aria-pressed="true"]{color:#140c28;background:var(--accent);border-color:var(--accent)}
+.chip:focus-visible,#buscar:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+#buscar{width:min(260px,100%);font:400 13px var(--f-body);color:var(--text);background:rgba(0,0,0,.25);border:1px solid var(--line);border-radius:8px;padding:8px 10px}
+#buscar::placeholder{color:var(--muted)}
+#cuenta{font:400 11px var(--f-mono);color:var(--muted);letter-spacing:.06em;font-variant-numeric:tabular-nums}
+.pie{position:fixed;left:0;right:0;bottom:0;padding-bottom:max(14px,env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));
+  display:flex;justify-content:center;pointer-events:none;z-index:2}
+.pie span{font:400 12px var(--f-mono);color:var(--muted);background:rgba(10,6,22,.6);border:1px solid var(--line);border-radius:99px;padding:7px 14px}
+.pie b{color:var(--text);font-weight:600}
+#tip{position:fixed;z-index:4;pointer-events:none;font:600 12px var(--f-body);color:var(--text);background:rgba(16,10,32,.9);border:1px solid var(--line);border-radius:6px;padding:5px 8px;max-width:260px;transform:translate(14px,14px)}
+#tip small{display:block;color:var(--muted);font-weight:400}
+#carga{position:fixed;inset:0;display:grid;place-items:center;font:600 12px var(--f-mono);letter-spacing:.2em;color:var(--muted);z-index:6;background:var(--void);transition:opacity .6s}
+#carga.fuera{opacity:0;pointer-events:none}
+#error{position:fixed;inset:auto 16px 60px;z-index:7;text-align:center;color:#ffd0d0;font-size:13px}
+@media (max-width:640px){
+  .mandos{justify-items:stretch;width:100%}
+  .mandos{padding:8px;gap:6px}
+  .fila{justify-content:flex-start;flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none}
+  .chip{flex:none;padding:6px 10px}
+  #buscar{width:100%;padding:7px 10px}
+  #cuenta{display:none}
+  .titulo h1{margin:6px 0 2px}
+  .titulo p{font-size:12px}
+  body.leyendo .mandos,body.leyendo .pie{display:none}
+}
+</style>
+
+<div id="sala"></div>
+<header class="hud">
+  <div class="titulo">
+    <div class="eti">Cubierta 3 · Biblioteca</div>
+    <h1>Biblioteca</h1>
+    <p id="resumen">El rincón más silencioso de la nave.</p>
+  </div>
+  <div class="mandos" role="group" aria-label="Filtros de la biblioteca">
+    <div class="fila" data-grupo="tipo">
+      <button class="chip" data-v="todos" aria-pressed="true">Todo</button>
+      <button class="chip" data-v="libro" aria-pressed="false">Libros</button>
+      <button class="chip" data-v="manga" aria-pressed="false">Manga</button>
+    </div>
+    <div class="fila" data-grupo="estado">
+      <button class="chip" data-v="todos" aria-pressed="true">Cualquier estado</button>
+      <button class="chip" data-v="leyendo" aria-pressed="false">Leyendo</button>
+      <button class="chip" data-v="leido" aria-pressed="false">Leídos</button>
+      <button class="chip" data-v="pendiente" aria-pressed="false">Pendientes</button>
+    </div>
+    <input id="buscar" type="search" placeholder="Buscar título o autor…" aria-label="Buscar título o autor" autocomplete="off">
+    <div id="cuenta"></div>
+  </div>
+</header>
+<div class="pie"><span><b>Arrastra</b> para mirar · <b>rueda</b> o pellizco para acercarte · <b>toca un lomo</b> para sacarlo</span></div>
+<div id="tip" hidden></div>
+<div id="carga">ENCENDIENDO LA BIBLIOTECA…</div>
+<div id="error" hidden></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { crearLibreria } from './libreria-3d.js';
+import { LIBROS, ATLAS } from './libreria-datos.js';
+
+const $ = id => document.getElementById(id);
+const sala = $('sala');
+const reducido = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.05;
+sala.appendChild(renderer.domElement);
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color('#07050f');
+scene.fog = new THREE.Fog('#07050f', 6, 14);
+const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.05, 200);
+
+// ---------- sala ----------
+scene.add(new THREE.HemisphereLight('#8f7bff', '#120a24', 0.55));
+const techoLuz = new THREE.DirectionalLight('#d8ccff', 0.5); techoLuz.position.set(1, 4, 3); scene.add(techoLuz);
+
+const suelo = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), new THREE.MeshStandardMaterial({ color: '#120d22', roughness: 0.35, metalness: 0.5 }));
+suelo.rotation.x = -Math.PI / 2; suelo.position.z = 2; scene.add(suelo);
+// rejilla suave en el suelo
+const rejilla = new THREE.GridHelper(14, 28, '#3b2c70', '#22184a'); rejilla.position.set(0, 0.002, 2); rejilla.material.transparent = true; rejilla.material.opacity = 0.35; scene.add(rejilla);
+
+const matPared = new THREE.MeshStandardMaterial({ color: '#161028', roughness: 0.6, metalness: 0.3 });
+const pared = new THREE.Mesh(new THREE.BoxGeometry(14, 3.2, 0.1), matPared); pared.position.set(0, 1.6, -0.25); scene.add(pared);
+// paneles del casco
+const matJunta = new THREE.MeshStandardMaterial({ color: '#2a1f4d', roughness: 0.4, metalness: 0.6 });
+for (let x = -6.5; x <= 6.5; x += 1.3) { const j = new THREE.Mesh(new THREE.BoxGeometry(0.02, 3.2, 0.02), matJunta); j.position.set(x, 1.6, -0.19); scene.add(j); }
+const techo = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), new THREE.MeshStandardMaterial({ color: '#0d0919', roughness: 0.8 }));
+techo.rotation.x = Math.PI / 2; techo.position.set(0, 3.2, 2); scene.add(techo);
+const tiraTecho = new THREE.Mesh(new THREE.BoxGeometry(6, 0.02, 0.05), new THREE.MeshStandardMaterial({ color: '#d9ccff', emissive: '#a98bff', emissiveIntensity: 1.4 }));
+tiraTecho.position.set(0, 3.18, 0.9); scene.add(tiraTecho);
+
+// ojo de buey a la derecha con el espacio detrás
+const ventana = new THREE.Group(); ventana.position.set(2.85, 1.55, -0.18); scene.add(ventana);
+const aro = new THREE.Mesh(new THREE.TorusGeometry(0.62, 0.06, 20, 80), new THREE.MeshStandardMaterial({ color: '#3a2b6b', metalness: 0.8, roughness: 0.25 })); ventana.add(aro);
+const aroLed = new THREE.Mesh(new THREE.TorusGeometry(0.565, 0.008, 8, 80), new THREE.MeshStandardMaterial({ color: '#bff0ff', emissive: '#7fd6ff', emissiveIntensity: 1.8 })); ventana.add(aroLed);
+{
+  const c = document.createElement('canvas'); c.width = c.height = 512; const x = c.getContext('2d');
+  x.fillStyle = '#05030c'; x.fillRect(0, 0, 512, 512);
+  const n = x.createRadialGradient(330, 220, 10, 300, 240, 260);
+  n.addColorStop(0, 'rgba(190,120,255,.55)'); n.addColorStop(.45, 'rgba(90,50,180,.25)'); n.addColorStop(1, 'rgba(0,0,0,0)');
+  x.fillStyle = n; x.fillRect(0, 0, 512, 512);
+  for (let i = 0; i < 420; i++) { const r = Math.random() * 1.4 + .2; x.fillStyle = `rgba(${220 + Math.random() * 35},${210 + Math.random() * 45},255,${.4 + Math.random() * .6})`; x.beginPath(); x.arc(Math.random() * 512, Math.random() * 512, r, 0, 7); x.fill(); }
+  // planeta lejano
+  const p = x.createRadialGradient(150, 360, 6, 170, 370, 90); p.addColorStop(0, '#c9a6ff'); p.addColorStop(.7, '#5b3aa8'); p.addColorStop(1, '#1a0f3a');
+  x.fillStyle = p; x.beginPath(); x.arc(170, 370, 82, 0, 7); x.fill();
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace;
+  const cristal = new THREE.Mesh(new THREE.CircleGeometry(0.6, 64), new THREE.MeshBasicMaterial({ map: t, toneMapped: false }));
+  cristal.position.z = -0.01; ventana.add(cristal);
+}
+
+// sillón de lectura y lamparita
+const sillon = new THREE.Group(); sillon.position.set(-2.55, 0, 1.0); sillon.rotation.y = 0.55; scene.add(sillon);
+{
+  const tela = new THREE.MeshStandardMaterial({ color: '#3b2a6e', roughness: 0.85 });
+  const pata = new THREE.MeshStandardMaterial({ color: '#2b2050', metalness: 0.6, roughness: 0.3 });
+  const b = (w, h, d, m, x, y, z) => { const o = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m); o.position.set(x, y, z); sillon.add(o); return o; };
+  b(0.8, 0.12, 0.75, pata, 0, 0.12, 0);
+  b(0.72, 0.16, 0.66, tela, 0, 0.3, 0.02);
+  const resp = b(0.72, 0.6, 0.14, tela, 0, 0.62, -0.32); resp.rotation.x = -0.18;
+  b(0.12, 0.3, 0.7, tela, -0.36, 0.42, 0); b(0.12, 0.3, 0.7, tela, 0.36, 0.42, 0);
+  const lamp = new THREE.Group(); lamp.position.set(0.75, 0, -0.2); sillon.add(lamp);
+  const pie = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 1.3, 8), pata); pie.position.y = 0.65; lamp.add(pie);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.14, 0.16, 0.03, 24), pata); base.position.y = 0.015; lamp.add(base);
+  const pantalla = new THREE.Mesh(new THREE.SphereGeometry(0.11, 24, 16), new THREE.MeshStandardMaterial({ color: '#ffe6c4', emissive: '#ffb86b', emissiveIntensity: 1.3 }));
+  pantalla.position.y = 1.32; lamp.add(pantalla);
+  const luz = new THREE.PointLight('#ffc48a', 1.1, 3, 1.8); luz.position.y = 1.25; lamp.add(luz);
+}
+
+// polvo flotando bajo la luz
+const polvo = (() => {
+  const n = 260, pos = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { pos[i * 3] = (Math.random() - .5) * 6; pos[i * 3 + 1] = Math.random() * 3; pos[i * 3 + 2] = Math.random() * 2.6; }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const p = new THREE.Points(g, new THREE.PointsMaterial({ color: '#cdb8ff', size: 0.012, transparent: true, opacity: 0.55, depthWrite: false }));
+  scene.add(p); return p;
+})();
+
+// ---------- la librería (módulo) ----------
+const lib = crearLibreria({
+  libros: LIBROS, atlas: ATLAS, atlasUrl: './portadas.jpg', contenedor: document.body,
+  onHover: l => { hoverLibro = l; pintarTip(); },
+  onSelect: l => { document.body.classList.toggle('leyendo', !!l); if (l) { $('tip').hidden = true; } },
+});
+lib.init({ scene, camera, renderer });
+lib.group.position.set(0, 0, 0);
+
+// ---------- cámara ----------
+const D = lib.dimensiones;
+const objetivo = new THREE.Vector3(0, 1.2, 0);
+const lejos = () => {
+  const aspecto = innerWidth / innerHeight;
+  const vFov = THREE.MathUtils.degToRad(camera.fov);
+  const anchoVisible = D.ancho + 1.5;
+  return THREE.MathUtils.clamp(Math.max((anchoVisible / 2) / (Math.tan(vFov / 2) * aspecto), 3.1 / 2 / Math.tan(vFov / 2)), 2.6, 6.5);
+};
+camera.position.set(0.35, 1.45, lejos());
+const controles = new OrbitControls(camera, renderer.domElement);
+controles.target.copy(objetivo);
+controles.enableDamping = true; controles.dampingFactor = 0.08;
+controles.minDistance = 0.9; controles.maxDistance = 7;
+controles.minPolarAngle = Math.PI * 0.32; controles.maxPolarAngle = Math.PI * 0.56;
+controles.minAzimuthAngle = -0.85; controles.maxAzimuthAngle = 0.85;
+controles.screenSpacePanning = true; controles.panSpeed = 0.6;
+controles.addEventListener('change', () => {
+  // la cámara no sale de la sala
+  controles.target.x = THREE.MathUtils.clamp(controles.target.x, -D.ancho / 2, D.ancho / 2);
+  controles.target.y = THREE.MathUtils.clamp(controles.target.y, 0.4, 2.1);
+  controles.target.z = THREE.MathUtils.clamp(controles.target.z, -0.05, 0.3);
+});
+
+// ---------- postproceso ----------
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.55, 0.6, 0.82);
+composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+// ---------- interfaz ----------
+const nLibros = LIBROS.filter(l => l.tipo !== 'manga').length, nManga = LIBROS.length - nLibros;
+const paginas = LIBROS.reduce((s, l) => s + (l.paginas && l.estado === 'leido' ? l.paginas : 0), 0);
+$('resumen').textContent = `${nLibros} libros y ${nManga} series de manga. ${paginas.toLocaleString('es')} páginas ya leídas.`;
+let hoverLibro = null, raton = { x: 0, y: 0 };
+addEventListener('pointermove', e => { raton = { x: e.clientX, y: e.clientY }; if (!$('tip').hidden) pintarTip(); });
+function pintarTip() {
+  const t = $('tip');
+  if (!hoverLibro || lib.abierto) { t.hidden = true; return; }
+  t.innerHTML = '';
+  t.append(hoverLibro.titulo); const s = document.createElement('small'); s.textContent = hoverLibro.autor; t.append(s);
+  t.style.left = Math.min(raton.x, innerWidth - 280) + 'px'; t.style.top = raton.y + 'px'; t.hidden = false;
+}
+const filtro = { tipo: 'todos', estado: 'todos', texto: '' };
+function aplicar() {
+  const n = lib.filtrar(filtro);
+  const activo = filtro.tipo !== 'todos' || filtro.estado !== 'todos' || filtro.texto;
+  $('cuenta').textContent = activo ? `${n} de ${LIBROS.length} a la vista` : `${LIBROS.length} volúmenes`;
+}
+document.querySelectorAll('.fila').forEach(fila => fila.addEventListener('click', e => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  fila.querySelectorAll('.chip').forEach(c => c.setAttribute('aria-pressed', String(c === b)));
+  filtro[fila.dataset.grupo] = b.dataset.v; aplicar();
+}));
+$('buscar').addEventListener('input', e => { filtro.texto = e.target.value.trim(); aplicar(); });
+aplicar();
+
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight);
+});
+
+// ---------- bucle ----------
+const reloj = new THREE.Clock();
+let primero = true;
+function tick() {
+  const dt = Math.min(reloj.getDelta(), 0.05);
+  controles.update();
+  lib.update(dt);
+  if (!reducido) {
+    const p = polvo.geometry.attributes.position;
+    for (let i = 0; i < p.count; i++) { let y = p.getY(i) + dt * 0.02; if (y > 3) y = 0; p.setY(i, y); }
+    p.needsUpdate = true;
+  }
+  composer.render();
+  if (primero) { primero = false; $('carga').classList.add('fuera'); }
+  requestAnimationFrame(tick);
+}
+tick();
+</script>
+<script>
+addEventListener('error', e => { const el = document.getElementById('error'); if (el) { el.hidden = false; el.textContent = 'No se pudo encender la sala 3D: ' + (e.message || 'error desconocido'); } });
+</script>

@@ -1,0 +1,213 @@
+{
+ "units": "metros",
+ "tile": 1.5,
+ "ship": {
+  "x": 0,
+  "z": 0,
+  "width": 57.0,
+  "depth": 24.0
+ },
+ "yaw": "yaw=0 mira a -Z; yaw=-PI/2 mira a +X (proa). Forward=(-sin yaw,0,-cos yaw). Proa hacia +X.",
+ "rooms": [
+  {
+   "id": "pasillo",
+   "name": "Pasillo central",
+   "x": 10.5,
+   "z": 10.5,
+   "width": 33.0,
+   "depth": 3.0,
+   "spawn": {
+    "x": 21,
+    "z": 12,
+    "yaw": -1.5708
+   }
+  },
+  {
+   "id": "maquinas",
+   "name": "Sala de máquinas",
+   "x": 1.5,
+   "z": 1.5,
+   "width": 9.0,
+   "depth": 21.0,
+   "spawn": {
+    "x": 9.3,
+    "z": 12,
+    "yaw": 1.5708
+   }
+  },
+  {
+   "id": "recreativa",
+   "name": "Sala recreativa",
+   "x": 12.0,
+   "z": 1.5,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 16.5,
+    "z": 8.6,
+    "yaw": 0.0
+   }
+  },
+  {
+   "id": "proyeccion",
+   "name": "Sala de proyección",
+   "x": 22.5,
+   "z": 1.5,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 27.0,
+    "z": 8.0,
+    "yaw": 0.0
+   }
+  },
+  {
+   "id": "bitacora",
+   "name": "Bitácora",
+   "x": 33.0,
+   "z": 1.5,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 37.5,
+    "z": 8.0,
+    "yaw": 0.0
+   }
+  },
+  {
+   "id": "juegos",
+   "name": "Sala de juegos",
+   "x": 12.0,
+   "z": 15.0,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 16.5,
+    "z": 16.0,
+    "yaw": 3.14159
+   }
+  },
+  {
+   "id": "biblioteca",
+   "name": "Biblioteca",
+   "x": 22.5,
+   "z": 15.0,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 27.0,
+    "z": 16.0,
+    "yaw": 3.14159
+   }
+  },
+  {
+   "id": "ordenador",
+   "name": "Ordenador de a bordo",
+   "x": 33.0,
+   "z": 15.0,
+   "width": 9.0,
+   "depth": 7.5,
+   "spawn": {
+    "x": 37.5,
+    "z": 16.0,
+    "yaw": 3.14159
+   }
+  },
+  {
+   "id": "puente",
+   "name": "Puente de mando",
+   "x": 43.5,
+   "z": 1.5,
+   "width": 12.0,
+   "depth": 21.0,
+   "spawn": {
+    "x": 44.4,
+    "z": 12,
+    "yaw": -1.5708
+   }
+  }
+ ],
+ "doors": [
+  {
+   "between": [
+    "maquinas",
+    "pasillo"
+   ],
+   "x": 10.5,
+   "z": 10.5,
+   "width": 1.5,
+   "depth": 3.0
+  },
+  {
+   "between": [
+    "pasillo",
+    "puente"
+   ],
+   "x": 42.0,
+   "z": 10.5,
+   "width": 1.5,
+   "depth": 3.0
+  },
+  {
+   "between": [
+    "recreativa",
+    "pasillo"
+   ],
+   "x": 15.0,
+   "z": 9.0,
+   "width": 3.0,
+   "depth": 1.5
+  },
+  {
+   "between": [
+    "proyeccion",
+    "pasillo"
+   ],
+   "x": 25.5,
+   "z": 9.0,
+   "width": 3.0,
+   "depth": 1.5
+  },
+  {
+   "between": [
+    "bitacora",
+    "pasillo"
+   ],
+   "x": 36.0,
+   "z": 9.0,
+   "width": 3.0,
+   "depth": 1.5
+  },
+  {
+   "between": [
+    "pasillo",
+    "juegos"
+   ],
+   "x": 15.0,
+   "z": 13.5,
+   "width": 3.0,
+   "depth": 1.5
+  },
+  {
+   "between": [
+    "pasillo",
+    "biblioteca"
+   ],
+   "x": 25.5,
+   "z": 13.5,
+   "width": 3.0,
+   "depth": 1.5
+  },
+  {
+   "between": [
+    "pasillo",
+    "ordenador"
+   ],
+   "x": 36.0,
+   "z": 13.5,
+   "width": 3.0,
+   "depth": 1.5
+  }
+ ],
+ "windows": "proa x=55.5..57 z=1.5..22.5; laterales del puente z=0..1.5 y z=22.5..24 x=45..54; recreativa z=0..1.5 x=13.5..19.5; biblioteca z=22.5..24 x=24..30"
+}

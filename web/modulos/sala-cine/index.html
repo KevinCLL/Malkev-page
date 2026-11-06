@@ -1,0 +1,230 @@
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sala de proyección · La Malkevnia</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700&family=Exo+2:ital,wght@0,300;0,400;0,600;1,300&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Una sola estética oscura (cabina de nave): lienzo 3D a pantalla completa con HUD flotante, igual que la nave. */
+:root{
+  --void:#07050f; --panel:rgba(18,12,36,.76); --line:rgba(170,140,255,.28);
+  --text:#e9e2ff; --muted:#a99cd6; --accent:#b59bff; --glow:#7fd6ff;
+  --f-display:"Orbitron","Exo 2",system-ui,sans-serif; --f-body:"Exo 2",system-ui,sans-serif; --f-mono:"JetBrains Mono",ui-monospace,monospace;
+  color-scheme:dark;
+}
+[hidden]{display:none!important}
+html,body{height:100%;margin:0;overflow:hidden;background:var(--void);color:var(--text);font-family:var(--f-body)}
+#c{position:fixed;inset:0;width:100%;height:100%;display:block;touch-action:none;cursor:grab}
+#c.pointer{cursor:pointer} #c.drag{cursor:grabbing}
+.hud{position:fixed;z-index:5;background:var(--panel);border:1px solid var(--line);border-radius:12px;backdrop-filter:blur(8px)}
+.eb{font:600 10px var(--f-mono);letter-spacing:.22em;color:var(--muted);text-transform:uppercase}
+#room{top:calc(14px + env(safe-area-inset-top,0px));left:max(16px,env(safe-area-inset-left,0px));padding:10px 14px;max-width:min(320px,calc(100vw - 32px))}
+#room .nm{font:700 17px var(--f-display);letter-spacing:.04em;margin-top:3px}
+#room .sb{font:400 12px var(--f-body);color:var(--muted);margin-top:4px;line-height:1.45}
+#film{top:calc(14px + env(safe-area-inset-top,0px));right:max(16px,env(safe-area-inset-right,0px));padding:12px;display:grid;grid-template-columns:72px 1fr;gap:12px;width:min(360px,calc(100vw - 32px));box-sizing:border-box}
+#film canvas{width:72px;height:108px;border-radius:4px;display:block;background:#120c24}
+#film > div{min-width:0}
+#film .ti{font:700 15px/1.2 var(--f-display);letter-spacing:.03em;text-wrap:balance}
+#film .di{font:400 13px var(--f-body);color:var(--muted);margin-top:4px}
+#film .mt{font:400 11px var(--f-mono);color:var(--muted);margin-top:4px;letter-spacing:.04em}
+#film .tg{font:italic 300 13px/1.4 var(--f-body);color:var(--text);margin-top:6px;opacity:.88;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+#film .rt{font:600 11px var(--f-mono);color:var(--glow);margin-top:6px;letter-spacing:.08em}
+#bar{left:50%;transform:translateX(-50%);bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:8px;display:flex;gap:6px;flex-wrap:wrap;justify-content:center;width:max-content;max-width:calc(100vw - 32px);box-sizing:border-box}
+button{font:600 12px var(--f-mono);letter-spacing:.08em;color:var(--text);background:transparent;border:1px solid var(--line);border-radius:999px;padding:9px 14px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--accent)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--glow);outline-offset:2px}
+button.on{background:var(--accent);color:var(--void);border-color:var(--accent)}
+button.main{font-family:var(--f-display);font-weight:700;letter-spacing:.12em}
+#help{left:max(16px,env(safe-area-inset-left,0px));bottom:calc(14px + env(safe-area-inset-bottom,0px));padding:8px 12px;font:400 11px/1.7 var(--f-mono);color:var(--muted)}
+#help b{color:var(--text);font-weight:600}
+#list{position:fixed;z-index:10;right:max(16px,env(safe-area-inset-right,0px));top:calc(14px + env(safe-area-inset-top,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));width:min(380px,calc(100vw - 32px));display:flex;flex-direction:column;gap:8px;padding:12px;box-sizing:border-box}
+#list header{display:flex;justify-content:space-between;align-items:center;gap:8px}
+#list h2{font:700 15px var(--f-display);letter-spacing:.06em;margin:0}
+#list h2 span{font:400 11px var(--f-mono);color:var(--muted);letter-spacing:.08em;margin-left:6px}
+#q{width:100%;box-sizing:border-box;font:400 14px var(--f-body);color:var(--text);background:rgba(7,5,15,.6);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+#q::placeholder{color:var(--muted)}
+#list ol{list-style:none;margin:0;padding:0;overflow:auto;display:grid;gap:2px;flex:1;align-content:start;overscroll-behavior:contain}
+#list li button{width:100%;text-align:left;border:0;border-radius:8px;padding:7px 10px;display:grid;grid-template-columns:8px 1fr auto;gap:10px;align-items:center;white-space:normal;font:400 13px var(--f-body);letter-spacing:0}
+#list li button:hover,#list li button.sel{background:rgba(181,155,255,.14)}
+#list li i{width:8px;height:30px;border-radius:2px;display:block}
+#list li small{display:block;color:var(--muted);font:400 11px var(--f-mono)}
+#list li b{font:600 11px var(--f-mono);color:var(--glow);font-variant-numeric:tabular-nums}
+#list .vacio{color:var(--muted);font-size:13px;padding:8px 10px}
+#list footer{font:400 10px/1.5 var(--f-mono);color:var(--muted)}
+#start{position:fixed;inset:0;z-index:20;display:grid;place-items:center;background:radial-gradient(ellipse at 50% 40%,rgba(60,36,120,.55),rgba(7,5,15,.94) 70%);padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+#start .card{max-width:540px;display:grid;gap:16px}
+#start h1{font:700 clamp(30px,7vw,52px)/1.05 var(--f-display);letter-spacing:.05em;margin:0;text-wrap:balance;background:linear-gradient(180deg,#fff,#b9a6ff);-webkit-background-clip:text;background-clip:text;color:transparent}
+#start p{margin:0;color:var(--muted);line-height:1.55;font-size:15px}
+#start .go{justify-self:start;font:700 14px var(--f-display);letter-spacing:.14em;color:var(--void);background:var(--accent);border:0;padding:14px 26px;box-shadow:0 0 24px rgba(181,155,255,.5)}
+#start small{font:400 11px var(--f-mono);color:var(--muted);opacity:.8}
+.touch #help{display:none}
+@media (max-width:760px){#list{bottom:calc(160px + env(safe-area-inset-bottom,0px))}#film{grid-template-columns:48px 1fr;padding:10px;top:calc(84px + env(safe-area-inset-top,0px))}#film canvas{width:48px;height:72px}#film .tg,#film .mt{display:none}#room .sb{display:none}#help{display:none}}
+@media (max-width:760px) and (max-height:520px){#film{display:none}}
+</style>
+
+<canvas id="c"></canvas>
+<div id="room" class="hud"><div class="eb">Cubierta 1 · Compartimento</div><div class="nm">Sala de proyección</div><div class="sb" id="roomSub"></div></div>
+<div id="film" class="hud"><canvas id="thumb" width="144" height="216"></canvas><div><div class="ti" id="fT"></div><div class="di" id="fD"></div><div class="mt" id="fM"></div><div class="tg" id="fG"></div><div class="rt" id="fR"></div></div></div>
+<div id="help" class="hud"><b>Arrastrar</b> mirar · <b>WASD</b> caminar · <b>Clic</b> en un póster o butaca<br><b>P</b> proyector · <b>← →</b> película · <b>B</b> butaca · <b>L</b> cartelera</div>
+<div id="bar" class="hud">
+  <button id="prev" aria-label="Película anterior">◀</button>
+  <button id="proj" class="main">PROYECCIÓN</button>
+  <button id="next" aria-label="Película siguiente">▶</button>
+  <button id="seat">BUTACA</button>
+  <button id="walk">ENTRADA</button>
+  <button id="cart">CARTELERA</button>
+  <button id="page">MÁS PÓSTERS</button>
+  <button id="snd">SONIDO: NO</button>
+</div>
+<div id="list" class="hud" hidden>
+  <header><h2>CARTELERA<span id="count"></span></h2><button id="closeList">CERRAR</button></header>
+  <input id="q" type="search" placeholder="Buscar por título, director o año" autocomplete="off" aria-label="Buscar en la filmoteca">
+  <ol id="ol"></ol>
+  <footer>Ordenadas por tu nota. Pósters y fotogramas: TMDB. Este producto usa la API de TMDB pero no está avalado ni certificado por TMDB.</footer>
+</div>
+<div id="start"><div class="card"><div class="eb">La Malkevnia · Cubierta 1</div><h1>SALA DE PROYECCIÓN</h1><p id="intro">Butacas de terciopelo, techo de estrellas y tu filmoteca en las paredes. Toca un póster para elegir película y enciende el proyector: se apagan las luces y empieza su tráiler.</p><button class="go" id="go">ENTRAR EN LA SALA</button><small>Pósters y fotogramas de TMDB.</small></div></div>
+
+<script type="importmap">
+{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
+import { init } from './sala-cine.js';
+import { cargarFilmoteca } from './filmoteca.js';
+
+const $ = id => document.getElementById(id);
+const TOUCH = matchMedia('(pointer: coarse)').matches;
+if (TOUCH) document.documentElement.classList.add('touch');
+await Promise.race([Promise.all(['700 64px Orbitron', '400 28px "Exo 2"', 'italic 300 26px "Exo 2"', '600 20px "JetBrains Mono"', '400 19px "JetBrains Mono"'].map(f => document.fonts.load(f))).catch(() => {}), new Promise(r => setTimeout(r, 2500))]);
+
+const films = cargarFilmoteca('./filmoteca/');
+$('roomSub').textContent = `Tu filmoteca: ${films.length} películas de Filmaffinity, con pósters y fotogramas de TMDB.`;
+
+const canvas = $('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
+renderer.setPixelRatio(Math.min(devicePixelRatio, TOUCH ? 1.5 : 2)); renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.05;
+const scene = new THREE.Scene(); scene.background = new THREE.Color(0x05030c);
+const fovFor = a => a < 1 ? 88 : 70;
+const camera = new THREE.PerspectiveCamera(fovFor(innerWidth / innerHeight), innerWidth / innerHeight, 0.05, 100);
+camera.rotation.order = 'YXZ';
+const composer = new EffectComposer(renderer);
+composer.addPass(new RenderPass(scene, camera));
+const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 0.6, 0.55, 0.8); composer.addPass(bloom);
+composer.addPass(new OutputPass());
+
+const sala = init({
+  scene, renderer, films,
+  onSelect: (f, i) => showFilm(f, i),
+  onPosterReady: (f, i) => { if (i === sala.state.index) drawThumb(i); },
+  onModeChange: m => { $('proj').classList.toggle('on', m === 'proyeccion'); $('proj').textContent = m === 'proyeccion' ? 'ENCENDER LUCES' : 'PROYECCIÓN'; },
+});
+const W = 9, D = 7.5;
+
+/* ficha de la película actual */
+const horas = m => m ? (m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')} min` : `${m} min`) : '';
+function drawThumb(i) { const tc = $('thumb').getContext('2d'); tc.clearRect(0, 0, 144, 216); tc.drawImage(sala.poster(i), 0, 0, 144, 216); }
+function showFilm(f, i) {
+  $('fT').textContent = f.title;
+  $('fD').textContent = [f.director, f.year].filter(Boolean).join(' · ');
+  $('fM').textContent = [f.type, ...(f.genres || []), horas(f.runtime)].filter(Boolean).join(' · ');
+  $('fG').textContent = f.tagline ? `«${f.tagline}»` : (f.synopsis || '');
+  $('fR').textContent = `TU NOTA ${f.rating ?? '–'}/10 · ${i + 1} de ${sala.films.length}`;
+  drawThumb(i);
+  const prevSel = $('ol').querySelector('.sel'); prevSel?.classList.remove('sel');
+  const b = rows[i]?.querySelector('button'); if (b) { b.classList.add('sel'); if (!$('list').hidden) b.scrollIntoView({ block: 'nearest' }); }
+}
+
+/* cartelera con buscador (se construye con nodos: los títulos vienen de la base de datos) */
+const norm = s => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+const rows = sala.films.map((f, i) => {
+  const li = document.createElement('li'), b = document.createElement('button'), sw = document.createElement('i'), t = document.createElement('span'), sm = document.createElement('small'), r = document.createElement('b');
+  b.dataset.i = i; sw.style.background = f.color || '#5b3fa0'; t.textContent = f.title; sm.textContent = [f.director, f.year].filter(Boolean).join(' · '); t.append(sm); r.textContent = `★${f.rating ?? '–'}`;
+  b.append(sw, t, r); li.append(b); li.dataset.k = norm(`${f.title} ${f.original || ''} ${f.director} ${f.year}`); return li;
+});
+const vacio = document.createElement('li'); vacio.className = 'vacio'; vacio.textContent = 'Ninguna película coincide con la búsqueda.'; vacio.hidden = true;
+$('ol').append(...rows, vacio);
+function filtrar() {
+  const q = norm($('q').value.trim()).split(/\s+/).filter(Boolean); let n = 0;
+  for (const li of rows) { const ok = q.every(w => li.dataset.k.includes(w)); li.hidden = !ok; if (ok) n++; }
+  vacio.hidden = n > 0; $('count').textContent = q.length ? `${n} de ${rows.length}` : `${rows.length}`;
+}
+$('q').addEventListener('input', filtrar); filtrar();
+showFilm(sala.current, 0);
+$('ol').addEventListener('click', e => { const b = e.target.closest('button'); if (b) sala.select(+b.dataset.i); });
+const toggleList = (v = $('list').hidden) => { $('list').hidden = !v; $('film').hidden = v; $('cart').classList.toggle('on', v); if (v) { $('ol').querySelector('.sel')?.scrollIntoView({ block: 'center' }); if (!TOUCH) $('q').focus(); } };
+$('cart').onclick = () => toggleList(); $('closeList').onclick = () => toggleList(false);
+
+/* cámara: mirar arrastrando, caminar con WASD, vistas rápidas */
+let yaw = 0, pitch = -0.04; const pos = new THREE.Vector3(0, 1.65, D / 2 - 0.9);
+let goal = null; let seated = false;
+function lookFrom(eye) { const c = sala.screen.center, dz = eye.z - c.z, dx = eye.x - c.x; return { p: eye.clone(), yaw: Math.atan2(dx, dz) * 0.9, pitch: Math.atan2(c.y - eye.y, Math.hypot(dx, dz)) * 0.8 }; }
+const views = {
+  entrada: () => ({ p: new THREE.Vector3(0, 1.65, D / 2 - 0.9), yaw: 0, pitch: -0.05 }),
+  butaca: () => lookFrom(sala.seats[sala.bestSeat]),
+};
+function goTo(v, sit) { goal = { ...v, t: 0, from: pos.clone(), fy: yaw, fp: pitch }; seated = sit; $('seat').classList.toggle('on', sit); }
+$('seat').onclick = () => goTo(views.butaca(), true);
+$('walk').onclick = () => goTo(views.entrada(), false);
+function seatAt(eye) { goTo(lookFrom(eye), true); }
+
+const keys = {};
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT') { if (e.key === 'Escape') { toggleList(false); e.target.blur(); } return; }
+  if (e.target.tagName === 'BUTTON' && (e.key === ' ' || e.key === 'Enter')) return;
+  keys[e.code] = true;
+  if (e.code === 'KeyP') sala.toggleProjection();
+  if (e.code === 'ArrowRight') sala.next(); if (e.code === 'ArrowLeft') sala.prev();
+  if (e.code === 'KeyB') $('seat').click(); if (e.code === 'KeyL') toggleList();
+  if (e.code === 'Escape' && !$('list').hidden) toggleList(false);
+});
+addEventListener('keyup', e => keys[e.code] = false);
+addEventListener('blur', () => { for (const k in keys) keys[k] = false; });
+let drag = null; const ray = new THREE.Raycaster(), ndc = new THREE.Vector2();
+const setNdc = e => ndc.set(e.clientX / innerWidth * 2 - 1, -(e.clientY / innerHeight) * 2 + 1);
+canvas.addEventListener('pointerdown', e => { drag = { x: e.clientX, y: e.clientY, moved: 0 }; canvas.setPointerCapture(e.pointerId); });
+canvas.addEventListener('pointermove', e => {
+  if (drag) { const dx = e.clientX - drag.x, dy = e.clientY - drag.y; drag.x = e.clientX; drag.y = e.clientY; drag.moved += Math.abs(dx) + Math.abs(dy); if (drag.moved > 6) { canvas.classList.add('drag'); yaw += dx * 0.004; pitch = THREE.MathUtils.clamp(pitch + dy * 0.004, -1.1, 1.1); goal = null; } return; }
+  if (!TOUCH) { setNdc(e); ray.setFromCamera(ndc, camera); const h = sala.hover(ray); canvas.classList.toggle('pointer', !!h && h.type !== 'screen'); }
+});
+canvas.addEventListener('pointerup', e => {
+  canvas.classList.remove('drag'); const d = drag; drag = null; if (!d || d.moved > 6) return;
+  setNdc(e); ray.setFromCamera(ndc, camera); const h = sala.pick(ray); if (!h) return;
+  if (h.type === 'poster') sala.select(h.index);
+  else if (h.type === 'seat') seatAt(h.eye);
+  else if (h.type === 'projector') sala.toggleProjection();
+});
+canvas.addEventListener('pointercancel', () => { drag = null; canvas.classList.remove('drag'); });
+
+/* botones */
+$('proj').onclick = () => sala.toggleProjection();
+$('next').onclick = () => sala.next(); $('prev').onclick = () => sala.prev();
+$('page').onclick = () => sala.pagePosters(1);
+let snd = false; $('snd').onclick = () => { snd = !snd; sala.setSound(snd); $('snd').textContent = snd ? 'SONIDO: SÍ' : 'SONIDO: NO'; $('snd').classList.toggle('on', snd); };
+$('go').onclick = () => { $('start').hidden = true; goTo(views.butaca(), true); };
+
+/* movimiento con colisiones sencillas */
+const blocked = (x, z) => Math.abs(x) > W / 2 - 0.35 || Math.abs(z) > D / 2 - 0.35 || sala.colliders.some(([x0, z0, x1, z1]) => x > x0 - 0.25 && x < x1 + 0.25 && z > z0 - 0.25 && z < z1 + 0.25);
+const fwd = new THREE.Vector3(), right = new THREE.Vector3();
+addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.fov = fovFor(camera.aspect); camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); composer.setSize(innerWidth, innerHeight); });
+
+const clock = new THREE.Clock();
+renderer.setAnimationLoop(() => {
+  const dt = Math.min(clock.getDelta(), 0.1);
+  const mx = (keys.KeyD ? 1 : 0) - (keys.KeyA ? 1 : 0), mz = (keys.KeyW || keys.ArrowUp ? 1 : 0) - (keys.KeyS || keys.ArrowDown ? 1 : 0);
+  if (mx || mz) {
+    if (seated) { seated = false; $('seat').classList.remove('on'); pos.set(0, 1.65, pos.z); }
+    goal = null; fwd.set(-Math.sin(yaw), 0, -Math.cos(yaw)); right.set(Math.cos(yaw), 0, -Math.sin(yaw));
+    const step = fwd.multiplyScalar(mz).add(right.multiplyScalar(mx)).normalize().multiplyScalar(2.2 * dt);
+    if (!blocked(pos.x + step.x, pos.z)) pos.x += step.x; if (!blocked(pos.x, pos.z + step.z)) pos.z += step.z;
+  }
+  if (goal) { goal.t = Math.min(1, goal.t + dt / 1.4); const k = goal.t * goal.t * (3 - 2 * goal.t); pos.lerpVectors(goal.from, goal.p, k); yaw = goal.fy + (goal.yaw - goal.fy) * k; pitch = goal.fp + (goal.pitch - goal.fp) * k; if (goal.t >= 1) goal = null; }
+  camera.position.copy(pos); camera.rotation.set(pitch, yaw, 0);
+  sala.update(dt);
+  composer.render();
+});
+</script>

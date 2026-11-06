@@ -1,0 +1,52 @@
+<title>Ordenador de a bordo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<style>
+  :root { --bg:#07040f; --ink:#d2c0ff; --dim:#7e6bab; --bezel:#1a1229; --bezel2:#0f0a1a; --line:#2c2045; --chip:#150e24; --acc:#ff9be6; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"VT323", ui-monospace, monospace; }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100%; padding-block:16px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); gap:14px;
+    background: radial-gradient(ellipse at 50% 30%, #1b0f36 0%, var(--bg) 60%); }
+  .stars { position:fixed; inset:0; pointer-events:none; opacity:.5;
+    background-image: radial-gradient(1px 1px at 12% 20%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 72% 12%, #fff6 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 70%, #fff5 50%, transparent 51%), radial-gradient(1.5px 1.5px at 86% 64%, #e9d8ff9 50%, transparent 51%),
+      radial-gradient(1px 1px at 22% 88%, #fff4 50%, transparent 51%), radial-gradient(1px 1px at 60% 40%, #fff3 50%, transparent 51%); }
+  .monitor { position:relative; width:min(980px, 100%); padding:clamp(10px, 2.2vw, 26px); border-radius:28px;
+    background:linear-gradient(160deg, var(--bezel), var(--bezel2)); border:1px solid var(--line);
+    box-shadow: 0 30px 80px -20px #000c, inset 0 1px 0 #ffffff10, 0 0 60px -10px #7a4dff33; }
+  .screen { position:relative; height:min(66vh, 600px); min-height:340px; border-radius:18px; overflow:hidden; background:#0a0614;
+    box-shadow: inset 0 0 40px #000, 0 0 0 2px #000; }
+  .label { display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-top:10px; padding:0 6px; color:var(--dim); font-size:18px; letter-spacing:.08em; }
+  .led { display:inline-block; width:8px; height:8px; border-radius:50%; background:#6affc8; box-shadow:0 0 10px #6affc8; margin-right:8px; vertical-align:middle; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:min(980px,100%); }
+  .chips button { font:inherit; font-size:19px; color:var(--ink); background:var(--chip); border:1px solid var(--line); border-radius:999px; padding:3px 12px; cursor:pointer; }
+  .chips button:hover, .chips button:focus-visible { border-color:var(--acc); color:var(--acc); outline:none; }
+  .nav { width:min(980px,100%); color:var(--dim); font-size:18px; text-align:center; min-height:1.4em; }
+  .nav b, .nav a { color:var(--acc); font-weight:normal; }
+</style>
+<div class="stars"></div>
+<div class="monitor">
+  <div class="screen" id="pantalla"></div>
+  <div class="label"><span><span class="led"></span>MALK-OS · CONSOLA DEL PUENTE</span><span>LA MALKEVNIA</span></div>
+</div>
+<div class="chips" id="chips"></div>
+<div class="nav" id="nav">Toca la pantalla y escribe. Prueba los botones si vas con el móvil.</div>
+<script type="module">
+//__MODULE__
+//__DATA__
+const nav = document.getElementById('nav');
+const term = init(document.getElementById('pantalla'), {
+  data: { games, posts },
+  onNavigate: (id, sala) => { nav.innerHTML = `En la nave, ahora caminarías hasta <b>${sala.name}</b>. Aquí solo es una demo.`; },
+  onCourse: (id, p) => { nav.innerHTML = `Rumbo a <b>${p.name}</b>. El vuelo libre vive en otro hilo.`; },
+  onOpenUrl: (url) => { nav.innerHTML = `Entrada lista: <a href="${url}" target="_blank" rel="noopener">${url}</a>`; },
+  effects: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+});
+for (const c of ['ayuda', 'estado', 'salas', 'ir cine', 'buscar dune', 'dónde root', 'sugerir 2', 'bitácora', 'leer 135', 'rumbo izaro', 'tirar 1d20', 'tema ámbar', 'café']) {
+  const b = document.createElement('button'); b.textContent = c;
+  b.onclick = () => { term.exec(c); term.focus(); };
+  document.getElementById('chips').appendChild(b);
+}
+</script>

@@ -1,0 +1,32 @@
+{
+  "name": "malkevnia",
+  "type": "module",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "dev": "node scripts/link-assets.mjs && astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
+    "check": "astro check",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
+    "modulos:sync": "node scripts/sync-modulos.mjs",
+    "assets:link": "node scripts/link-assets.mjs"
+  },
+  "dependencies": {
+    "@astrojs/node": "^11.1.11",
+    "@astrojs/vue": "^7.1.2",
+    "astro": "^7.4.7",
+    "postgres": "^4.1.0",
+    "vue": "^3.5.45"
+  },
+  "devDependencies": {
+    "@astrojs/check": "^0.9.12",
+    "@types/node": "^22.20.5",
+    "typescript": "^6.0.3"
+  }
+}

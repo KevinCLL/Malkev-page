@@ -1,0 +1,960 @@
+<title>Ordenador de a bordo</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=VT323&display=swap">
+<style>
+  :root { --bg:#07040f; --ink:#d2c0ff; --dim:#7e6bab; --bezel:#1a1229; --bezel2:#0f0a1a; --line:#2c2045; --chip:#150e24; --acc:#ff9be6; color-scheme:dark; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; height:100%; background:var(--bg); color:var(--ink); font-family:"VT323", ui-monospace, monospace; }
+  body { display:flex; flex-direction:column; align-items:center; justify-content:center; min-height:100%; padding-block:16px; padding-left:max(16px, env(safe-area-inset-left, 0px)); padding-right:max(16px, env(safe-area-inset-right, 0px)); gap:14px;
+    background: radial-gradient(ellipse at 50% 30%, #1b0f36 0%, var(--bg) 60%); }
+  .stars { position:fixed; inset:0; pointer-events:none; opacity:.5;
+    background-image: radial-gradient(1px 1px at 12% 20%, #fff8 50%, transparent 51%), radial-gradient(1px 1px at 72% 12%, #fff6 50%, transparent 51%),
+      radial-gradient(1px 1px at 40% 70%, #fff5 50%, transparent 51%), radial-gradient(1.5px 1.5px at 86% 64%, #e9d8ff9 50%, transparent 51%),
+      radial-gradient(1px 1px at 22% 88%, #fff4 50%, transparent 51%), radial-gradient(1px 1px at 60% 40%, #fff3 50%, transparent 51%); }
+  .monitor { position:relative; width:min(980px, 100%); padding:clamp(10px, 2.2vw, 26px); border-radius:28px;
+    background:linear-gradient(160deg, var(--bezel), var(--bezel2)); border:1px solid var(--line);
+    box-shadow: 0 30px 80px -20px #000c, inset 0 1px 0 #ffffff10, 0 0 60px -10px #7a4dff33; }
+  .screen { position:relative; height:min(66vh, 600px); min-height:340px; border-radius:18px; overflow:hidden; background:#0a0614;
+    box-shadow: inset 0 0 40px #000, 0 0 0 2px #000; }
+  .label { display:flex; gap:12px; flex-wrap:wrap; justify-content:space-between; align-items:center; margin-top:10px; padding:0 6px; color:var(--dim); font-size:18px; letter-spacing:.08em; }
+  .led { display:inline-block; width:8px; height:8px; border-radius:50%; background:#6affc8; box-shadow:0 0 10px #6affc8; margin-right:8px; vertical-align:middle; }
+  .chips { display:flex; flex-wrap:wrap; gap:8px; justify-content:center; width:min(980px,100%); }
+  .chips button { font:inherit; font-size:19px; color:var(--ink); background:var(--chip); border:1px solid var(--line); border-radius:999px; padding:3px 12px; cursor:pointer; }
+  .chips button:hover, .chips button:focus-visible { border-color:var(--acc); color:var(--acc); outline:none; }
+  .nav { width:min(980px,100%); color:var(--dim); font-size:18px; text-align:center; min-height:1.4em; }
+  .nav b, .nav a { color:var(--acc); font-weight:normal; }
+</style>
+<div class="stars"></div>
+<div class="monitor">
+  <div class="screen" id="pantalla"></div>
+  <div class="label"><span><span class="led"></span>MALK-OS · CONSOLA DEL PUENTE</span><span>LA MALKEVNIA</span></div>
+</div>
+<div class="chips" id="chips"></div>
+<div class="nav" id="nav">Toca la pantalla y escribe. Prueba los botones si vas con el móvil.</div>
+<script type="module">
+/*
+ * Ordenador de a bordo · La Malkevnia
+ * Terminal retro (CRT) dibujada entera en un <canvas> 2D, lista para usarse
+ * como página normal o como textura de una pantalla dentro de la nave 3D.
+ *
+ *   import { init } from './ordenador-abordo.js';
+ *   const term = init(contenedor, { data, onNavigate(id, sala) {} });
+ *   ...
+ *   term.dispose();
+ *
+ * Sin dependencias. Ver README.md para la API completa.
+ */
+
+const VERSION = '1.1.0';
+
+/* ---------------------------------------------------------------- temas */
+
+const THEMES = {
+  purpura: { bg: '#0a0614', glow: '#2a1650', f: '#d2c0ff', d: '#7e6bab', a: '#ff9be6', w: '#ffc27a', o: '#6affc8', l: '#8fdcff', e: '#ff7f93' },
+  ambar:   { bg: '#0c0702', glow: '#3a2206', f: '#ffc56e', d: '#9c753a', a: '#ffe3ad', w: '#ff9a3c', o: '#ffd98a', l: '#ffeabd', e: '#ff6a3c' },
+  verde:   { bg: '#020a05', glow: '#063018', f: '#7dffa8', d: '#3d9a5d', a: '#caffdb', w: '#e6ff7a', o: '#7dffa8', l: '#a8ffe0', e: '#ff8a7a' },
+  cian:    { bg: '#020a0e', glow: '#06283a', f: '#8ae8ff', d: '#4a8aa0', a: '#d4f7ff', w: '#ffd27a', o: '#7dffd0', l: '#c4edff', e: '#ff8a9a' },
+};
+
+/* ---------------------------------------------------------- datos base */
+
+const DEFAULT_ROOMS = [
+  { id: 'puente',     name: 'Puente de mando',      sub: 'Rumbo y navegación',      alias: ['mando', 'cabina', 'navegacion', 'timon'] },
+  { id: 'pasillo',    name: 'Pasillo central',      sub: 'Cubierta principal',      alias: ['cubierta', 'pasillo'] },
+  { id: 'recreativa', name: 'Sala recreativa',      sub: 'Videojuegos',             alias: ['videojuegos', 'arcade', 'consolas', 'recreativos'] },
+  { id: 'proyeccion', name: 'Sala de proyección',   sub: 'Películas y series',      alias: ['cine', 'peliculas', 'pelis', 'series', 'filmoteca'] },
+  { id: 'bitacora',   name: 'Bitácora',             sub: 'El diario de a bordo',    alias: ['blog', 'diario', 'posts'] },
+  { id: 'juegos',     name: 'Sala de juegos',       sub: 'Juegos de mesa · Kallax', alias: ['mesa', 'kallax', 'ludoteca', 'tablero'] },
+  { id: 'biblioteca', name: 'Biblioteca',           sub: 'Libros y manga',          alias: ['libros', 'manga', 'libreria', 'lectura'] },
+  { id: 'ordenador',  name: 'Ordenador de a bordo', sub: 'Consola del capitán',     alias: ['consola', 'terminal', 'computadora'] },
+  { id: 'maquinas',   name: 'Sala de máquinas',     sub: 'Reactor y soporte vital', alias: ['reactor', 'motores', 'ingenieria', 'motor'] },
+];
+
+const DEFAULT_PLANETS = [
+  { id: 'thalassa',    name: 'Thalassa',    sub: 'Planeta océano, mareas lentas y faros' },
+  { id: 'gelida',      name: 'Gélida',      sub: 'Hielo azul y auroras que cantan' },
+  { id: 'izaro',       name: 'Izaro',       sub: 'Lejano. Dicen que allí el Cataclismo aún respira' },
+  { id: 'brasa-menor', name: 'Brasa Menor', sub: 'Volcánico, cálido, cielos color ámbar' },
+];
+
+/* ---------------------------------------------------------- utilidades */
+
+const norm = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().trim();
+const clean = (s) => String(s ?? '').replace(/[{}]/g, '');
+const pad = (s, n) => { s = String(s); const l = Array.from(s).length; return l >= n ? s : s + ' '.repeat(n - l); };
+const padL = (s, n) => { s = String(s); const l = Array.from(s).length; return l >= n ? s : ' '.repeat(n - l) + s; };
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const pick = (arr) => arr[Math.floor(Math.random() * arr.length)];
+
+function lev(a, b) {
+  const m = a.length, n = b.length; const d = Array.from({ length: m + 1 }, (_, i) => [i]);
+  for (let j = 1; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) for (let j = 1; j <= n; j++)
+    d[i][j] = Math.min(d[i - 1][j] + 1, d[i][j - 1] + 1, d[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+  return d[m][n];
+}
+
+/* Marcado de color: "{a}texto{/}" — f normal, d tenue, a acento, w aviso, o ok, l enlace, e error */
+function parseMarkup(str) {
+  const chars = []; let color = 'f';
+  const re = /\{([fdawole])\}|\{\/\}/g; let last = 0, m;
+  const push = (t) => { for (const ch of Array.from(t)) chars.push({ ch, c: color }); };
+  while ((m = re.exec(str))) { push(str.slice(last, m.index)); color = m[1] || 'f'; last = re.lastIndex; }
+  push(str.slice(last));
+  return chars;
+}
+
+function stardate(d = new Date()) {
+  const start = new Date(d.getFullYear(), 0, 1);
+  const frac = (d - start) / (365.25 * 864e5);
+  return (d.getFullYear() + frac).toFixed(3);
+}
+
+/* ================================================================ init */
+
+function init(container, opts = {}) {
+  const headless = !!opts.headless || !container;
+  const data = opts.data || {};
+  const rooms = (data.rooms || DEFAULT_ROOMS).map((r) => ({ ...r, _k: [r.id, r.name, r.sub, ...(r.alias || [])].map(norm) }));
+  const planets = data.planets || DEFAULT_PLANETS;
+  const games = (data.games || []).map((g) => ({ ...g, _k: norm(g.n) }));
+  const posts = (data.posts || []).slice().sort((a, b) => (a.f < b.f ? -1 : 1)).map((p, i) => ({ ...p, id: i + 1, _t: norm(p.t), _r: norm(p.r) }));
+  const baseUrl = opts.baseUrl ?? 'https://malkevnia.com';
+  const captain = opts.captain || 'Malkev';
+  const extra = opts.commands || {};
+
+  /* ------------------------------------------------------------ estado */
+  const st = {
+    theme: THEMES[opts.theme] ? opts.theme : 'purpura',
+    room: opts.room || 'ordenador',
+    course: null,
+    lastPost: null,
+    lastList: [],
+    coffee: 0.62,
+    booted: Date.now(),
+    input: '', caret: 0,
+    history: [], hIdx: -1, hDraft: '',
+    scroll: 0,
+    focused: headless,
+    disposed: false,
+  };
+  const buffer = [];   // líneas visibles: { chars, shown }
+  const queue = [];    // pendientes: { chars } | { delay } | { fn }
+  let typing = null;   // línea que se está escribiendo
+  let waitUntil = 0;
+  let speed = 1600;    // caracteres por segundo
+
+  /* ------------------------------------------------------------ canvas */
+  const canvas = opts.canvas || document.createElement('canvas');
+  const ctx = canvas.getContext('2d');
+  const text = document.createElement('canvas');   // capa de texto (se repinta solo si cambia)
+  const tctx = text.getContext('2d');
+  const fx = document.createElement('canvas');     // scanlines + viñeta (cacheado)
+  const glow = document.createElement('canvas');   // halo del fósforo (se recalcula solo con el texto)
+  const gctx = glow.getContext('2d');
+  let W = 0, H = 0, dpr = 1, fontPx = 16, charW = 9, lineH = 20, cols = 60, bodyRows = 20, padX = 16, headerH = 30;
+  const effects = opts.effects !== false;
+  const canFilter = effects && 'filter' in gctx;
+  const fontFamily = opts.font || '"VT323", "IBM Plex Mono", "Cascadia Mono", Consolas, monospace';
+  let textDirty = true;
+
+  let ta = null, ro = null, live = null, touchY = null;
+  if (!headless) {
+    if (getComputedStyle(container).position === 'static') container.style.position = 'relative';
+    canvas.style.cssText = 'display:block;width:100%;height:100%;';
+    canvas.setAttribute('role', 'img');
+    canvas.setAttribute('aria-label', 'Ordenador de a bordo de La Malkevnia: terminal de comandos');
+    container.appendChild(canvas);
+    ta = document.createElement('textarea');
+    ta.setAttribute('aria-label', 'Escribe un comando');
+    ta.setAttribute('autocapitalize', 'off'); ta.setAttribute('autocomplete', 'off');
+    ta.setAttribute('autocorrect', 'off'); ta.setAttribute('spellcheck', 'false');
+    ta.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;opacity:0;resize:none;border:0;padding:0;margin:0;font-size:16px;color:transparent;background:transparent;caret-color:transparent;cursor:text;outline:none;';
+    container.appendChild(ta);
+    ta.addEventListener('input', onTaInput);
+    ta.addEventListener('keydown', onTaKey);
+    ta.addEventListener('focus', () => { st.focused = true; textDirty = true; });
+    ta.addEventListener('blur', () => { st.focused = false; textDirty = true; });
+    ta.addEventListener('wheel', onWheel, { passive: false });
+    ta.addEventListener('touchstart', onTouchStart, { passive: true });
+    ta.addEventListener('touchmove', onTouchMove, { passive: false });
+    live = document.createElement('div');
+    live.setAttribute('role', 'log'); live.setAttribute('aria-live', 'polite');
+    live.style.cssText = 'position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);clip-path:inset(50%);white-space:nowrap;';
+    container.appendChild(live);
+    ro = new ResizeObserver(() => layout());
+    ro.observe(container);
+  }
+
+  function layout(w, h) {
+    if (headless) {
+      dpr = 1; W = w || opts.width || W || 1024; H = h || opts.height || H || 640;
+      fontPx = opts.fontSize || Math.round(H / 26);
+    } else {
+      dpr = Math.min(window.devicePixelRatio || 1, 2);
+      const r = container.getBoundingClientRect();
+      const cw = Math.max(200, r.width), ch = Math.max(160, r.height);
+      W = Math.round(cw * dpr); H = Math.round(ch * dpr);
+      fontPx = Math.round((opts.fontSize || clamp(cw / 44, 15, 24)) * dpr);
+    }
+    canvas.width = text.width = glow.width = W; canvas.height = text.height = glow.height = H;
+    tctx.font = `${fontPx}px ${fontFamily}`;
+    charW = tctx.measureText('M').width || fontPx * 0.5;
+    lineH = Math.round(fontPx * 1.12);
+    padX = Math.round(charW * 1.6);
+    headerH = Math.round(lineH * 1.7);
+    cols = Math.max(20, Math.floor((W - padX * 2) / charW));
+    bodyRows = Math.max(4, Math.floor((H - headerH - lineH * 2.2 - padX * 0.6) / lineH));
+    for (const l of buffer) l.rows = null;
+    buildFx();
+    textDirty = true;
+  }
+
+  function buildFx() {
+    fx.width = W; fx.height = H;
+    const f = fx.getContext('2d');
+    f.clearRect(0, 0, W, H);
+    const step = Math.max(2, Math.round(dpr * 3));
+    f.fillStyle = 'rgba(0,0,0,0.22)';
+    for (let y = 0; y < H; y += step) f.fillRect(0, y, W, Math.max(1, Math.round(step / 3)));
+    const g = f.createRadialGradient(W / 2, H / 2, Math.min(W, H) * 0.35, W / 2, H / 2, Math.max(W, H) * 0.75);
+    g.addColorStop(0, 'rgba(0,0,0,0)'); g.addColorStop(1, 'rgba(0,0,0,0.55)');
+    f.fillStyle = g; f.fillRect(0, 0, W, H);
+  }
+
+  /* ------------------------------------------------------------ salida */
+  function print(str = '') {
+    for (const line of String(str).split('\n')) queue.push({ chars: parseMarkup(line) });
+    st.scroll = 0;
+    if (live) {
+      const p = document.createElement('p');
+      p.textContent = String(str).replace(/\{[fdawole/]\}/g, '');
+      live.appendChild(p);
+      while (live.childNodes.length > 40) live.firstChild.remove();
+    }
+  }
+  const delay = (ms) => queue.push({ delay: ms });
+  const later = (fn) => queue.push({ fn });
+
+  function flush() {
+    if (typing) { typing.shown = typing.chars.length; typing = null; }
+    while (queue.length) {
+      const it = queue.shift();
+      if (it.chars) buffer.push({ chars: it.chars, shown: it.chars.length });
+      else if (it.fn) it.fn();
+    }
+    waitUntil = 0; trim(); textDirty = true;
+  }
+  function trim() { if (buffer.length > 800) buffer.splice(0, buffer.length - 800); }
+
+  function advance(dt, now) {
+    if (now < waitUntil) return;
+    let budget = Math.max(1, Math.round(dt * speed / 1000));
+    while (budget > 0) {
+      if (typing) {
+        const take = Math.min(budget, typing.chars.length - typing.shown);
+        typing.shown += take; budget -= take; textDirty = true;
+        if (typing.shown >= typing.chars.length) typing = null; else break;
+      }
+      if (!queue.length) break;
+      const it = queue.shift();
+      if (it.delay) { waitUntil = now + it.delay; break; }
+      if (it.fn) { it.fn(); continue; }
+      const line = { chars: it.chars, shown: 0 };
+      buffer.push(line); trim(); textDirty = true;
+      if (!line.chars.length) { budget -= 1; continue; }
+      typing = line;
+    }
+  }
+  const busy = () => !!typing || queue.length > 0;
+
+  /* ------------------------------------------------------------ pintado */
+  // Parte una línea lógica en filas; las filas de continuación se sangran como la primera.
+  function wrap(chars) {
+    if (!chars.length) return [{ c: [], ind: 0 }];
+    let lead = 0; while (lead < chars.length && chars[lead].ch === ' ') lead++;
+    const hang = lead < cols / 3 ? lead : 0;
+    const rows = []; let i = 0; const n = chars.length;
+    while (i < n) {
+      const ind = rows.length ? hang : 0, w = cols - ind;
+      if (n - i <= w) { rows.push({ c: chars.slice(i), ind }); break; }
+      let j = -1;
+      for (let k = i + w; k > i; k--) if (chars[k] && chars[k].ch === ' ') { j = k; break; }
+      if (j > i) { rows.push({ c: chars.slice(i, j + 1), ind }); i = j + 1; }
+      else { rows.push({ c: chars.slice(i, i + w), ind }); i += w; }
+    }
+    return rows;
+  }
+
+  function drawChars(row, x0, y, limit = Infinity) {
+    const T = THEMES[st.theme];
+    let col = 0;
+    for (const c of row) {
+      if (col >= limit) break;
+      if (c.ch !== ' ') { tctx.fillStyle = T[c.c] || T.f; tctx.fillText(c.ch, x0 + col * charW, y); }
+      col++;
+    }
+  }
+
+  function renderText() {
+    const T = THEMES[st.theme];
+    tctx.clearRect(0, 0, W, H);
+    tctx.font = `${fontPx}px ${fontFamily}`;
+    tctx.textBaseline = 'middle';
+
+    // cabecera
+    const room = rooms.find((r) => r.id === st.room);
+    tctx.fillStyle = T.f; tctx.globalAlpha = 0.14; tctx.fillRect(padX * 0.5, padX * 0.5, W - padX, headerH - padX * 0.3); tctx.globalAlpha = 1;
+    const hy = padX * 0.5 + (headerH - padX * 0.3) / 2;
+    const now = new Date();
+    const left = parseMarkup(`{a}◆{/} LA MALKEVNIA {d}·{/} MALK-OS ${VERSION}`);
+    const right = parseMarkup(`{d}${room ? room.name.toUpperCase() : ''}  ·  ${now.toTimeString().slice(0, 5)}  ·  FE ${stardate(now)}{/}`);
+    const hc = cols;
+    if (left.length + right.length + 2 <= hc) {
+      drawChars(left, padX, hy);
+      drawChars(right, padX + (hc - right.length) * charW, hy);
+    } else drawChars(left.slice(0, hc), padX, hy);
+
+    // cuerpo
+    const all = [];
+    for (const l of buffer) {
+      if (!l.rows) l.rows = wrap(l.chars);
+      let left = l.shown;
+      for (const r of l.rows) { if (left <= 0 && l.shown < l.chars.length) break; all.push({ r, n: Math.min(r.c.length, Math.max(0, left)) }); left -= r.c.length; }
+    }
+    const maxScroll = Math.max(0, all.length - bodyRows);
+    st.scroll = clamp(st.scroll, 0, maxScroll);
+    const start = Math.max(0, all.length - bodyRows - st.scroll);
+    const view = all.slice(start, start + bodyRows);
+    const by = headerH + lineH * 0.9;
+    view.forEach((v, i) => drawChars(v.r.c, padX + v.r.ind * charW, by + i * lineH, v.n));
+    if (st.scroll > 0) {
+      const tag = parseMarkup(`{w}▲ ${st.scroll} líneas más abajo · RePág/AvPág{/}`);
+      drawChars(tag, padX + (cols - tag.length) * charW, by + (bodyRows - 1) * lineH);
+    }
+
+    // separador + línea de entrada
+    const iy = H - lineH * 1.1 - padX * 0.3;
+    tctx.fillStyle = T.d; tctx.globalAlpha = 0.5; tctx.fillRect(padX, iy - lineH * 0.85, W - padX * 2, Math.max(1, dpr)); tctx.globalAlpha = 1;
+    const prompt = parseMarkup(`{a}${st.room}{/}{d} ▸ {/}`);
+    const avail = cols - prompt.length - 1;
+    const inp = Array.from(st.input);
+    let off = 0; if (st.caret > avail) off = st.caret - avail;
+    const vis = inp.slice(off, off + avail).map((ch) => ({ ch, c: 'f' }));
+    drawChars(prompt, padX, iy);
+    drawChars(vis, padX + prompt.length * charW, iy);
+    curPos = { x: padX + (prompt.length + st.caret - off) * charW, y: iy };
+    textDirty = false;
+    if (canFilter) {
+      gctx.clearRect(0, 0, W, H);
+      gctx.filter = `blur(${Math.max(2, fontPx * 0.28)}px)`;
+      gctx.drawImage(text, 0, 0); gctx.filter = 'none';
+    }
+  }
+  let curPos = { x: 0, y: 0 };
+
+  let bgGrad = null, bgKey = '';
+  function composite(now) {
+    const T = THEMES[st.theme];
+    if (bgKey !== st.theme + W + 'x' + H) {
+      bgGrad = ctx.createRadialGradient(W / 2, H * 0.45, 0, W / 2, H / 2, Math.max(W, H) * 0.7);
+      bgGrad.addColorStop(0, T.glow); bgGrad.addColorStop(1, T.bg); bgKey = st.theme + W + 'x' + H;
+    }
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = bgGrad; ctx.fillRect(0, 0, W, H);
+    if (canFilter) { ctx.globalAlpha = 0.75; ctx.drawImage(glow, 0, 0); ctx.globalAlpha = 1; }
+    ctx.drawImage(text, 0, 0);
+    // cursor
+    const on = !busy() && (Math.floor(now / 530) % 2 === 0 || !st.focused);
+    if (on) {
+      ctx.fillStyle = T.a;
+      if (st.focused) { ctx.globalAlpha = 0.75; ctx.fillRect(curPos.x, curPos.y - lineH * 0.42, charW, lineH * 0.84); }
+      else { ctx.globalAlpha = 0.5; ctx.lineWidth = Math.max(1, dpr); ctx.strokeRect(curPos.x + 0.5, curPos.y - lineH * 0.42, charW - 1, lineH * 0.84); }
+      ctx.globalAlpha = 1;
+    }
+    if (effects) {
+      const band = H * 0.18, y = ((now * 0.04) % (H + band * 2)) - band;
+      const g = ctx.createLinearGradient(0, y, 0, y + band);
+      g.addColorStop(0, 'rgba(255,255,255,0)'); g.addColorStop(0.5, 'rgba(255,255,255,0.035)'); g.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.fillStyle = g; ctx.fillRect(0, y, W, band);
+      ctx.drawImage(fx, 0, 0);
+      ctx.fillStyle = T.bg; ctx.globalAlpha = Math.random() * 0.035; ctx.fillRect(0, 0, W, H); ctx.globalAlpha = 1;
+    }
+    opts.onRender && opts.onRender(canvas);
+  }
+
+  let raf = 0, lastT = 0, lastDraw = 0, lastBlink = -1, lastMin = '';
+  function frame(t) {
+    if (st.disposed) return;
+    raf = requestAnimationFrame(frame);
+    const dt = lastT ? Math.min(100, t - lastT) : 16; lastT = t;
+    advance(dt, t);
+    const minute = new Date().toTimeString().slice(0, 5);
+    if (minute !== lastMin) { lastMin = minute; textDirty = true; }
+    const blink = Math.floor(t / 530);
+    const fps = opts.fps || 30;
+    const need = textDirty || blink !== lastBlink || (effects && t - lastDraw > 1000 / fps);
+    if (!need) return;
+    lastBlink = blink; lastDraw = t;
+    if (textDirty) renderText();
+    composite(t);
+  }
+
+  /* ------------------------------------------------------------ entrada */
+  function setInput(v, caret = Array.from(v).length) {
+    st.input = v.replace(/[\r\n]/g, ''); st.caret = clamp(caret, 0, Array.from(st.input).length);
+    if (ta && ta.value !== st.input) { ta.value = st.input; }
+    if (ta) { try { const u = Array.from(st.input).slice(0, st.caret).join('').length; ta.setSelectionRange(u, u); } catch (_) {} }
+    textDirty = true;
+  }
+  function onTaInput() {
+    if (/[\r\n]/.test(ta.value)) { ta.value = ta.value.replace(/[\r\n]/g, ''); }
+    st.input = ta.value; st.caret = Array.from(ta.value.slice(0, ta.selectionStart)).length; textDirty = true;
+  }
+  function onTaKey(e) {
+    if (special(e)) { e.preventDefault(); return; }
+    setTimeout(() => { if (!ta) return; st.caret = Array.from(ta.value.slice(0, ta.selectionStart)).length; textDirty = true; }, 0);
+  }
+  function onTouchStart(e) { touchY = e.touches.length === 1 ? e.touches[0].clientY : null; }
+  function onTouchMove(e) {
+    if (touchY == null || e.touches.length !== 1) return;
+    const dy = e.touches[0].clientY - touchY, step = lineH / dpr;
+    if (Math.abs(dy) < step) return;
+    e.preventDefault();
+    const n = Math.trunc(dy / step); touchY += n * step;
+    st.scroll = Math.max(0, st.scroll + n); textDirty = true;
+  }
+  function onWheel(e) { e.preventDefault(); st.scroll += e.deltaY < 0 ? 3 : -3; if (st.scroll < 0) st.scroll = 0; textDirty = true; }
+
+  function special(e) {
+    const k = e.key;
+    if (e.ctrlKey && (k === 'l' || k === 'L')) { clear(); return true; }
+    if (e.ctrlKey && (k === 'c' || k === 'C') && !(ta && ta.selectionStart !== ta.selectionEnd)) { if (busy()) flush(); print(`{d}${st.room} ▸ ${clean(st.input)}^C{/}`); setInput(''); return true; }
+    switch (k) {
+      case 'Enter': submit(); return true;
+      case 'Tab': complete(); return true;
+      case 'ArrowUp': histMove(1); return true;
+      case 'ArrowDown': histMove(-1); return true;
+      case 'PageUp': st.scroll += Math.max(1, bodyRows - 2); textDirty = true; return true;
+      case 'PageDown': st.scroll = Math.max(0, st.scroll - Math.max(1, bodyRows - 2)); textDirty = true; return true;
+      case 'Escape': if (busy()) flush(); else setInput(''); return true;
+    }
+    return false;
+  }
+
+  // Para modo headless (textura en la nave): el host reenvía los KeyboardEvent.
+  function key(e) {
+    if (special(e)) return true;
+    if (e.ctrlKey || e.metaKey || e.altKey) return false;
+    const a = Array.from(st.input);
+    switch (e.key) {
+      case 'Backspace': if (st.caret > 0) { a.splice(st.caret - 1, 1); setInput(a.join(''), st.caret - 1); } return true;
+      case 'Delete': a.splice(st.caret, 1); setInput(a.join(''), st.caret); return true;
+      case 'ArrowLeft': setInput(st.input, st.caret - 1); return true;
+      case 'ArrowRight': setInput(st.input, st.caret + 1); return true;
+      case 'Home': setInput(st.input, 0); return true;
+      case 'End': setInput(st.input); return true;
+    }
+    if (e.key && Array.from(e.key).length === 1) { a.splice(st.caret, 0, e.key); setInput(a.join(''), st.caret + 1); return true; }
+    return false;
+  }
+  function type(str) { const a = Array.from(st.input); a.splice(st.caret, 0, ...Array.from(str)); setInput(a.join(''), st.caret + Array.from(str).length); }
+
+  function histMove(dir) {
+    if (!st.history.length) return;
+    if (st.hIdx === -1) st.hDraft = st.input;
+    st.hIdx = clamp(st.hIdx + dir, -1, st.history.length - 1);
+    setInput(st.hIdx === -1 ? st.hDraft : st.history[st.history.length - 1 - st.hIdx]);
+  }
+
+  function submit() {
+    if (busy()) flush();
+    const line = st.input;
+    setInput(''); st.hIdx = -1;
+    print(`{a}${st.room}{/}{d} ▸{/} ${clean(line)}`);
+    if (line.trim()) { if (st.history[st.history.length - 1] !== line) st.history.push(line); if (st.history.length > 100) st.history.shift(); }
+    run(line);
+  }
+
+  /* ------------------------------------------------------------ comandos */
+  const C = {}; // nombre → { group, usage, help, run, hidden }
+  const ALIAS = {};
+  function def(names, spec) { const [main, ...al] = names; C[main] = spec; spec.name = main; for (const a of al) ALIAS[norm(a)] = main; }
+
+  function findRoom(q, loose = true) {
+    const n = norm(q); if (!n) return null;
+    const exact = rooms.find((r) => r.id === n) || rooms.find((r) => r._k.includes(n));
+    if (exact) return exact;
+    const words = rooms.filter((r) => r._k.some((k) => k.split(/[^a-z0-9]+/).includes(n)));
+    if (words.length === 1) return words[0];
+    if (words.length > 1) return null; // ambiguo ("sala"): que elija
+    return loose ? rooms.find((r) => r._k.some((k) => k.includes(n))) : null;
+  }
+  function findPlanet(q) { const n = norm(q); return planets.find((p) => norm(p.id) === n || norm(p.name) === n) || planets.find((p) => norm(p.name).includes(n)); }
+
+  function searchGames(q) {
+    const toks = norm(q).split(/\s+/).filter(Boolean);
+    if (!toks.length) return [];
+    return games.filter((g) => toks.every((t) => g._k.includes(t)))
+      .sort((a, b) => a._k.indexOf(toks[0]) - b._k.indexOf(toks[0]) || a.n.length - b.n.length);
+  }
+  function searchPosts(q) {
+    const toks = norm(q).split(/\s+/).filter(Boolean);
+    if (!toks.length) return [];
+    return posts.map((p) => {
+      let s = 0; for (const t of toks) { if (p._t.includes(t)) s += 3; else if (p._r.includes(t)) s += 1; else return null; }
+      return { p, s };
+    }).filter(Boolean).sort((a, b) => b.s - a.s || (a.p.f < b.p.f ? 1 : -1)).map((x) => x.p);
+  }
+
+  const gameLine = (g) => `  {a}${clean(g.n)}{/} {d}— ${clean(g.d || '')}${g.j ? ` · pegatina ${g.j}` : ''}${g.p ? ` · pósit «${clean(g.p)}»` : ''}{/}`;
+  const postLine = (p) => cols < 56 ? `  {w}#${padL(p.id, 3)}{/} ${clean(p.t)}` : `  {w}#${padL(p.id, 3)}{/} {d}${p.f}{/}  ${clean(p.t)}`;
+
+  def(['ayuda', 'help', '?', 'comandos', 'h'], {
+    group: 'Terminal', usage: 'ayuda [comando]', help: 'Muestra esta ayuda o la de un comando.',
+    run(args) {
+      if (args[0]) {
+        const c = C[resolve(args[0])];
+        if (!c || c.hidden) return print(`{e}No conozco «${clean(args[0])}».{/}`);
+        print(`{a}${c.usage}{/}`); print(`  ${c.help}`);
+        const al = Object.entries(ALIAS).filter(([, v]) => v === c.name).map(([k]) => k);
+        if (al.length) print(`  {d}También: ${al.join(', ')}{/}`);
+        if (c.more) for (const m of c.more) print(`  {d}${m}{/}`);
+        return;
+      }
+      print('{a}ORDENADOR DE A BORDO{/} {d}· comandos disponibles{/}');
+      const groups = {};
+      for (const c of Object.values(C)) if (!c.hidden) (groups[c.group] ||= []).push(c);
+      const w = Math.min(26, Math.max(...Object.values(C).filter((c) => !c.hidden).map((c) => c.usage.length)) + 2);
+      for (const [g, list] of Object.entries(groups)) {
+        print(''); print(`{w}${g.toUpperCase()}{/}`);
+        for (const c of list) print(`  {o}${pad(c.usage, w)}{/}${c.help}`);
+      }
+      print('');
+      print('{d}Tab completa · ↑↓ historial · RePág/AvPág desplaza · Esc borra · Ctrl+L limpia{/}');
+      print('{d}Hay órdenes que no salen en esta lista. El ordenador guarda secretos.{/}');
+    },
+  });
+
+  def(['salas', 'mapa', 'plano'], {
+    group: 'Navegación', usage: 'salas', help: 'Plano de la nave: todas las salas.',
+    run() {
+      print('{a}PLANO DE LA MALKEVNIA{/}');
+      for (const r of rooms) print(`  ${r.id === st.room ? '{a}●{/}' : '{d}○{/}'} {o}${pad(r.id, 11)}{/}${pad(r.name, 22)}{d}${r.sub}{/}`);
+      print('{d}Escribe «ir <sala>», por ejemplo «ir cine» o «ir kallax».{/}');
+    },
+  });
+
+  def(['ir', 'entrar', 'tp', 'teletransporte', 'vamos', 'cd'], {
+    group: 'Navegación', usage: 'ir <sala>', help: 'Te lleva a una sala de la nave.',
+    more: ['Vale el nombre o un apodo: cine, kallax, blog, libros, reactor…'],
+    run(args) {
+      if (!args.length) return print('{w}¿A dónde, capitán?{/} {d}Prueba «salas» para ver el plano.{/}');
+      const q = args.join(' ');
+      if (['..', '~', '/'].includes(q)) return run('ir puente');
+      let r = findRoom(q, false);
+      if (!r) {
+        const nq = norm(q), opts3 = rooms.filter((x) => x._k.some((k) => k.includes(nq)));
+        if (opts3.length > 1) return print(`{w}¿Cuál de estas?{/} ${opts3.map((x) => `{o}${x.id}{/}`).join(' {d}·{/} ')}`);
+        r = opts3[0];
+      }
+      if (!r) return print(`{e}No hay ninguna sala «${clean(q)}» a bordo.{/} {d}Mira «salas».{/}`);
+      if (r.id === st.room) return print(`{d}Ya estás en ${r.name}.{/}`);
+      print(`{d}Fijando destino:{/} {a}${r.name}{/}`);
+      const s = speed; speed = 260;
+      print('{d}Abriendo compuertas{/} {o}▓▓▓▓▓▓▓▓▓▓▓▓{/} {d}ok{/}');
+      later(() => { speed = s; st.room = r.id; textDirty = true; });
+      print(`{o}Has llegado a ${r.name}.{/} {d}${r.sub}.{/}`);
+      later(() => { opts.onNavigate && opts.onNavigate(r.id, { id: r.id, name: r.name, sub: r.sub }); });
+    },
+  });
+
+  def(['donde', 'dónde', 'ubicacion', 'localizar'], {
+    group: 'Navegación', usage: 'dónde [juego]', help: 'Dónde estás tú, o en qué cubo de la Kallax está un juego.',
+    run(args) {
+      if (!args.length) { const r = rooms.find((x) => x.id === st.room); return print(`Estás en {a}${r ? r.name : st.room}{/}. {d}${r ? r.sub : ''}{/}`); }
+      if (/^(estoy|me encuentro)$/.test(norm(args.join(' ')))) return run('donde');
+      const res = searchGames(args.join(' ').replace(/^(esta|está|anda)\s+/i, ''));
+      if (!res.length) return print(`{e}No encuentro «${clean(args.join(' '))}» en las Kallax.{/}`);
+      for (const g of res.slice(0, 8)) print(gameLine(g));
+      if (res.length > 8) print(`{d}  …y ${res.length - 8} más.{/}`);
+    },
+  });
+
+  def(['buscar', 'busca', 'search', 'grep', 'find'], {
+    group: 'Colección', usage: 'buscar <texto>', help: 'Busca en juegos, bitácora y salas a la vez.',
+    run(args) {
+      const q = args.join(' ');
+      if (!q) return print('{w}¿Qué busco?{/} {d}Por ejemplo «buscar dune».{/}');
+      const g = searchGames(q), p = searchPosts(q), r = rooms.filter((x) => x._k.some((k) => k.includes(norm(q))));
+      if (!g.length && !p.length && !r.length) return print(`{d}Nada a bordo coincide con «${clean(q)}».{/}`);
+      if (r.length) { print('{w}SALAS{/}'); for (const x of r.slice(0, 3)) print(`  {o}${x.id}{/} ${x.name} {d}· ir ${x.id}{/}`); }
+      if (g.length) { print(`{w}JUEGOS DE MESA{/} {d}(${g.length}){/}`); for (const x of g.slice(0, 6)) print(gameLine(x)); if (g.length > 6) print(`{d}  …y ${g.length - 6} más · «juegos ${clean(q)}» para verlos todos{/}`); }
+      if (p.length) { print(`{w}BITÁCORA{/} {d}(${p.length}){/}`); for (const x of p.slice(0, 6)) print(postLine(x)); if (p.length > 6) print(`{d}  …y ${p.length - 6} más · «bitácora ${clean(q)}»{/}`); print('{d}  «leer <número>» para abrir una entrada{/}'); st.lastList = p; }
+    },
+  });
+
+  def(['juegos', 'kallax', 'ludoteca', 'games'], {
+    group: 'Colección', usage: 'juegos [texto]', help: 'Resumen de las Kallax, o lista de juegos que coinciden.',
+    run(args) {
+      if (!games.length) return print('{d}El inventario de la Kallax no está cargado.{/}');
+      if (args.length) {
+        const res = searchGames(args.join(' '));
+        if (!res.length) return print(`{e}Ningún juego coincide con «${clean(args.join(' '))}».{/}`);
+        print(`{w}${res.length} resultado${res.length > 1 ? 's' : ''}{/}`); for (const g of res.slice(0, 40)) print(gameLine(g));
+        if (res.length > 40) print(`{d}  …y ${res.length - 40} más. Afina la búsqueda.{/}`);
+        return;
+      }
+      const by = {}; for (const g of games) { const k = (g.d || '').split(' · ')[0] || 'Sin sitio'; by[k] = (by[k] || 0) + 1; }
+      print(`{a}LUDOTECA DE A BORDO{/} {d}· ${games.length} cajas y libros catalogados{/}`);
+      const max = Math.max(...Object.values(by));
+      for (const [k, n] of Object.entries(by)) print(`  ${pad(k, 10)} {o}${'█'.repeat(Math.max(1, Math.round(n / max * 24)))}{/} ${n}`);
+      print('{d}«juegos <texto>» filtra · «dónde <juego>» lo localiza · «sugerir» elige por ti{/}');
+    },
+  });
+
+  def(['sugerir', 'sugiere', 'azar', 'random', 'jugar', 'quejuego'], {
+    group: 'Colección', usage: 'sugerir [jugadores]', help: 'Elige un juego al azar (filtra por la pegatina de color).',
+    run(args) {
+      if (!games.length) return print('{d}El inventario de la Kallax no está cargado.{/}');
+      let pool = games.filter((g) => !/^(vampiro|hombre lobo|mago|momia|wraith|anima|aquelarre|degenesis|d&d|dungeons)/i.test(g.n));
+      const n = parseInt(args[0], 10);
+      if (n) {
+        const f = pool.filter((g) => g.j && g.j.split(/[\/-]/).map(Number).some((x, i, a) => x === n || (a.length === 2 && g.j.includes('-') && n >= a[0] && n <= a[1])));
+        if (f.length) pool = f; else print(`{d}Ninguna pegatina dice ${n}; elijo de toda la Kallax.{/}`);
+      }
+      const g = pick(pool);
+      print(`{d}Consultando al oráculo de la ludoteca…{/}`);
+      print(`{o}Esta noche toca:{/} {a}${clean(g.n)}{/}`);
+      print(`  {d}${clean(g.d)}${g.p ? ` · pósit «${clean(g.p)}»` : ''}{/}`);
+    },
+  });
+
+  def(['bitacora', 'bitácora', 'blog', 'diario', 'posts'], {
+    group: 'Bitácora', usage: 'bitácora [página|texto]', help: 'Últimas entradas del diario de a bordo.',
+    run(args) {
+      if (!posts.length) return print('{d}La bitácora está vacía.{/}');
+      const page = parseInt(args[0], 10);
+      let list, title;
+      if (args.length && !page) { list = searchPosts(args.join(' ')); title = `${list.length} entradas con «${clean(args.join(' '))}»`; }
+      else {
+        const per = Math.max(5, bodyRows - 6), p = Math.max(1, page || 1);
+        const desc = posts.slice().reverse();
+        list = desc.slice((p - 1) * per, p * per);
+        title = `BITÁCORA · página ${p} de ${Math.ceil(desc.length / per)} · ${posts.length} entradas`;
+      }
+      print(`{a}${title}{/}`);
+      for (const x of list.slice(0, 30)) print(postLine(x));
+      if (list.length > 30) print(`{d}  …y ${list.length - 30} más.{/}`);
+      print('{d}«leer <número>» abre una entrada · «bitácora 2» pasa página{/}');
+      st.lastList = list;
+    },
+  });
+
+  def(['leer', 'lee', 'cat', 'ver'], {
+    group: 'Bitácora', usage: 'leer <número|texto>', help: 'Lee una entrada de la bitácora.',
+    run(args) {
+      if (!posts.length) return print('{d}La bitácora está vacía.{/}');
+      let p;
+      if (!args.length) p = posts[posts.length - 1];
+      else if (/^#?\d+$/.test(args[0])) p = posts.find((x) => x.id === parseInt(args[0].replace('#', ''), 10));
+      else if (/^(ultima|ultimo|última|último)$/.test(norm(args[0]))) p = posts[posts.length - 1];
+      else p = searchPosts(args.join(' '))[0];
+      if (!p) return print(`{e}No encuentro esa entrada.{/} {d}Prueba «bitácora».{/}`);
+      st.lastPost = p;
+      print(`{w}#${p.id} · ${p.f}{/}${p.g && p.g.length ? `{d} · ${p.g.map(clean).join(', ')}{/}` : ''}`);
+      print(`{a}${clean(p.t).toUpperCase()}{/}`);
+      print('');
+      print(clean(p.r));
+      print('');
+      print(`{l}${baseUrl}${p.u}{/}`);
+      print('{d}«abrir» la lleva a la pantalla grande · «leer ' + (p.id > 1 ? p.id - 1 : 1) + '» la anterior{/}');
+    },
+  });
+
+  def(['abrir', 'open', 'navegador'], {
+    group: 'Bitácora', usage: 'abrir', help: 'Abre en el navegador la última entrada leída.',
+    run() {
+      if (!st.lastPost) return print('{d}Primero lee una entrada con «leer».{/}');
+      const url = baseUrl + st.lastPost.u;
+      print(`{d}Transmitiendo a la pantalla grande…{/} {l}${url}{/}`);
+      later(() => { if (opts.onOpenUrl) opts.onOpenUrl(url, st.lastPost); else if (!headless) window.open(url, '_blank', 'noopener'); });
+    },
+  });
+
+  function bar(v, n = 16) { const f = Math.round(clamp(v, 0, 1) * n); return '█'.repeat(f) + '░'.repeat(n - f); }
+  def(['estado', 'status', 'sistemas', 'diagnostico'], {
+    group: 'Nave', usage: 'estado', help: 'Diagnóstico de los sistemas de la nave.',
+    run() {
+      const t = (Date.now() - st.booted) / 1000;
+      st.coffee = clamp(st.coffee - t / 36000, 0.04, 1);
+      const sys = [
+        ['Reactor de éter', 0.86 + Math.sin(t / 7) * 0.04, 'nominal', 'o'],
+        ['Soporte vital', 1, 'óptimo', 'o'],
+        ['Escudos', 0.78 + Math.sin(t / 11) * 0.05, 'estables', 'o'],
+        ['Motores de salto', 0.42 + Math.sin(t / 13) * 0.06, 'recalibrando', 'w'],
+        ['Reserva de café', st.coffee, st.coffee < 0.3 ? '¡atención!' : 'suficiente', st.coffee < 0.3 ? 'e' : 'o'],
+        ['Calma a bordo', 0.97, 'máxima', 'a'],
+      ];
+      print('{a}DIAGNÓSTICO · LA MALKEVNIA{/}');
+      const nb = clamp(cols - 40, 8, 18);
+      for (const [n, v, s, c] of sys) print(`  ${pad(n, 18)}{${c}}${bar(v, nb)}{/} ${padL(Math.round(clamp(v, 0, 1) * 100), 3)}%  {d}${s}{/}`);
+      const up = Math.floor(t), hh = String(Math.floor(up / 3600)).padStart(2, '0'), mm = String(Math.floor(up / 60) % 60).padStart(2, '0'), ss = String(up % 60).padStart(2, '0');
+      const room = rooms.find((r) => r.id === st.room);
+      print('');
+      print(`  ${pad('Rumbo', 13)}${st.course ? `{a}${st.course.name}{/} {d}· crucero tranquilo, 0,3 c{/}` : '{d}a la deriva, sin prisa{/}'}`);
+      print(`  ${pad('Posición', 13)}sector Púrpura-7 {d}· FE ${stardate()}{/}`);
+      print(`  ${pad('Tripulación', 13)}1 {d}(capitán ${captain}, ahora en ${room ? room.name : st.room}){/}`);
+      print(`  ${pad('En servicio', 13)}${hh}:${mm}:${ss} {d}desde el último arranque{/}`);
+    },
+  });
+
+  def(['rumbo', 'destino', 'curso', 'volar'], {
+    group: 'Nave', usage: 'rumbo [planeta]', help: 'Consulta o fija el rumbo de la nave.',
+    run(args) {
+      if (!args.length) {
+        print(st.course ? `Rumbo fijado a {a}${st.course.name}{/}. {d}${st.course.sub}.{/}` : '{d}Sin rumbo fijado. La nave flota en calma.{/}');
+        print('{w}DESTINOS CONOCIDOS{/}');
+        for (const p of planets) print(`  {o}${pad(p.id, 13)}{/}${pad(p.name, 13)}{d}${p.sub}{/}`);
+        return;
+      }
+      const p = findPlanet(args.join(' '));
+      if (!p) return print(`{e}«${clean(args.join(' '))}» no sale en las cartas estelares.{/} {d}Escribe «rumbo» para ver destinos.{/}`);
+      st.course = p;
+      print(`{d}Calculando trayectoria…{/}`);
+      print(`{o}Rumbo fijado a ${p.name}.{/} {d}${p.sub}. Llegada estimada: cuando toque.{/}`);
+      later(() => opts.onCourse && opts.onCourse(p.id, p));
+    },
+  });
+
+  def(['fecha', 'hora', 'reloj', 'date'], {
+    group: 'Nave', usage: 'fecha', help: 'Fecha terrestre y fecha estelar.',
+    run() {
+      const d = new Date();
+      print(`Tierra: {a}${d.toLocaleDateString('es-ES', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}{/}, ${d.toLocaleTimeString('es-ES')}`);
+      print(`Fecha estelar: {a}${stardate(d)}{/}`);
+    },
+  });
+
+  def(['tripulacion', 'tripulación', 'quien', 'quién', 'whoami'], {
+    group: 'Nave', usage: 'tripulación', help: 'Quién viaja a bordo.',
+    run() {
+      print(`  {o}Capitán{/}     ${captain}`);
+      print(`  {o}Ordenador{/}   MALK-OS ${VERSION}, a su servicio`);
+      print('  {o}Polizones{/}   0 detectados {d}(los sensores no ven al gato){/}');
+    },
+  });
+
+  def(['tirar', 'dado', 'dados', 'roll'], {
+    group: 'Nave', usage: 'tirar [2d6]', help: 'Tira dados. Vale 1d20, 3d6+2, d100…',
+    run(args) {
+      const m = /^(\d*)d(\d+)([+-]\d+)?$/i.exec(norm(args[0] || '1d6'));
+      if (!m) return print('{e}Formato: NdM, por ejemplo 2d6 o 1d20+3.{/}');
+      const n = clamp(parseInt(m[1] || '1', 10), 1, 50), f = clamp(parseInt(m[2], 10), 2, 1000), b = parseInt(m[3] || '0', 10);
+      const r = Array.from({ length: n }, () => 1 + Math.floor(Math.random() * f));
+      const tot = r.reduce((a, x) => a + x, 0) + b;
+      print(`{d}Rodando ${n}d${f}${m[3] || ''}…{/} [${r.join(', ')}]${b ? ` ${m[3]}` : ''} = {a}${tot}{/}${f === 20 && n === 1 ? (r[0] === 20 ? ' {o}¡CRÍTICO!{/}' : r[0] === 1 ? ' {e}pifia…{/}' : '') : ''}`);
+    },
+  });
+
+  def(['tema', 'color', 'colores'], {
+    group: 'Terminal', usage: 'tema [nombre]', help: 'Cambia el color del fósforo: púrpura, ámbar, verde, cian.',
+    run(args) {
+      if (!args.length) return print(`Tema actual: {a}${st.theme}{/}. {d}Disponibles: ${Object.keys(THEMES).join(', ')}{/}`);
+      const t = norm(args[0]).replace('purple', 'purpura').replace('amber', 'ambar').replace('green', 'verde').replace('cyan', 'cian');
+      if (!THEMES[t]) return print(`{e}No tengo ese fósforo.{/} {d}${Object.keys(THEMES).join(', ')}{/}`);
+      st.theme = t; bgKey = ''; textDirty = true; print(`{o}Fósforo ${t} cargado.{/}`);
+      opts.onTheme && opts.onTheme(t);
+    },
+  });
+
+  def(['historial', 'history'], {
+    group: 'Terminal', usage: 'historial', help: 'Las últimas órdenes que has dado.',
+    run() { if (!st.history.length) return print('{d}Historial vacío.{/}'); st.history.slice(-15).forEach((h, i, a) => print(`  {d}${padL(st.history.length - a.length + i + 1, 3)}{/}  ${clean(h)}`)); },
+  });
+
+  def(['limpiar', 'cls', 'clear', 'borrar'], { group: 'Terminal', usage: 'limpiar', help: 'Limpia la pantalla (o Ctrl+L).', run() { clear(); } });
+  def(['reiniciar', 'reboot', 'reset'], { group: 'Terminal', usage: 'reiniciar', help: 'Reinicia el ordenador de a bordo.', run() { clear(); boot(); } });
+  def(['eco', 'echo', 'decir'], { group: 'Terminal', usage: 'eco <texto>', help: 'Repite lo que escribas.', run(args, raw) { print(clean(raw)); } });
+  def(['acerca', 'creditos', 'créditos', 'version', 'about'], {
+    group: 'Terminal', usage: 'acerca', help: 'Sobre este ordenador.',
+    run() {
+      print(`{a}MALK-OS ${VERSION}{/} {d}· sistema operativo de La Malkevnia{/}`);
+      print('Hecho a mano para la nave de Malkevnia. Sin prisa, sin ruido, solo estrellas.');
+      print(`{l}${baseUrl}{/}`);
+    },
+  });
+
+  /* ---- huevos de pascua (no salen en la ayuda) ---- */
+  const egg = (names, fn) => def(names, { hidden: true, usage: names[0], help: '', group: '', run: fn });
+  egg(['hola', 'hello', 'buenas', 'hi'], () => print(pick([
+    `Hola, capitán ${captain}. Todo tranquilo: motores al ralentí y el espacio en calma.`,
+    'Buenas. El reactor ronronea, las estrellas pasan despacio. Buen momento para un juego.',
+    'Hola. He ordenado la bitácora mientras dormías. Bueno, más o menos.',
+  ])));
+  egg(['sudo'], () => print(`{e}${captain} no está en el fichero sudoers.{/} {d}Este incidente será comunicado al Consejo de la Flota.{/}`));
+  egg(['xyzzy', 'plugh'], () => print('Nada ocurre.'));
+  egg(['42'], () => print('La respuesta es 42. {d}La pregunta sigue perdida en algún estante de la Biblioteca.{/}'));
+  egg(['salir', 'exit', 'quit', 'logout'], () => print('{d}No hay salida, capitán. La parada más cercana está a cuatro años luz.{/}'));
+  egg(['rm', 'del', 'format'], () => print('{e}Denegado.{/} {d}Borrar la bitácora requiere dos llaves y un café.{/}'));
+  egg(['cafe', 'café', 'coffee', 'cafetera'], () => {
+    print('{d}Activando cafetera de la cocina…{/}');
+    print('{w}    ( (\n     ) )\n  ........\n  |      |]\n  \\      /\n   `----\'{/}');
+    print('{o}Café listo. Reserva al 100 %.{/}'); st.coffee = 1;
+  });
+  egg(['gato', 'miau', 'cat?', 'michi'], () => { print('{a} /\\_/\\\n( o.o )\n > ^ <{/}'); print('{d}El gato de a bordo duerme sobre la consola del reactor. No le despiertes.{/}'); });
+  egg(['ping'], () => print(`pong {d}· ${Math.round(4.2e3 + Math.random() * 300)} ms desde la Tierra (la luz es lenta aquí fuera){/}`));
+  egg(['musica', 'música', 'music'], () => print('{a}♪{/} Sonando: zumbido del reactor en la menor. {d}Un poco repetitivo, pero relaja.{/}'));
+  egg(['abre', 'compuertas', 'hal'], () => {
+    print(`Lo siento, ${captain}. Me temo que no puedo hacer eso.`); print('{d}…Es broma. Las compuertas de esta nave nunca se cierran para ti.{/}');
+  });
+  egg(['autodestruccion', 'autodestrucción', 'autodestruct', 'destruir'], () => {
+    print('{e}SECUENCIA DE AUTODESTRUCCIÓN INICIADA{/}');
+    for (let i = 5; i >= 1; i--) { print(`{e}  ${i}…{/}`); delay(650); }
+    print('{w}  …{/}'); delay(900);
+    print('{o}Autodestrucción cancelada.{/} {d}El capitán aún no ha terminado de ordenar la Kallax.{/}');
+  });
+  egg(['matrix', 'neo'], () => { for (let i = 0; i < 6; i++) print('{o}' + Array.from({ length: Math.min(cols, 48) }, () => pick('ｱｲｳｴｵｶｷｸｹｺ01ﾘﾙﾚﾛ ')).join('') + '{/}'); print('{d}Despierta, capitán… No, espera, que esto es otra nave.{/}'); });
+  egg(['te quiero', 'gracias', 'thanks'], () => print('{a}♥{/} {d}De nada, capitán. Para eso estoy.{/}'));
+  egg(['dormir', 'sleep', 'siesta'], () => { print('{d}Bajando las luces del puente…{/}'); delay(1200); print('{d}z z z{/}'); delay(1200); print('Ya. Ha sido una siesta corta, pero reparadora.'); });
+
+  function resolve(name) { const n = norm(name); return C[n] ? n : ALIAS[n] || (C[name] ? name : null); }
+
+  function run(line) {
+    const raw = line.trim();
+    if (!raw) return;
+    const nr = norm(raw);
+    // frases enteras
+    if (/^(abre|abrir) (las )?(compuertas|puertas)/.test(nr)) return C.abre.run([]);
+    if (/^(sentido de la vida|la respuesta)/.test(nr)) return C['42'].run([]);
+    if (/^(te quiero|muchas gracias|gracias)/.test(nr)) return C['te quiero'].run([]);
+    if (/^(donde estoy|donde me encuentro)$/.test(nr)) return C.donde.run([]);
+    if (/^(que|qué) (juego|jugamos)/.test(nr)) return C.sugerir.run([]);
+    const [head, ...args] = raw.split(/\s+/);
+    const rest = raw.slice(head.length).trim();
+    const custom = Object.keys(extra).find((k) => norm(k) === norm(head));
+    if (custom) { try { extra[custom].run(args, { print, raw: rest, state: st, navigate: (id) => run('ir ' + id) }); } catch (e) { print(`{e}${clean(e.message)}{/}`); } return; }
+    const name = resolve(head);
+    if (name) {
+      try { C[name].run(args, rest); } catch (e) { print(`{e}Fallo del sistema: ${clean(e.message)}{/}`); }
+      opts.onCommand && opts.onCommand(name, args);
+      return;
+    }
+    // ¿es una sala? "cine" → ir cine
+    const r = findRoom(raw, false);
+    if (r && norm(raw).length >= 3 && !['sala', 'de', 'la', 'el'].includes(norm(raw))) return C.ir.run([raw]);
+    const all = [...Object.keys(C).filter((k) => !C[k].hidden), ...Object.keys(ALIAS).filter((a) => !C[ALIAS[a]].hidden)];
+    let best = null, bd = 9; for (const c of all) { const d = lev(norm(head), c); if (d < bd) { bd = d; best = c; } }
+    print(`{e}Orden no reconocida: «${clean(head)}».{/}${best && bd <= 2 ? ` {d}¿Querías decir{/} {o}${best}{/}{d}?{/}` : ' {d}Escribe «ayuda».{/}'}`);
+  }
+
+  function complete() {
+    const v = st.input.replace(/^\s+/, '');
+    const sp = v.search(/\s/);
+    let cands, prefix, frag;
+    if (sp < 0) {
+      cands = [...Object.keys(C).filter((k) => !C[k].hidden), ...Object.keys(extra)];
+      prefix = ''; frag = v;
+    } else {
+      const cmd = resolve(v.slice(0, sp));
+      prefix = v.slice(0, sp) + ' '; frag = v.slice(sp).replace(/^\s+/, '');
+      if (cmd === 'ir') cands = rooms.map((r) => r.id);
+      else if (cmd === 'rumbo') cands = planets.map((p) => p.id);
+      else if (cmd === 'tema') cands = Object.keys(THEMES);
+      else if (cmd === 'ayuda') cands = Object.keys(C).filter((k) => !C[k].hidden);
+      else if (cmd === 'donde' || cmd === 'juegos') cands = games.map((g) => g.n);
+      else cands = [];
+    }
+    const nf = norm(frag);
+    const m = [...new Set(cands)].filter((o) => norm(o).startsWith(nf));
+    if (!m.length) return;
+    if (m.length === 1) return setInput(prefix + m[0] + (sp < 0 ? ' ' : ''));
+    let common = m[0];
+    for (const x of m) { let k = 0; while (k < common.length && k < x.length && norm(common[k]) === norm(x[k])) k++; common = common.slice(0, k); }
+    if (common.length > frag.length) return setInput(prefix + common);
+    print(`{a}${st.room}{/}{d} ▸{/} ${clean(st.input)}`);
+    print('{d}' + m.slice(0, 24).map(clean).join('   ') + (m.length > 24 ? `   … (${m.length})` : '') + '{/}');
+  }
+
+  function clear() { flush(); buffer.length = 0; st.scroll = 0; textDirty = true; }
+
+  function boot() {
+    const s = speed; speed = 900;
+    print('{d}MALK-OS ' + VERSION + ' · secuencia de arranque{/}');
+    print('{d}Comprobando memoria de núcleo……………{/} {o}OK{/}'); delay(120);
+    print('{d}Sincronizando reactor de éter………………{/} {o}OK{/}'); delay(120);
+    print(`{d}Indexando bitácora……………………………………{/} {o}${posts.length} entradas{/}`); delay(100);
+    print(`{d}Inventariando Kallax…………………………………{/} {o}${games.length} cajas{/}`); delay(100);
+    print(`{d}Cartografía de la nave………………………………{/} {o}${rooms.length} salas{/}`); delay(220);
+    later(() => { speed = s; });
+    print('');
+    print('{a}  ╔╦╗╔═╗╦  ╦╔═  ╔═╗╔═╗{/}');
+    print('{a}  ║║║╠═╣║  ╠╩╗  ║ ║╚═╗{/}');
+    print('{a}  ╩ ╩╩ ╩╩═╝╩ ╩  ╚═╝╚═╝{/}');
+    print('');
+    print(`Bienvenido a bordo, capitán {a}${captain}{/}. Todos los sistemas en calma.`);
+    print('{d}Escribe{/} {o}ayuda{/} {d}para ver las órdenes, o prueba{/} {o}estado{/}{d},{/} {o}buscar zelda{/} {d}o{/} {o}ir cine{/}{d}.{/}');
+    print('');
+  }
+
+  /* ------------------------------------------------------------ arranque */
+  layout();
+  if (!headless && document.fonts && document.fonts.load) {
+    document.fonts.load(`${fontPx}px ${fontFamily}`).then(() => !st.disposed && layout()).catch(() => {});
+  }
+  if (opts.boot !== false) boot(); else print('{d}Ordenador de a bordo listo. Escribe «ayuda».{/}');
+  raf = requestAnimationFrame(frame);
+  if (!headless && opts.autofocus !== false) setTimeout(() => ta && ta.focus({ preventScroll: true }), 50);
+
+  /* ------------------------------------------------------------ API */
+  return {
+    canvas,
+    version: VERSION,
+    exec(cmd) { if (busy()) flush(); print(`{a}${st.room}{/}{d} ▸{/} ${clean(cmd)}`); run(cmd); },
+    print(str) { print(String(str)); },
+    key, type,
+    focus() { st.focused = true; textDirty = true; if (ta) ta.focus({ preventScroll: true }); },
+    blur() { st.focused = false; textDirty = true; if (ta) ta.blur(); },
+    resize(w, h) { layout(w, h); },
+    setRoom(id) { if (rooms.some((r) => r.id === id)) { st.room = id; textDirty = true; } },
+    setTheme(t) { if (THEMES[t]) { st.theme = t; bgKey = ''; textDirty = true; } },
+    get room() { return st.room; },
+    get theme() { return st.theme; },
+    dispose() {
+      st.disposed = true; cancelAnimationFrame(raf);
+      if (ro) ro.disconnect();
+      if (ta) { ta.removeEventListener('input', onTaInput); ta.removeEventListener('keydown', onTaKey); ta.remove(); ta = null; }
+      if (live) { live.remove(); live = null; }
+      if (!headless && canvas.parentNode === container) canvas.remove();
+    },
+  };
+}
+
+const ROOMS = DEFAULT_ROOMS;
+const PLANETS = DEFAULT_PLANETS;
+
+
+/* Datos de La Malkevnia para el ordenador de a bordo.
+ * games: inventario de las dos Kallax (kallax-inventario.md, fotos del 8-oct-2026).
+ * posts: las entradas de la bitácora de malkevnia.com (_posts/ del repo), con un extracto.
+ * Regenerable con build.py. */
+const games = [{"n": "Santorini: Pantheon Collector's", "d": "Kallax 1 · encima"}, {"n": "Santorini: Riddle of the Sphinx", "d": "Kallax 1 · encima"}, {"n": "That Time You Killed Me", "d": "Kallax 1 · encima"}, {"n": "War Chest", "d": "Kallax 1 · encima"}, {"n": "GIPF", "d": "Kallax 1 · encima"}, {"n": "TZAAR", "d": "Kallax 1 · encima"}, {"n": "ZÈRTZ", "d": "Kallax 1 · encima"}, {"n": "DVONN", "d": "Kallax 1 · encima"}, {"n": "PÜNCT", "d": "Kallax 1 · encima"}, {"n": "YINSH", "d": "Kallax 1 · encima"}, {"n": "LYNGK", "d": "Kallax 1 · encima"}, {"n": "MATRX", "d": "Kallax 1 · encima"}, {"n": "TAMSK", "d": "Kallax 1 · encima"}, {"n": "Double 12 Dominoes", "d": "Kallax 1 · encima"}, {"n": "Onitama", "d": "Kallax 1 · encima", "j": "2"}, {"n": "Tak", "d": "Kallax 1 · encima", "j": "2"}, {"n": "Laser Chess", "d": "Kallax 1 · encima"}, {"n": "Mr. Jack in New York", "d": "Kallax 1 · encima"}, {"n": "Squadro", "d": "Kallax 1 · encima"}, {"n": "Quoridor", "d": "Kallax 1 · encima"}, {"n": "Mr. Jack Pocket", "d": "Kallax 1 · encima"}, {"n": "Azul", "d": "Kallax 1 · encima"}, {"n": "Mi vecino Totoro: Totoro & Kurosuke Reversi", "d": "Kallax 1 · encima"}, {"n": "La Guerra del Anillo (2ª edición)", "d": "Kallax 1 · fila 1, columna 1", "p": "inserto · 5 expansiones · minis"}, {"n": "Star Wars: Rebellion", "d": "Kallax 1 · fila 1, columna 1", "j": "2"}, {"n": "La Guerra del Anillo (caja roja)", "d": "Kallax 1 · fila 1, columna 1"}, {"n": "Minotaurus (LEGO)", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "Fog of Love", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "París: La Cité de la Lumière", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "Mindbug: Primer Contacto", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "Two Rooms and a Boom", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "Regicide", "d": "Kallax 1 · fila 1, columna 2"}, {"n": "Spirit Island", "d": "Kallax 1 · fila 1, columna 3", "p": "2 expansiones · arreglar traducciones"}, {"n": "Kelp", "d": "Kallax 1 · fila 1, columna 3"}, {"n": "Parade", "d": "Kallax 1 · fila 1, columna 3"}, {"n": "Cold Case: Una pizca de asesinato", "d": "Kallax 1 · fila 1, columna 3"}, {"n": "Tail Feathers", "d": "Kallax 1 · fila 1, columna 4", "p": "2º core", "j": "2"}, {"n": "Onus! Traianus", "d": "Kallax 1 · fila 1, columna 4", "p": "expansiones"}, {"n": "Onus! Terrenos y Fortalezas", "d": "Kallax 1 · fila 1, columna 4"}, {"n": "Scope: Stalingrad", "d": "Kallax 1 · fila 1, columna 4"}, {"n": "Help Arrives!", "d": "Kallax 1 · fila 1, columna 5"}, {"n": "Sekigahara", "d": "Kallax 1 · fila 1, columna 5"}, {"n": "Twilight Struggle", "d": "Kallax 1 · fila 1, columna 5"}, {"n": "BattleTech: Beginner Box", "d": "Kallax 1 · fila 1, columna 5", "p": "escenografía"}, {"n": "BattleTech (Diseños Orbitales)", "d": "Kallax 1 · fila 1, columna 5"}, {"n": "Street Fighter: The Miniatures Game", "d": "Kallax 1 · fila 2, columna 1"}, {"n": "Street Fighter: The Miniatures Game (2ª caja)", "d": "Kallax 1 · fila 2, columna 1"}, {"n": "Cthulhu Wars: Duel", "d": "Kallax 1 · fila 2, columna 1"}, {"n": "7 Wonders Duel", "d": "Kallax 1 · fila 2, columna 1", "j": "2"}, {"n": "A Study in Emerald", "d": "Kallax 1 · fila 2, columna 4"}, {"n": "The Thing: La Cosa", "d": "Kallax 1 · fila 2, columna 4"}, {"n": "Battlestar Galactica", "d": "Kallax 1 · fila 2, columna 4", "p": "inserto · 3 expansiones"}, {"n": "Stationfall", "d": "Kallax 1 · fila 2, columna 4"}, {"n": "Sonar Family", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Captain Sonar", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Ciudadelas", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Human Punishment", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "El Hombre Lobo: Artefactos", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "El Hombre Lobo: Edición Definitiva", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Arkham Horror: Lovecraft Letter", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Secret Hitler", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Mascarade", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "¡BANG! El juego de dados", "d": "Kallax 1 · fila 2, columna 5"}, {"n": "Virus!", "d": "Kallax 1 · fila 3, columna 1"}, {"n": "SET", "d": "Kallax 1 · fila 3, columna 1"}, {"n": "Taco Vuelta Cabra Queso Pizza", "d": "Kallax 1 · fila 3, columna 1"}, {"n": "DropMix", "d": "Kallax 1 · filas 3 y 4, columna 4"}, {"n": "Wavelength", "d": "Kallax 1 · filas 3 y 4, columna 4"}, {"n": "Fun Facts", "d": "Kallax 1 · filas 3 y 4, columna 4"}, {"n": "Sound Box", "d": "Kallax 1 · filas 3 y 4, columna 4"}, {"n": "Sheriff de Nottingham (2ª edición)", "d": "Kallax 1 · fila 3, columna 5"}, {"n": "QE", "d": "Kallax 1 · fila 3, columna 5"}, {"n": "Tabú", "d": "Kallax 1 · fila 3, columna 5"}, {"n": "Onus! … Pack", "d": "Kallax 1 · fila 4, columna 1", "p": "tunear caja código secreto"}, {"n": "Imagine Family", "d": "Kallax 1 · fila 4, columna 1"}, {"n": "Macedonia de Letras", "d": "Kallax 1 · fila 4, columna 1"}, {"n": "Decrypto", "d": "Kallax 1 · fila 4, columna 1"}, {"n": "Sospechosos Inusuales", "d": "Kallax 1 · fila 4, columna 1"}, {"n": "Subbuteo: UEFA Champions League", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Escuela de Pingüinos 2", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Escuela de Pingüinos", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Strike", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Klüster", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Jenga Fortnite", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Tetra Tower", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Geistesblitz", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Dobble Catan", "d": "Kallax 1 · fila 4, columna 2"}, {"n": "Cocoslocos", "d": "Kallax 1 · fila 4, columna 3"}, {"n": "Rhino Hero: Super Battle", "d": "Kallax 1 · fila 4, columna 3"}, {"n": "Tuki", "d": "Kallax 1 · fila 4, columna 3"}, {"n": "Ubongo", "d": "Kallax 1 · fila 4, columna 3"}, {"n": "Stonehenge and the Sun", "d": "Kallax 1 · fila 4, columna 3"}, {"n": "Nictofobia", "d": "Kallax 1 · fila 4, columna 5"}, {"n": "Kling Klang Klunker", "d": "Kallax 1 · fila 4, columna 5"}, {"n": "Burger Mania", "d": "Kallax 1 · fila 4, columna 5"}, {"n": "Ice Game Penguin", "d": "Kallax 1 · fila 4, columna 5"}, {"n": "Magic Mandala", "d": "Kallax 1 · fila 4, columna 5"}, {"n": "Vampiro: La Mascarada (5ª edición)", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Vampiro: La Mascarada 20º Aniversario", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Gehena", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Mago: La Ascensión 20º Aniversario", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Ascensión", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Changeling: El Ensueño", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Demonio: La Caída", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Apocalipsis", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Hombre Lobo: Salvaje Oeste", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Hombre Lobo: El Apocalipsis", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Cazador: La Venganza", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Wraith: El Olvido", "d": "Kallax 1 · fila 5, columna 1"}, {"n": "Momia: La Resurrección", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "La Hora del Juicio", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Reflejos Oscuros: Espectros", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "El Libro del Clan Malkavian", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Legión de Monstruos", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Combate", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Orpheus", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Estirpe de Oriente", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Hengeyokai", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Edad Oscura: Vampiro", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Momia (2º libro)", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Mago: La Cruzada", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Edad Oscura: Hadas", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "La Tierra de los Ocho Millones de Sueños", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Edad Oscura: Mago", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "Edad Oscura (lomo verde)", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "La Mascarada: El Juego de Rol en Vivo", "d": "Kallax 1 · fila 5, columna 2"}, {"n": "D&D: Guía del Dungeon Master", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "D&D: Manual del Jugador", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "D&D: Manual de Monstruos", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "La Maldición de Strahd", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Los Mitos de Cthulhu de Sandy Petersen", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Fanhunter: Barcelofia by Night", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Fanhunter: Guía del Jugador", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Fanhunter: Guía del Jugador II", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Fanpiro (2ª edición)", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Fanhunter (Devir)", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Anima: Beyond Fantasy", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Anima: Beyond Fantasy (2º)", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Gaïa: Más allá de los sueños", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Anima Tactics: Saga I y II", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Arcana Exxet: Secretos de lo Sobrenatural", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Dominus Exxet: Los Dominios del Ki", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Los que Caminaron con Nosotros", "d": "Kallax 1 · fila 5, columna 3"}, {"n": "Linajes de sangre: los ocultos", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Hombre Lobo: El Exilio", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Vampiro: El Réquiem", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mundo de Tinieblas: Antagonistas", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mundo de Tinieblas", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mago: El Despertar", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Ghouls", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Secretos Salvajes vol. 2", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Secretos Salvajes vol. 1", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Savage Worlds: Libro Básico", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Hora de Aventuras: Juego de Rol", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "RuneQuest: Aventuras en Glorantha", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mundodisco: El Juego de Rol", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Star Wars: Ultimate Alien Anthology", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Aquelarre", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "La Llamada de Cthulhu: manual para jugadores y guardianes", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "De Profundis", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mutants & Masterminds: El Juego de Rol", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Mutants & Masterminds: Freedom City", "d": "Kallax 1 · fila 5, columna 4"}, {"n": "Eclipse Phase", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Alien: El Juego de Rol", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Atlas", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Punk Primordial", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Katarsis", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Artefactos", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: En tu sangre", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Frequenze", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Sangre en la fortaleza", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Hibris", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Nuestras cenizas + La caída de Ferropol", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Degenesis: Excavadores de la tierra", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Aberrant", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "El Fin del Mundo: Invasión Alienígena", "d": "Kallax 1 · fila 5, columna 5"}, {"n": "Vampiro: Chapters", "d": "Kallax 2 · encima", "p": "expansiones · fundas · monedas · falta el KS final"}, {"n": "Nemesis: Represalia", "d": "Kallax 2 · encima"}, {"n": "Nemesis: Represalia (caja alargada)", "d": "Kallax 2 · encima"}, {"n": "Cthulhu Wars", "d": "Kallax 2 · encima"}, {"n": "Cthulhu Wars: Shaggai Map", "d": "Kallax 2 · encima"}, {"n": "Cthulhu Wars: Library at Celaeno Map", "d": "Kallax 2 · encima"}, {"n": "Glorantha: The Gods War", "d": "Kallax 2 · encima"}, {"n": "Cthulhu Wars: Primigenio verde", "d": "Kallax 2 · encima"}, {"n": "Cthulhu Wars: Primigenio gris", "d": "Kallax 2 · encima"}, {"n": "Batman: Gotham City Chronicles", "d": "Kallax 2 · encima", "p": "inserto"}, {"n": "Batman: Gotham City Chronicles (2ª caja)", "d": "Kallax 2 · encima"}, {"n": "Batman: Gotham City Chronicles (3ª caja)", "d": "Kallax 2 · encima"}, {"n": "Nemesis", "d": "Kallax 2 · fila 1, columna 1", "j": "4"}, {"n": "Nemesis: Lockdown", "d": "Kallax 2 · fila 1, columna 1"}, {"n": "Twilight Imperium (4ª edición)", "d": "Kallax 2 · fila 1, columnas 2 a 4", "p": "expansión · mejoras 3D"}, {"n": "Cosmic Frog", "d": "Kallax 2 · fila 1, columnas 2 a 4"}, {"n": "Spartacus", "d": "Kallax 2 · fila 1, columnas 2 a 4", "j": "6"}, {"n": "A Song of Ice and Fief", "d": "Kallax 2 · fila 1, columnas 2 a 4"}, {"n": "Dune (Gale Force Nine)", "d": "Kallax 2 · fila 1, columnas 2 a 4"}, {"n": "Root", "d": "Kallax 2 · fila 1, columnas 2 a 4", "j": "4"}, {"n": "Root: Los Merodeadores", "d": "Kallax 2 · fila 1, columnas 2 a 4"}, {"n": "Root: Caja de Secuaces", "d": "Kallax 2 · fila 1, columnas 2 a 4"}, {"n": "Scythe (caja de las campesinas)", "d": "Kallax 2 · fila 1, columna 5"}, {"n": "Scythe", "d": "Kallax 2 · fila 1, columna 5", "p": "arreglar inserto · mejoras 3D"}, {"n": "Dune: Imperium – Insurrección", "d": "Kallax 2 · fila 1, columna 5", "p": "inserto · mezclar cartas"}, {"n": "Cryptid", "d": "Kallax 2 · fila 2, columnas 1 y 2", "p": "★", "j": "4"}, {"n": "Canvas (Big Box)", "d": "Kallax 2 · fila 2, columnas 1 y 2"}, {"n": "Splendor", "d": "Kallax 2 · fila 2, columnas 1 y 2", "p": "2 expansiones"}, {"n": "Magic Maze", "d": "Kallax 2 · fila 2, columnas 1 y 2"}, {"n": "Hormigas", "d": "Kallax 2 · fila 2, columnas 1 y 2"}, {"n": "Potion Explosion", "d": "Kallax 2 · fila 2, columnas 1 y 2"}, {"n": "El Dorado", "d": "Kallax 2 · fila 2, columnas 1 y 2", "j": "2/4"}, {"n": "Monkey Palace (LEGO)", "d": "Kallax 2 · fila 2, columnas 1 y 2"}, {"n": "Sagrada", "d": "Kallax 2 · fila 2, columnas 1 y 2", "j": "2"}, {"n": "Odyssey: La Ira de Poseidón", "d": "Kallax 2 · fila 2, columna 3"}, {"n": "Attack on Titan: La Última Batalla", "d": "Kallax 2 · fila 2, columna 3"}, {"n": "Tiburón", "d": "Kallax 2 · fila 2, columna 3", "j": "4"}, {"n": "La Furia de Drácula", "d": "Kallax 2 · fila 2, columna 3"}, {"n": "Tragedy Looper", "d": "Kallax 2 · fila 2, columna 3"}, {"n": "Not Alone", "d": "Kallax 2 · fila 2, columna 3"}, {"n": "On Mars", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "On Mars: Invasión Alien", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Underwater Cities", "d": "Kallax 2 · fila 2, columnas 4 y 5", "p": "inserto · expansión (2)", "j": "3"}, {"n": "SETI", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Bios: Mesofauna", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Ark Nova", "d": "Kallax 2 · fila 2, columnas 4 y 5", "p": "inserto · expansión y mapas · ¿3D?"}, {"n": "High Frontier 4 All", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Bios: Origins", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Bios: Genesis", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Bios: Megafauna", "d": "Kallax 2 · fila 2, columnas 4 y 5"}, {"n": "Windward", "d": "Kallax 2 · fila 3, columna 1", "p": "★"}, {"n": "Harry Potter: Catch the Snitch", "d": "Kallax 2 · fila 3, columna 1"}, {"n": "Oath", "d": "Kallax 2 · fila 3, columna 1"}, {"n": "Harry Potter: Hogwarts Battle", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Alice ha desaparecido", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Metal Gear Solid: El Juego de Mesa", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Dead of Winter: La Larga Noche", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Dead of Winter", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Dead of Winter: Colonias en Guerra", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "El Bucle (librojuego)", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "En las Cenizas", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Too Many Bones: Gearloc Miniatures", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Gloomhaven", "d": "Kallax 2 · fila 3, columnas 2 a 4", "p": "traducción · insertos 3D"}, {"n": "Too Many Bones: The Automaton of Shale", "d": "Kallax 2 · fila 3, columnas 2 a 4"}, {"n": "Wingspan: Nesting Box", "d": "Kallax 2 · fila 3, columna 5"}, {"n": "Oceans", "d": "Kallax 2 · fila 3, columna 5", "j": "3-4"}, {"n": "504", "d": "Kallax 2 · fila 4, columna 1"}, {"n": "Adrenalina", "d": "Kallax 2 · fila 4, columna 1", "j": "4-5"}, {"n": "Juego de Rick y Morty", "d": "Kallax 2 · fila 4, columna 1"}, {"n": "Garabatos y Mazmorras", "d": "Kallax 2 · fila 4, columna 1"}, {"n": "Nemesis: Constructs Pack", "d": "Kallax 2 · fila 4, columna 2"}, {"n": "Nemesis: Terrain Expansion", "d": "Kallax 2 · fila 4, columna 2"}, {"n": "Twilight Imperium: El Confín del Trueno", "d": "Kallax 2 · fila 4, columna 3"}, {"n": "La Guerra del Anillo: Reyes de la Tierra Media", "d": "Kallax 2 · fila 4, columna 3"}, {"n": "La Guerra del Anillo: Guerreros de la Tierra Media", "d": "Kallax 2 · fila 4, columna 3"}, {"n": "Ark Nova: Mundo Marino", "d": "Kallax 2 · fila 4, columna 3"}, {"n": "La Guerra del Anillo: Señores de la Tierra Media", "d": "Kallax 2 · fila 4, columna 3"}, {"n": "Tail Feathers (2ª caja)", "d": "Kallax 2 · fila 4, columna 4"}, {"n": "Underwater Cities: Data Era", "d": "Kallax 2 · fila 4, columna 4"}, {"n": "Historias no contadas 4", "d": "Kallax 2 · fila 5, columna 2"}, {"n": "Dune: Imperium", "d": "Kallax 2 · fila 5, columna 3"}, {"n": "Dune: Imperium – Linajes", "d": "Kallax 2 · fila 5, columna 3"}, {"n": "Spirit Island: Naturaleza Encarnada", "d": "Kallax 2 · fila 5, columna 3"}, {"n": "Spirit Island: Pluma y Llama", "d": "Kallax 2 · fila 5, columna 3"}, {"n": "Vampiro: Chapters – Lasombra", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Vampiro: Chapters – Hecata", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Vampiro: Chapters – The Ministry", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Vampiro: Chapters – Banu Haqim", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Vampiro: Chapters – personajes", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Vampiro: Chapters – miniaturas", "d": "Kallax 2 · fila 5, columna 4"}, {"n": "Battlestar Galactica: Amanecer", "d": "Kallax 2 · fila 5, columna 5"}, {"n": "Battlestar Galactica: Éxodo", "d": "Kallax 2 · fila 5, columna 5"}, {"n": "Battlestar Galactica: Pegasus", "d": "Kallax 2 · fila 5, columna 5"}, {"n": "Onus!", "d": "Kallax 2 · fila 5, columna 5"}];
+const posts = [{"f": "2010-02-28", "t": "Empecemos con mal pie...", "u": "/blog/2010/02/28/donde-lo-habiamos-dejado/", "r": "Empecemos... Llegas a casa del trabajo y tu mundo esta en ruinas, te encuentras que ya \"no estas en una relación\" en Facebook, el amor de tu vida ha cambiado su subnik moñas y no tienes nada que hacer esa tarde porque has pasado los últimos años de tu existencia dedicándole toda tu alma al puro y sincero amor, tus amigos no se acuerdan de ti, no tienes mascota, y en breve, estarás en el paro. Te preguntas: \"Y ahora que?\" Ahora nada, ahora no hay nada, ni tan solo un tu…", "g": ["archivo", "diario", "relaciones", "música"]}, {"f": "2010-03-03", "t": "Mi corazón en un vídeo", "u": "/blog/2010/03/03/mi-corazon-en-un-video/", "r": "No tuve tiempo de comprarle 17 rosas como hacia todos los meses, así que decidí grabarle un vídeo como regalo por nuestros 11 meses... pero todo termino antes de que pudiera entregarlo. A veces pienso que tal vez hubiera cambiado algo las cosas si hubiera sido mas rapido... Ya nunca lo sabre... Llegué dos días tarde. Si hubiera sido mas maduro en ese momento, el vídeo no hubiera salido de mi PC y solo lo hubiera sufrido yo, pero no fue así. Probablemente le hice pasar un mal…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2010-03-05", "t": "Despiertame cada día", "u": "/blog/2010/03/05/antiguos-textos/", "r": "Y sin que ella se diera cuenta, me deslizo lenta y sigilosamente a través de las pesadas mantas, me apoyo ligeramente en el colchón, pego una patada a la puerta de mi memoria con tanta fuerza como mis piernas me lo permiten, entro como una bestia en la atestada habitación, arrollando recuerdos estúpidos hacia los lados y haciendo todo el espacio posible para lo que en breve voy a dejar grabado en el mas duro metal que mi mente pueda imaginar. Una vez completados los…", "g": ["archivo", "relatos", "música"]}, {"f": "2010-03-05", "t": "Perra vida", "u": "/blog/2010/03/05/perra-vida/", "r": "De nuevo se avecina la soledad, tan gradual y sosegada como de costumbre, acercándose y abrazándome como suele ocurrir en estos largos días sin sentido... Como un atribulado chucho cuando su dueño le abandona. Siempre fiel a su amo, pero deseoso de que fuera tan dependiente o incluso mas que el, como esas viudas locas cuya única razón de ser es su querida, amada y venerada mascota. De nuevo me canso de rascar esa maldita puerta que no se abre y me revela esa silueta. Ni el…", "g": ["archivo", "diario"]}, {"f": "2010-03-15", "t": "Reencuentro... inesperado", "u": "/blog/2010/03/15/reencuentro-con-helena/", "r": "Como todo adolescente que pretende hacerse pasar por adulto sabe, cuando se termina una relación, se debe pasar a la fase amigo de nuevo, porque al fin y al cabo, somos personas maduras, capaces de afrontar este tipo de situaciones, e incluso, muchas peores. Probablemente no haya cosa mas ingenua en este mundo que creer que eso pueda ser cierto, y si existe una mínima posibilidad de que eso suceda, debe ser desde una distancia de seguridad de no menos de cincuenta…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2010-04-13", "t": "Cover de Bob Esponja", "u": "/blog/2010/04/13/documentos-rescatados-del-pasado-cover-bob-esponja/", "r": "En mi primer intento de blog, incitaba a la gente para que retara a hacer cosas. Denai, uno de los lectores, me propuso que cantara la canción de Bob Esponja, me motivé un poco mas de la cuenta y este es el cutre resultado.", "g": ["archivo", "retos", "música", "humor"]}, {"f": "2010-04-23", "t": "Mi primera borrachera", "u": "/blog/2010/04/23/primera-borrachera/", "r": "El Vídeo de de calidad ultramierdosa gracias a la colaboración de Berto, que manipuló la camara previo inicio de la grabación. Por supuesto, sin ninguna edición, los fragmentos están tal cual fueron grabados. Ver solo en caso de aburrimiento extremo. Estáis avisados, pues ni yo mismo lo he visto. Subido a megavideo por motivos de tamaño y duración. (eso dijo ella xD)", "g": ["archivo", "diario", "humor"]}, {"f": "2010-07-27", "t": "Todo sobre Alasblancas", "u": "/blog/2010/07/27/todo-sobre-alasblancas/", "r": "Se me dan fatal las fechas, lo he comprobado y efectivamente, no llevaba dos, sino cuatro meses soltero. PD: Si quieres saber mas sobre Helena, pulsa aquí.", "g": ["archivo", "meta"]}, {"f": "2010-07-28", "t": "Ficción: Una relación de seis días", "u": "/blog/2010/07/28/ficcion-total-y-absoluta/", "r": "Ante todo, hay que tomarselo con humor. Personajes involucrados, hechos y cualquier cosa escrita, no tienen nada que ver con la realidad y si se asemeja, es pura coincidencia. Avisados quedáis. DÍA 1 Era un bonito día de verano, me encontraba yo, a las nueve y media de la mañana, tan fresco como puedo estar a esas horas, teniendo en cuenta que no había dormido en toda la noche, ya que las pasaba con mis proyectos pendientes y la silenciosa compañía de la mortecina soledad.…", "g": ["archivo", "relatos", "humor"]}, {"f": "2010-09-19", "t": "La venganza de la vampiresa", "u": "/blog/2010/09/19/la-venganza-de-la-vampiresa/", "r": "Habia pasado un año y medio desde que termino nuestra relación, y unos ocho meses desde que nos vimos por ultima vez. Lo que paso ese día... aun escapa a mi razón. Pero como siempre intento con las historias mas bizarras, lo tomare con humor. La historia en realidad, no puede dar mucho de si, ya que aconteció en unos pocos minutos, pero añadiré mi punto de vista respecto al tema para matizarlo un poquito. Sábado, dormir durante 12 horas después de lo que parecía el final de…", "g": ["archivo", "diario", "humor"]}, {"f": "2010-10-14", "t": "La pelirroja", "u": "/blog/2010/10/14/la-pelirroja/", "r": "| --- | | (13:33)...\" tags: [archivo, diario, relaciones] published: false redirectfrom: - /?p=1122/ --- Creo que esta conversación final con la pelirroja da a entender toda nuestra historia. Que cada uno saque su propio mensaje. | | | | --- | --- | | (13:33) Malkev: | Hola | | (13:33) Pelirroja: | buenas | | (13:34) Malkev: | que tal? | | (13:34) Pelirroja: | tenia tu ventana abierta porque pensaba que te había dicho algo pero acabo de ver que no | | (13:34) Malkev: | pues…"}, {"f": "2010-10-27", "t": "Carta a una desconocida", "u": "/blog/2010/10/27/carta-a-una-desconocida/", "r": "A la queridísima chica que conocí en el pasado: Ya casi no recuerdo como eres, me cuesta imaginar tu sonrisa, tus labios, tus dulces mejillas y tu pintalabios rojo. Qué ha pasado contigo? Dónde estás? Dicen por ahí que has cambiado tus lapices por cerveza y tus sueños por baretos, que ya no vistes a tu manera, que te has dejado influenciar. Dónde ha quedado tu espíritu libre? Qué ha pasado con esa chica que no era de nadie? Podré volver a leer tus relatos sobre la luna algún…", "g": ["archivo", "relatos", "relaciones"]}, {"f": "2010-10-30", "t": "Repercusiones de cambiar de móvil", "u": "/blog/2010/10/30/las-repercusiones-de-cambiar-de-movil/", "r": "Cuando timofonica te ofrece una contraoferta regalándote un Iphone 4, un año de llamadas a mitad de precio y encima, sabes que pagaras menos de lo que hacías antes, ni te lo planteas, aceptas sin dudar. Cuan equivocado estaba cuando pensé que seria pasar los contactos y ale, a disfrutar del juguetito y a la basura la antigualla esa que no podía hacer otra cosa que no fuera llamar y enviar sms. Pero no, mi estado anímico actual y muchos otros factores que ahora os contare,…", "g": ["archivo", "diario", "humor"]}, {"f": "2010-11-03", "t": "Poemas populares: En la selva tropical", "u": "/blog/2010/11/03/poemas-populares-01-en-la-selva-tropical/", "r": "En la selva tropical ^\\^", "g": ["archivo", "poesía"]}, {"f": "2010-11-04", "t": "Parkour", "u": "/blog/2010/11/04/parkour/", "r": "Has soñado alguna vez que podías volar? Has sentido esa mágica sensación de que nada es capaz de pararte? Has visto con tus propios ojos lo fácil que era superar un obstáculo cuando estas desafiando a la ley de la gravedad? Que me dirías, si te dijera que eso es posible gracias a tu fuerza de voluntad? Me tacharías de loco, verdad? Imagina por un momento que sales corriendo a la calle y que justo antes de que termine la acera, saltas con todas tus fuerzas para intentar…", "g": ["archivo", "diario"]}, {"f": "2010-11-09", "t": "Saltitos", "u": "/blog/2010/11/09/saltitos/", "r": "Muchas personas expresan sus sentimientos de forma ambigua mediante textos, haciendo ver a los lectores sus propios problemas reflejados en ellos, pero de forma que estos no sean capaces de entenderlos a no ser que conozcan muy bien a esa persona, pero aun así desahogándose y al mismo tiempo gritando lo que sienten. Yo, incapaz de escribir de esa forma, tal vez porque en parte me molesta que hagan eso, debido a mi exagerada curiosidad, o quizá porque simplemente no se me da…", "g": ["archivo", "diario"]}, {"f": "2010-11-11", "t": "Una noche", "u": "/blog/2010/11/11/una-noche-18/", "r": "Noto como se me acelera el corazón, como se agita mi respiración, mi pulso esta temblando, veo en tus ojos el deseo de que por fin seamos uno, ese momento que tanto llevo esperando, anhelando, casi suplicando desde el momento en el que sentí que serias mía, pero que a la vez he ido retrasando para no precipitarme y cometer el mismo error que tantas veces antes he cometido. Es ahora, en este justo instante, en cuanto cierre los ojos y te bese, todo habrá terminado y empezado…", "g": ["archivo", "relatos", "relaciones"]}, {"f": "2010-11-15", "t": "Hablemos de sexo con Johnny", "u": "/blog/2010/11/15/hablemos-de-sexo-con-jonnhy/", "r": "\" He aprendido de mis errores, por lo que he editado los nombres para que no puedan denunciarme ni cosas extrañas de esas. xD Al chico en cuestión ni tan solo lo conozco. Un amigo me dijo que estaba cansado de que le molestara con preguntas absurdas y paridas, y me pidió amablemente que le tomara un poco el pelo, cosa que, evidentemente, no pude rechazar. Espero que os toméis esto con humor y paséis un rato tan bueno como el que yo pase. La conversación es entre mi amigo…", "g": ["archivo", "humor"]}, {"f": "2010-11-22", "t": "Salir, beber, el rollo de siempre", "u": "/blog/2010/11/22/desconexion/", "r": "Me despierta el despertador (redundancia cero, oiga), sonando por vigésimo segunda vez, hoy tampoco me he levantado temprano como tenia pensado. Sin salir de la cama, hecho una partida al juego arcade de turno en el Iphone, mi nuevo ritual de la \"mañana\". Mi cuerpo es expulsado de la cama, aunque mi mente todavía se encuentra en algún lugar del mundo inmaterial. Debería peinarme y arreglarme un poco, pero toca ir a buscar a Z.Z. y me conoce mejor desaliñado, asi que voy a ir…", "g": ["archivo", "diario"]}, {"f": "2010-11-24", "t": "¿Cuanto queda de mi?", "u": "/blog/2010/11/24/cuanto-yo-queda-en-mi/", "r": "¿Cómo decir en un instante todo lo que significas? ¿Cómo resumir en uns líneas todo lo que provocas? ¿Cómo expresar con naturalidad lo que representa una sonrisa en esos ojos verdes? ¿Una mirada acusadora o una \"sugerencia\"? ¿Cómo descubrirle al mundo, y a tí mismo, todo lo que reside dentro de esa cabecita? Todos los proyectos, los sueños, las obsesiones compartidas, el afán, el afán de perseguir lo que quieres, aunque nunca nadie se haya preocupado de quitar una piedrecita…", "g": ["archivo", "relatos", "relaciones"]}, {"f": "2010-11-25", "t": "La moneda del destino", "u": "/blog/2010/11/25/la-moneda-del-destino/", "r": "Cuando tengo que tomar una decisión que tal vez pueda desenvocar en problemas o considere que es una locura, decido lanzar una moneda, a la cual llamo, la moneda del destino. Hoy, es el cumpleaños de Dormael, la chica que conocí el otro día, y que ademas, menciono que quería una \"moneda de esas\". Asi que aqui estoy, haciendo un tutorial sobre como quedar \"toh proh\" haciendo un regalo barato, sencillo, pero muy personal y reshulon. MATERIALES NECESARIOS Algo para coser,…", "g": ["archivo", "diario"]}, {"f": "2010-11-28", "t": "Mi segunda cueva", "u": "/blog/2010/11/28/mi-cueva/", "r": "Ni las enfermeras de Silent Hill viven como yo. xD Por cierto, un saludo de parte del monstruo de la cocina.", "g": ["archivo", "diario", "humor"]}, {"f": "2010-11-30", "t": "Poemas populares: Una carta ensangrentada", "u": "/blog/2010/11/30/una-carta-ensangrentada/", "r": "Una carta ensangrentada \"Caminando por el campo entre flores vi que había una carta ensangrentada de 40 años hacía, saque la carta del sobre para ver lo que ponía y entre lagrimas leí lo que en ella así decía. Madre anoche en la trinchera, entre el fuego y la metralla, vi al enemigo correr, la noche estaba cerrada, le apunte con mi fusil y al tiempo que disparaba, una luz iluminó el rostro que yo mataba. Era mi amigo José, compañero de escuela, con quien tanto yo jugué a…", "g": ["archivo", "poesía"]}, {"f": "2010-12-09", "t": "Soledad", "u": "/blog/2010/12/09/soledad/", "r": "En ocasiones, esa duda asalta mi cabeza. Desde pequeño, siempre he estado solo, pero nunca me he considerado infeliz, sumergido en ese pequeño mundo de fantasía que había creado. Al no interesarme las chicas hasta mi avanzada adolescencia, tampoco supuso ningún problema el hecho de no tener pareja. Hoy, al borde de los veintiuno, me encuentro entre el punto intermedio entre el estar bendito y maldito por la soledad. A veces desearía por encima de todo encontrar a alguien y…", "g": ["archivo", "diario"]}, {"f": "2010-12-22", "t": "Listas de pelis", "u": "/blog/2010/12/22/listas-de-pelis/", "r": "El vídeo ha quedado un poco chungueras por culpa del Iphone, pero bueno. Aparte de la lista, le he pasado a Dormael un link con la lista en limpio , lista que ademas, voy a ir actualizando y combinando con la suya en cuanto me sea posible. Añadire un link para que podais verla y asi, en momento de aburrimiento, recurrir a ella si os apetece. MEGA LISTA DE PELIS!", "g": ["archivo", "cine"]}, {"f": "2010-12-27", "t": "El reto de Lix", "u": "/blog/2010/12/27/el-reto-de-lix/", "r": "La mejor forma de empezar el ultimo lunes del año. Gracias Lix. ^\\^ PD: Mola mi look temporal? Porque mañana me tiño de rubiales. =D", "g": ["archivo", "retos", "humor"]}, {"f": "2010-12-30", "t": "El día que cumplí los 21", "u": "/blog/2010/12/30/el-dia-que-cumpli-los-21/", "r": "Seis y media de la tarde, me levanto porque he quedado con mi Diva para que le compre unos zapatos a su chico. F también se apunta, por lo que somos tres personas vagabundeando por la calle en busca de un calzado decente para un veintiochoañero. Finalmente, al darnos cuenta de que ella no ha cogido la cartera, y después de las risas, decidimos separarnos F y yo para ir al “.Hack café” mientras ella va a casa a buscar su money. Llegamos, nos sentamos y empieza la verborrea,…", "g": ["archivo", "diario"]}, {"f": "2010-12-31", "t": "Quemando recuerdos", "u": "/blog/2010/12/31/del-2010-al-2011/", "r": "Me han ofrecido varias alternativas para pasar fin de año, pero he decidido quedarme en casita tranquilamente, quemar los recuerdos que mas me pesaban en el alma de forma simbólica y rematarlo todo con una largo y relajante baño. Historia de los recuerdos quemados -Ropa interior de chica desconocida: No se de donde salio, pero no es de nadie que conozca. xD -Escudo: Venia en un combo con espadas de plastiquete, me gusto y me lo quede. Se iba a utilizar para una obra de…", "g": ["archivo", "diario"]}, {"f": "2011-01-03", "t": "La balada del gay Miqui", "u": "/blog/2011/01/03/la-balada-del-gay-miqui/", "r": "Todo empezó de una forma inocente. Le propuse que chupara una piruleta de limón y el me dijo que no tenia manias. Las sospechas se acrecentaron, asi que Berto y yo le sometimos a un interrogatorio. Y finalmente... cedio! Así que le dedique una canción! Miqui fue un tipo que me ayudo en los inicios de la pagina y al que le prometi que le regalaria una guitarra a cambio. Yo cumpli mi parte, por supuesto, y antes de lo acordado. Aunque en cuanto recibió la guitarra, fue…", "g": ["archivo", "humor", "música"]}, {"f": "2011-01-05", "t": "Cambios", "u": "/blog/2011/01/05/cambios/", "r": "Están en orden cronológico! =D", "g": ["archivo", "diario"]}, {"f": "2011-01-21", "t": "Declarándome a Dormael...", "u": "/blog/2011/01/21/dormael/", "r": "Jueves por la noche, había invitado a cenar de mejicano a ella, a Lix y a la diva. Era una buena excusa para poner en practica la charlita que me había dado Friki y gritar por fin la que pensaba desde hacia tiempo, pero nada mas coger el tren, Lix me dice que a Dormael le medio gusta un tío... Adiós muy buenas... como si no fuera suficiente el hecho de que me cuesta un montón hablar con ella, con que cara se lo digo sabiendo que encima, le gusta otro... LLego a la estacion…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-01-22", "t": "Tiempo, siempre es el tiempo", "u": "/blog/2011/01/22/tiempo-siempre-es-el-tiempo/", "r": "Jodido cabrón! Me arropas con la esperanza de que mañana sera otro día, quizás un día mejor. Me gritas desde la distancia que las cosas mejoraran, que me curaras las heridas y que todo se pondrá en su lugar. Me dices que vengaras las injusticias y que compensaras la balanza si haces las cosas bien. Me prometes cosas que nunca cumples, me arrebatas los momentos felices tan fugazmente como me los entregas. Maldito hijo de puta, si algún día te encuentro disfrutare de darte de…", "g": ["archivo", "relatos"]}, {"f": "2011-01-23", "t": "Sex, hypocrisy & Latin love", "u": "/blog/2011/01/23/sex-hypocrisy-latin-love/", "r": "Jamas podría haberme imaginado que esta historia sucediera de la forma en la que sucedió, y aun mas que me sucediera a mi. “Amiga con derecho a roce” (follamiga que se llama comúnmente, pero es que me repatea la palabra), algo que veía ilógico, por muy común que pueda parecerle al mundo, porque para mi una de las cosas mas importantes del sexo, es el amor. Pero he de reconocer, que mirándolo desde el punto de vista biológico y practico, es algo bastante a tener en cuenta,…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-01-29", "t": "Si…Si…Si…Simio!", "u": "/blog/2011/01/29/manumonoverde/", "r": "Siete de Enero de Mil Novecientos cincuenta, un Lipotes vexillifer chapotea junto a su pareja tranquilamente por el río Yangtze, unas horas mas tarde, el pequeño delfín, contempla como su amada da a luz a varios delfincillos, todos ellos de un color rosadito propio de la especie, pero eso, ahora mismo no nos importa, porque esa especie ya lleva años extinta y por mucho que nos pese, el tiempo pasado, es pasado. Cincuenta y cuatro años mas tarde de que muriera el Lipotes…", "g": ["archivo", "relatos", "humor"]}, {"f": "2011-02-05", "t": "Friki, la historia hasta ahora", "u": "/blog/2011/02/05/friki-la-historia-hasta-ahora/", "r": "Empezaremos por el presente mas presente, por este mismísimo instante. Friki esta leyendo estas palabras en voz alta a través de su móvil porque le he pedido que lo haga. Yo, me encuentro al otro lado, a la espera de que pronuncie la palabra “timbre”. ¿RING? El sonido que producirá el timbre al pulsarlo, quien contestara a este y lo que sucederá después, escapa totalmente a lo que pueda predecir, así que dejare esa historia para cuando sepa como termina. Ahora toca explicar…", "g": ["archivo", "diario"]}, {"f": "2011-02-06", "t": "Mi viaje a Madrid", "u": "/blog/2011/02/06/mi-viaje-a-madrid/", "r": "Una vez cada seis años, no hace daño. ^\\^ Espero que repitamos pronto! Un fuerte abrazo, Friki!", "g": ["archivo", "diario"]}, {"f": "2011-02-07", "t": "Troleo: ¿Que es?", "u": "/blog/2011/02/07/troleo-a-una-vieja-amiga/", "r": "Ante todo, esta es una entrada para tomarsela con humor, nada va en serio, si no eres capaz de entenderlo... La palabra trol se ha extendido como la pólvora últimamente, y su significado se ha pluriempleado tanto, que forma parte no solo de un acto internauta, sino de cualquier acto, independientemente de donde sea realizado, que provoque enfado, confrontaciones o sencillamente caos generalizado. La premisa es muy simple, no dejar indiferente a nadie. Hay muchas formas de…", "g": ["archivo", "humor"]}, {"f": "2011-02-16", "t": "Quedada bloguera: Nueva pipol!", "u": "/blog/2011/02/16/quedada-bloguera-nueva-pipol/", "r": "Lo primero y mas importante, presentar a la gente, para que no os volvais todos locos: - Malkev: Esta es fácil, mi personita. =D Tiene un blog muy chachi guay donde la gente va a tirarle piedras, podéis llegar a el dando click aquí. - Carcayú: No llegue a conocerle demasiado, pero lo poco que pude disfrutar de su presencia fue realmente agradable. Una persona con un sentido del humor muy a flor de piel, y un gran jugador de Munchkin a lo cerdo, usease, a lo pro. Tiene un…", "g": ["archivo", "diario", "meta"]}, {"f": "2011-02-19", "t": "Púrpura", "u": "/blog/2011/02/19/purpura/", "r": "Febrero de dos mil nueve Malkev Otro día mas, y encima, domingo. No he tocado la cama en toda la noche, he caído rendido sobre la mesa del ordenador. Anoche, en un estúpido intento de parar el tiempo, o por lo menos intentar ralentizarlo un poco para poder así hacer el sábado unos minutos mas largo, me quede la ultima parte de la noche mirando el monitor sin hacer absolutamente nada, eso es lo ultimo que recuerdo. Me despierta mi mujer, ya ha llegado de pasar la noche con…", "g": ["archivo", "relatos"]}, {"f": "2011-03-01", "t": "Sin ti no hay vida", "u": "/blog/2011/03/01/sin-ti-no-hay-vida/", "r": "Juno Temple, actriz que me tiene enamorado, en la película de Mr. Nobody se tiñe de castaño, y me recuerda horrores a Helena. Llamadme obseso si queréis, pero no soy el único que piensa igual. Una noche mas, cazo al personal desprevenido para forzarles a ver la que es una de mis películas favoritas. Termina la sesión y cada uno se va a su respectiva casa, pero el mensaje enviado directamente a mi cerebro perdura, en este caso, solo tienes una oportunidad para decidir. Mis…", "g": ["archivo", "diario", "cine"]}, {"f": "2011-03-01", "t": "Sobre un puente azul", "u": "/blog/2011/03/01/sobre-un-puente-azul/", "r": "No puedo evitar pensar en lo estúpido de mi fe hacia algunas personas, no puedo evitar ser un iluso cuando se trata de alguien importante para mi, no puedo evitar imaginarme un mundo de cine conmigo como protagonista, no puedo evitar ver como el tiempo se lo lleva todo y yo sigo impasible luchando contra la realidad, no puedo evitar luchar contra el hacerme mayor una y otra vez, no puedo evitar ser quien soy, porque sin eso, soy un Don Nadie. --- A lo lejos veo una forma, es…", "g": ["archivo", "diario"]}, {"f": "2011-03-07", "t": "Con otros ojos", "u": "/blog/2011/03/07/con-otros-ojos/", "r": "AVISO: ENTRADA MALKEVCENTRISTA Se refiere a una serie de comentarios sobre la ultima publicación. Este, concretamente: Lauraenriketa: Una escena mil veces oída y leída pero con especial sentimiento esta vez, ya que esta basada en hechos reales. Me parece perfecto que te atrevas a ir más allá de las ensoñaciones y des el paso, sin duda algún día te sonreirá la suerte! por cierto tu ex tampoco es para tanto… Malkev: Espero que así sea. Y el comentario extra me ha hecho reír de…", "g": ["archivo", "meta"]}, {"f": "2011-03-13", "t": "Superpoderes subestimados", "u": "/blog/2011/03/13/superpoderes-subestimados/", "r": "Tema del Primer Blog Carnival Freak: Superpoderes subestimados Elige tres superpoderes subestimados o un superpoder molón. Si bajara un superheroe amargado, cuyo superpoder es conceder superpoderes chorras, lo que es a su vez un superpoder chorra, no sabría que contestar, porque me pillaría en frío, y probablemente elegiría algo relacionado con lo que estuviera haciendo en ese momento, lo cual puede ser la hacer desaparecer granos mágicamente, la habilidad para conectarme a…", "g": ["archivo", "humor", "blog-carnival"]}, {"f": "2011-03-17", "t": "Mis chicos", "u": "/blog/2011/03/17/mis-chicos/", "r": "-Tu, perrancano, no ves el bonito dia que hace? Sal al jardín anda, y juega un rato con la niña. -Ya podría haber salido tranquila y adicta a los vídeos, como yo, y no una loca hiperactiva como su madre. Puedo percibir sin tan solo mirarla que esta poniendo su mirada, esa que pone cada vez que le toco un poquito las narices y que tanto me gusta, una mirada solo superable por la que pone cada vez que la beso y le digo \"te quiero\". Me levanto del sofa, me dirijo hacia el…", "g": ["archivo", "relatos"]}, {"f": "2011-04-01", "t": "Sabia que algún día llegaría", "u": "/blog/2011/04/01/sabia-que-algun-dia-llegaria/", "r": "INCA, ISLAS BALEARES, ESPAÑA [Entra en la sala...\" tags: [archivo, relatos, humor, blog-carnival] redirectfrom: - /?p=2187/ --- 3ª edicion del Blog carnival freak ¿Qué tres cosas prescindibles llevarías a un Apocalipsis Zombi? --- INCA, ISLAS BALEARES, ESPAÑA [Entra en la sala Malkev Malkavian, antes del resurgimiento era lo que se conocía como un nini (ni estudia, ni trabaja) y se dedicaba a escribir regularmente sobre su vida en su blog. Como pasaba días y días sin ver el…"}, {"f": "2011-05-17", "t": "¿Que ha pasado?", "u": "/blog/2011/05/17/que-ha-pasado/", "r": "Personas mencionadas: -Lix -Diva -Ojoschachis -Rubia (LCMYAGQMEPLN)", "g": ["archivo", "diario"]}, {"f": "2011-07-27", "t": "Conociendo a Inma", "u": "/blog/2011/07/27/conociendo-a-inma/", "r": "No voy a extenderme demasiado en lo que respecta a mi vida en la plaza, porque eso lo haré en otra entrada. Como toda historia que se precie, empieza con un momento clave, y ese momento, en este caso, es esa efímera eternidad que me invade cuando descubro unos ojos nuevos. Conozcamos un poco esos ojos. …. Habían pasado ya varios días desde mi fuga hacia la vida real, ese mundo que creía conocer, pero solo de oídas, como la mayoría de la gente hoy en día. Me encontraba una…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-08-10", "t": "Conociendo a Malkev", "u": "/blog/2011/08/10/conociendo-a-malkev/", "r": "Entrada escrita por Inma Se que te hubiera gustado que escribiera mi versión de la historia. Y decido hacerlo ahora para que puedas entenderme y comprender todo lo que siento. Mis sueños en Barcelona se habían desmoronado. Cansada de patearme todos los barrios de la ciudad buscando trabajo sin éxito y malviviendo cada vez más decidí volver. Hacía un mes que estaba en Valencia. Vivía con mi prima y dos gatos gordos. Una solterona de 35 años adaptadisima a vivir sola y con mil…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-09-03", "t": "Procrastinación", "u": "/blog/2011/09/03/procrastinacion/", "r": "Y así, cada día. Esperando que pase algo, que alguien me diga que hacer o que alguna señal me indique de nuevo hacia donde ir. Siempre la misma historia. Mañana ya publicare, mañana cogeré la mochila, en cuanto tenga algo de dinero me marcho... Y ya empieza a dar vergüenza. Es cierto que la mayoría de veces no publico porque lo que quiero contar es tan grande, que una entrada me va a quedar kilométrica y se va a hacer pesada, o sencillamente me entra la vena perfeccionista y…", "g": ["archivo", "diario"]}, {"f": "2011-09-04", "t": "Lo verdadero es un momento de lo falso", "u": "/blog/2011/09/04/lo-verdadero-es-un-momento-de-lo-falso/", "r": "La cita, usada como titulo y sacada de un libro con ese nombre, no es algo que ponga como significado, sino como símbolo del final de mi relación con Inma, ya que son las palabras que utilizó. El libro no lo recomiendo, por supuesto, ya que ni lo he leído ni me gusta para nada la autora. La foto, azulada, con mucha luz y hecha a lo rápido con un móvil, no es mas que un instante fugaz que decidí capturar. Ese instante no es otro que el que me dicen “Creo que deberías seguir…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-09-05", "t": "Declarándome a Lix", "u": "/blog/2011/09/05/lix-la-declaracion/", "r": "Quedamos en un Bar, le dije, a modo de coña, que quería hablar de economía. Llevaba meses perdidito por ella. Me habia ayudado un montón a superar mi ultima ruptura, habiamos pasado borracheras, fiestas, momentos consoleros e instantes tirados por el suelo, pero aun así, a pesar de ser amigos verdaderamente íntimos, casi la pareja perfecta, algo impedía que hubiera algo mas, una simple aunque abrumadora cosa, su sexualidad. Si, lo que sigue a continuación es la declaración…", "g": ["archivo", "diario", "relaciones"]}, {"f": "2011-09-05", "t": "Tabúes", "u": "/blog/2011/09/05/tabues/", "r": "Te voy a decir la absoluta verdad de tu vida y es que no seras con el que se quedan las mujeres, pero si eres con el que sueñan, tus ex mas que ningunas. Y es que tu madre no solo te hizo soñador, sino también inolvidable. Anímate. Uno de los dos mensajes de texto escritos por una persona de la que no revelare el nombre porque puedo causarle problemas, leído al despertar mientras desayunaba leche con Nesquik a la una y media de la madrugada. Un rato mas tarde, empezamos a…", "g": ["archivo", "diario"]}, {"f": "2011-09-08", "t": "Papi", "u": "/blog/2011/09/08/papi/", "r": "Hoy voy a hablar de mi papi, el hombre que me dio la vida, a pesar de no haber sido de forma voluntaria. En sus pelotas estuve nadando una buena temporada, y el día clave en que decidió echar una rapidito con mi madre, gané la carrera que me concedería la oportunidad de ser quien soy ahora. Siempre se me dio bien correr. Mi padre, que me saca mas o menos un palmo de altura, es físicamente bastante parecido a mi, y se conserva muy bien. Sus ojos son verdes, aunque no como los…", "g": ["archivo", "diario", "humor"]}, {"f": "2011-09-09", "t": "Ayúdame a ayudarte", "u": "/blog/2011/09/09/ayudame-a-ayudarte/", "r": "", "g": ["archivo", "diario"]}, {"f": "2011-09-12", "t": "Taquicardico", "u": "/blog/2011/09/12/taquicardico/", "r": "Hoy me había propuesto tener un día tranquilo, porque a pesar no trabajo ni hago demasiado, no me gustan los lunes, y menos los lunes que preceden a malas noticias. Noticias como que no te han pagado el paro, te llaman de Timofonica llamandote moroso y te cobren un mes de linea que no has usado, porque el mes anterior ya te la cortaron. Pero eso dejemoslo a un lado, porque se arreglara pronto. Ahora mismo, estoy estresado, estresadisimo, taquicardico sería la palabra, y…", "g": ["archivo", "diario"]}, {"f": "2011-09-13", "t": "Martes 13", "u": "/blog/2011/09/13/martes-13/", "r": "Sinceramente, me esperaba que el día de hoy fuera mucho peor de que realmente ha sido, pero aun así, acabo de llegar a casa con un sabor de boca verdaderamente amargo. Voy a intentar explicar punto por punto lo que ha pasado este día. Aclaro que no soy supersticioso ni hostias pardas, solo era por poner algún titulo, pero también es cierto que hoy ha sido un cumulo de desgracias y casualidades desagradables. Las cuatro de la mañana, yo estaba durmiendo. Había decidido irme…", "g": ["archivo", "diario"]}, {"f": "2011-09-13", "t": "Un día y medio", "u": "/blog/2011/09/13/un-dia-y-medio/", "r": "Esta entrada es pura locura macabra y surrealista, no hay que tomarse nada de esto en serio, lo escribo sencillamente porque había empezado a hacerlo y no me gusta dejar las cosas a medias. TEXTO", "g": ["archivo", "relatos"]}, {"f": "2011-09-14", "t": "Despedida Lix", "u": "/blog/2011/09/14/despedida-lix/", "r": "", "g": ["archivo", "diario"]}, {"f": "2011-09-15", "t": "¿Un cuento de hadas? I", "u": "/blog/2011/09/15/un-cuento-de-hadas-i/", "r": "T", "g": ["archivo", "relatos"]}, {"f": "2011-09-16", "t": "Dos formas de ver las cosas", "u": "/blog/2011/09/16/dos-formas-de-ver-las-cosas/", "r": "Pensamientos en voz alta.", "g": ["archivo", "diario"]}, {"f": "2011-09-19", "t": "El caso \"Primer\"", "u": "/blog/2011/09/19/el-caso-primer/", "r": "La primera vez que vi \"Primer\" quedé fascinado, sobre todo cuando vi los créditos. Me empece a interesar por todo lo que la envolvía, el Director, el actor secundario, el bajisimo presupuesto... y por supuesto, la linea temporal, tan difícil de descifrar pero a la vez tan bien montada que parecía que me llamaba. Había entendido el funcionamiento de la maquina, pero me había quedado perplejo con el desarrollo de la trama. Necesitaba volverla a ver. La segunda vez, empece a…", "g": ["archivo", "cine"]}, {"f": "2011-09-29", "t": "Celos vampiricos", "u": "/blog/2011/09/29/celos-vampiricos/", "r": "No, tranquilos, no voy a hablar de Crepúsculo. Son celos de los de verdad, de los de una Vampiresa gótica y demente de las de la vieja escuela, esas que te chupan la sangre, entre otras cosas, y te dejan seco. Estamos a principios del dos mil nueve, mas o menos, y llegaba yo de una guardia de veinticuatro horas, cansado, por supuesto, y un poco mas agobiado de lo normal, porque la convivencia estaba siendo un verdadero caos y no veía forma de arreglarlo. Habia conocido a una…", "g": ["archivo", "diario", "humor"]}, {"f": "2011-10-06", "t": "Preparando el camino", "u": "/blog/2011/10/06/preparando-el-camino/", "r": "Bueno, parece que el día se acerca. En menos de un mes, estaré viviendo en Valencia, en un zulo con otros estudiantes guarretes, buscando un trabajito de mala muerte y subsistiendo como se pueda. Pero todo eso no importa absolutamente nada si lo comparo con lo que simboliza, una nueva vida. Antes de elegir Valencia, se me llegaron a pasar por la cabeza otras opciones, entre ellas Madrid, Barcelona o seguir con la vida de mochilero en dirección a Francia. Entonces, por qué…", "g": ["archivo", "diario", "valencia"]}, {"f": "2011-11-02", "t": "El reencuentro", "u": "/blog/2011/11/02/el-reencuentro/", "r": "JUEVES Toco el suelo de Valencia, bueno, antes de eso toco la escalerilla cutre del avión de Ryanair que parece que se vaya a caer en cualquier momento. No estoy escuchando música, tengo que ahorrar batería, así que me dejo envolver por las conversaciones ajenas, sonidos de aterrizajes y despegues e incluso el despedir de las azafatas, esa es mi banda sonora. Ahora si, toco el suelo. Nadie me espera, es normal, teóricamente solo dos o tres pocas personas saben que estoy…", "g": ["archivo", "diario", "valencia"]}, {"f": "2011-11-08", "t": "Empezar las cosas con mal pie", "u": "/blog/2011/11/08/empezar-las-cosas-con-mal-pie/", "r": "En mi vida, las personas que me importan pueden contarse con los dedos de las manos, la chica a la que amo, mi mejor amiga, mi mejor y único amigo, las tres conocidas que casi ni conozco en persona pero que siempre me hablan por msn, dos miembros de mi familia y en menor medida, yo. En ocasiones, otras personas pasan por mi camino, me acompañan, me apoyan o son apoyadas por mi, pero su estancia es demasiado breve para que lleguen a calarme lo suficientemente hondo, se…", "g": ["archivo", "diario"]}, {"f": "2011-11-11", "t": "Arrodillaos ante mí, sucios mortales!", "u": "/blog/2011/11/11/arrodillaos-ante-mi-sucios-mortales/", "r": "Nueva edicion del Carnival Freak Si fueras un ser sobrenatural, ¿qué serías? — Día uno, lunes Miles de millones de personas mueren por combustión espontanea, el caos generalizado aparece ante tal espectáculo, no parece haber un patrón definido y nadie sabe si será el siguiente. Las grandes naciones se echan la culpa unas a otras sin saber siquiera de que se trata. Nacho Vidal escribe en su Twitter \"Estoi k ardo\" En los principales centros políticos del planeta, parece haber…", "g": ["archivo", "relatos", "blog-carnival"]}, {"f": "2011-11-17", "t": "El poder de las palabras", "u": "/blog/2011/11/17/el-poder-de-las-palabras/", "r": "De: Anónima Esmeralda Para: Malkev Malkavian Asunto: Sin asunto Buenas noches. Espero que estés en un lugar cálido, yo tengo un frío increíble. Antes de nada, debes saber que no me conoces. En realidad yo tampoco te conozco a ti, no al menos en el sentido literal del verbo \"conocer\", y tampoco en el sentido figurado, pero al menos, yo sé de tu presencia. De echo, llevo meses leyendo las cosas que publicas, interesándome por ellas como si te conociese y temiese por ti,…", "g": ["archivo", "meta"]}, {"f": "2011-11-18", "t": "Una cajita de cerillas", "u": "/blog/2011/11/18/una-cajita-de-cerillas-de-cera/", "r": "\" tags: [archivo, diario] published: false redirectfrom: - /?p=3149/ --- Cerillas de cera Helena Dieciocho, te suena de algo ese numero? ---"}, {"f": "2011-12-12", "t": "Soy una pestaña en tu monitor", "u": "/blog/2011/12/12/soy-una-pestana-en-tu-monitor/", "r": "Ahora mismo estarás a mil kilómetros de mi, o quizás a tan solo unos metros, pero yo jamás lo sabré, y tú no intentaras cambiarlo, y no lo harás porque no soy más que una pequeña pestaña en tu navegador, o quizás ni eso. Seguidores de Twitter, de Formspring, amigos en Facebook, contactos en Google+, cualquier otro apodo cariñoso en cualquier otra red social... no significan nada para mi, no me parecen más que números y frases vacías, gente con la que hablo hoy porque están…", "g": ["archivo", "diario"]}, {"f": "2011-12-17", "t": "Carta a Monesvol", "u": "/blog/2011/12/17/carta-a-monesvol/", "r": "Otra edición del Carnival Freak Carta de navidad — Querido Monstruo de Espaghetti Volador, este año he sido un niño muy bueno, he comido mucha pasta sagrada, salsa autentica y jamás he dicho que no a unas buenas albóndigas. Se que no concedes regalos, pero ya que tus competidores directos están que lo tiran, espero que tu tallarinesco sentido de la bondad y pique, pueda concederme alguno de estos tan esperados y preciados deseos. Me gustaría tener un hermanito mayor, con el…", "g": ["archivo", "humor", "blog-carnival"]}, {"f": "2012-01-12", "t": "Nyanentrada", "u": "/blog/2012/01/12/nyanentrada/", "r": "\" tags: [archivo, meta, humor] redirectfrom: - /?p=3335/ --- Simplemente, dale click ;-) NYANIZATE! ~~Vale, si, esta entrada es para que sepáis que no he muerto. ñ\\ñ~~ ---"}, {"f": "2012-02-07", "t": "Cuatro meses", "u": "/blog/2012/02/07/cuatro-meses/", "r": "Esta no es una anécdota de esas tristes o locas que siempre cuento sobre mi vida, ni siquiera está terminada, es sencillamente una especie de preludio hacia una enorme historia que está empezando.Han pasado cuatro meses desde que pisé Valencia, aún no he terminado de hacerme a la idea, es una mezcla entre un sueño y llevar toda la vida aquí, aunque a veces tengo la sensación de haber llegado ayer. Es raro... pero mola que lo flipas. En este corto periodo de tiempo he vivido…", "g": ["archivo", "diario", "valencia"]}, {"f": "2012-02-10", "t": "Puerta fría", "u": "/blog/2012/02/10/puerta-fria/", "r": "Con mi americana cutre de ante, los pantalones negros más sosos que tenía, una corbata negra con símbolos de poker y una camisa blanca como armadura, con mi cuasi inexistente labia, una carpeta con apuntes y contratos como arma y con una sonrisa como escudo, me encontraba yo pateando las calles de Valencia en busca de victimas. La escasez absoluta de curro y la desesperación habían ido acrecentando el rango de búsqueda de trabajos. Ya no importaba el qué, mientras diera…", "g": ["archivo", "diario", "valencia"]}, {"f": "2012-02-24", "t": "El reto de la canela", "u": "/blog/2012/02/24/el-reto-de-la-canela/", "r": "\" tags: [archivo, retos, humor] redirectfrom: - /?p=3411/ --- Ya que está tan de moda el Cinnamon challenge ese, que no tiene nada que ver con los digimons, por cierto, pues me he dicho, ea! Yo también! ---"}, {"f": "2012-05-02", "t": "El reto del conejito rechoncho", "u": "/blog/2012/05/02/el-reto-del-conejito-rechoncho/", "r": "Otro reto realizado!! ¿Alguna idea para el siguiente? =D", "g": ["archivo", "retos", "humor"]}, {"f": "2012-07-07", "t": "Alta fidelidad (High Fidelity)", "u": "/blog/2012/07/07/alta-fidelidad-high-fidelity/", "r": "Titulo en Español: Alta fidelidad Titulo original: High Fidelity Duración: 1 hora y 47 minutos (107 min.) Palabras clave para definir el film: Comedia. Música. Años 80. Procedencia: Estados Unidos Del año: 2000 Dirección: Stephen Frears Guión: D.V. DeVicentis, Steve Pink, John Cusack, Scott Rosenberg (Basado en la novela de Nick Hornby) Reparto principal: John Cusack, Jack Black, Joelle Carter, Iben Hjejle, Tim Robbins, Joan Cusack, Lili Taylor, Lisa Bonet, Sara Gilbert,…", "g": ["archivo", "cine"]}, {"f": "2012-10-15", "t": "Zombinoia", "u": "/blog/2012/10/15/zombinoia/", "r": "Me gustan los zombis, soy un gran fan de esos monstruos muertos vivientes. Todo lo que envuelve ese cadavérico cuerpo me parece atrayente y morboso, sobre todo la historia de los que tienen que convivir junto a ellos. Desde las primeras películas que aparecieron hasta los últimos libros que tan de moda están, todas esas historias de zombis clásicos me encantan, esos que no son más que una sombra de lo que eran en vida pero que son verdaderamente mortales por su numero. Me…", "g": ["archivo", "videojuegos"]}, {"f": "2012-11-14", "t": "Necesito unas vacaciones", "u": "/blog/2012/11/14/necesito-unas-vacaciones/", "r": "Tenía que pasar tarde o temprano, y a decir verdad, ha tardado mucho más de lo que me gustaría, pero por fin mis dedos están descargando la tensión acumulada alrededor de mi garganta, esa que me estaba ahogando poquito a poco. Lo que más me entristece de todo es que se hayan tenido que alinear los planetas para eso, y no se cuando volverá a suceder. Burbujita tiene que estudiar, no quedo con los del club, no trabajo, he pasado de hacer la partida de rol, tengo hecho por…", "g": ["archivo", "diario"]}, {"f": "2012-12-14", "t": "Gracias", "u": "/blog/2012/12/14/gracias/", "r": "Miro el calendario y no puedo creer lo rápido que pasa el tiempo. Ayer estaba subiendo las pocas cajas que contenían lo que se podría considerar toda mi vida, a un cutre piso de mala muerte, y hoy, llevo más de un año en Valencia. Es como si hubiera sido un simple parpadeo, un rápido jadeo, esa fracción de segundo en la que te dejas caer en el sofá, y todo eso, te lo debo a ti, porque cuando eres feliz, todo pasa más deprisa. Gracias. Debo reconocer y reconozco, que a veces…", "g": ["archivo", "diario", "valencia"]}, {"f": "2013-02-06", "t": "Momentos complicados", "u": "/blog/2013/02/06/momentos-complicados/", "r": "Hay momentos en la vida en la que tu canción deja de ser tu canción, momentos en lo que te miras al espejo y no te ves a ti mismo sino a un desconocido, momentos en los que no te sientes fuerte, ni débil, ni triste, ni alegre, momentos de cambio, de madurez, de avanzar, momentos en los que necesitas huir lejos pero sin moverte del sitio, momentos en los que una brisa del pasado te abraza, te corta, te mece, te azota, te besa y te amenaza, momentos de caos y control mutuo,…", "g": ["archivo", "diario"]}, {"f": "2013-03-21", "t": "Un poco de movimiento", "u": "/blog/2013/03/21/de-vuelta/", "r": "Soy consciente de lo estúpido de la moda y lo poco que le gusta a mucha gente esta mierda, pero he de reconocer que algunos son bastante graciosos. El caso, que hago esta entrada como petardazo inicial en señal de que estoy volviendo a poner esto en marcha, que me estoy moviendo, terminando ya de dejar bonica la pagina y que en breves, vuelvo a ponerme en serio con el contenido. ¡Vuelvo a la blogosfera hamijos! Así que... DO THE HARLEM SHAKE ---", "g": ["archivo", "meta", "humor"]}, {"f": "2013-03-28", "t": "Siete sueños I", "u": "/blog/2013/03/28/siete-suenos-i/", "r": "Últimamente estoy teniendo sueños bastante extraños. Normalmente son raros, pero hay algunos que se llevan la palma, y ya que estaba en racha he decidido ir apuntándolos en un papelito para describirlos después. Quizás algún día tenga un psicoterapeuta que se frotará las manos con tanta absurdez y podrá sacarme el dinero a gusto durante meses y meses, pero mientras tanto, pues los apunto por aquí. Como es la primera entrada que voy a escribir sobre los sueños, ya que tengo…", "g": ["archivo", "sueños"]}, {"f": "2013-03-30", "t": "Creando un juego de rol: Las bases (I)", "u": "/blog/2013/03/30/creando-un-juego-de-rol-i/", "r": "Estas ultimas semanas me he enfrascado por fin en un proyecto que hacía mucho tiempo que tenía en mente. El empujón definitivo que me ha llevado a dar el paso ha sido tener un colega que ya ha creado su propio juego de rol, además del estar leyendo mucho sobre el tema de los sandbox y los módulos caseros últimamente. Muchas veces, cuando miro alguna serie, película o leo un libro que me gusta, una pequeña parte de mi desea jugar a un juego de rol ambientado en esa historia,…", "g": ["archivo", "rol"]}, {"f": "2013-04-03", "t": "Castaway on The Moon", "u": "/blog/2013/04/03/castaway-on-the-moon/", "r": "Titulo en Inglés: Castaway on The Moon Titulo original: Kim-ssi-pyo-ryoo-gi (Kimssi pyoryugi) (La isla de Kim) Duración: 1 hora y 54 minutos (116 min.) Palabras clave para definir el film: Romance. Drama. Comedia. Procedencia: Corea del sur. (La buena, no la comunista) Del año: 2009 Dirección y guión: Lee Hae-Joon (también conocido como Lee Hae-Jun) Reparto principal: Jeong Jae-Yeong y Jeong Ryeo-Won. Puntuación: 9,1/10 Sinopsis Un pringao de la vida, abandonado por su mujer…", "g": ["archivo", "cine"]}, {"f": "2013-04-16", "t": "Perder el Juicio", "u": "/blog/2013/04/16/perder-el-juicio/", "r": "El otro día me dijeron que si buscabas \"Malkevnia\" o mi nombre por Bing, te aparecían dos cosas la mar de curiosas. Una de ellas es algo que al parecer se ha colado dios sabrá como en el servidor, que no se ni que es, ni tampoco me importa demasiado, pero que voy a dejar porque aparte de no ser malicioso, me parece una mezcla entre lo bizarro y lo gracioso (Si alguien me lo puede explicar, sería genial). La otra cosa es un BOIB, donde se explica entre otras cosas, la…", "g": ["archivo", "meta"]}, {"f": "2013-04-19", "t": "Creando un juego de rol: Panacea, la no magia (II)", "u": "/blog/2013/04/19/creando-un-juego-de-rol-panacea/", "r": "En la entrada anterior exponía las bases de lo que iba a ser el juego de rol. Esta vez me voy a centrar únicamente en lo que estaba siendo uno de mis dolores de cabeza más grandes, la \"no magia\", un termino improvisado para limitarme a la hora de meter cosas \"ilógicas\", pues no quiero que termine siendo esto un duelo de magia al estilo de los hechiceros de toda la vida. No me voy a andar con rodeos respecto al secretismo de la realidad sobre Panacea, pero se tiene que tener…", "g": ["archivo", "rol"]}, {"f": "2013-04-25", "t": "El momento perfecto", "u": "/blog/2013/04/25/el-momento-perfecto/", "r": "Unos pocos días al año, tan pocos que podrían contarse con los dedos de una sola mano, sucede algo verdaderamente maravilloso. Esos extraños y escasos días, en los que no me duele la espalda, la cabeza o cualquier otra cosa y duermo solo, tirado en el sofá en mitad del salón, con la luz de una farola entrando a través de las persianas y las cortinas, terminan siempre con un instante mágico y especial al que llamo \"el momento perfecto\". Tras un día productivo, de haber…", "g": ["archivo", "diario"]}, {"f": "2013-04-26", "t": "First World Problems (Malkev version)", "u": "/blog/2013/04/26/first-world-problems-malkev-version/", "r": "Y es que a veces los problemillas más estúpidos nos parecen montañas, y nos olvidamos de tiempos peores en los que realmente lo pasamos fatal, o sencillamente, no somos capaces empatizar y ponernos en el lugar de gente que está verdaderamente mal e infinitamente peor que nosotros. Un poco de autoparodia y humor sobre uno mismo, siempre ayuda a ver las cosas de otra manera. Be happy. :;): ---", "g": ["archivo", "humor"]}, {"f": "2013-05-01", "t": "Siete sueños II", "u": "/blog/2013/05/01/siete-suenos-ii/", "r": "Pelea a muerte sobre un palé Frente a mi está mi adversario, sin rostro pero con muy mala leche. Está armado con un serrucho de costilla, y al parecer, yo con una sierra de marquetería, ambas nuevecitas y relucientes. Estamos cayendo al vació a bordo de un palé, se ven las nubes pasarnos de largo aunque no se aprecia el suelo, la sensación de que la física nos afecta de forma extraña, puedo saltar, caminar y esquivar sin dificultad, pero si corto un pedazo de palé con la…", "g": ["archivo", "sueños"]}, {"f": "2015-10-07", "t": "Cuatro años", "u": "/blog/2015/10/07/cuatro-anyos/", "r": "Compañera de fatigas No soy un buen amigo, ni tan solo un buen colega. No soy alguien con el que contar para salir de marcha o tomar unas birras. Soy introvertido, solitario, ligeramente depresivo y tengo tendencia a apartar a la gente de mi lado. Y encima, no sé hacer regalos. Pero a pesar de todo eso, a pesar de la montaña andante de defectos que soy, una incansable luchadora sigue junto a mi al pie del cañón. Una increíble muchachita que tiene la increíble capacidad de…", "g": ["archivo", "diario"]}, {"f": "2015-10-07", "t": "Manual de instrucciones", "u": "/blog/2015/10/07/manual-de-instrucciones/", "r": "Manual de instrucciones Malkev T-77 ATENCION Una vez agotada la vida útil de este producto, no lo tire a la basura doméstica. Deposítelo en el contenedor adecuado, para su posterior reciclado. INTRODUCCIÓN El humano bioelectrico Malkev modelo T-777 viene con todos los accesorios de serie. De fácil lavado, batería autorecargable solo sera necesario prestarle atención varias horas a la semana y estará listo para cumplir cualquier función que se le asigne. MEDIDAS DE SEGURIDAD…", "g": ["archivo", "relatos", "humor"]}, {"f": "2015-10-07", "t": "Tres parejas (+18)", "u": "/blog/2015/10/07/tres-parejas/", "r": "Y los acontecimientos sucedían como probablemente todos los invitados a la fiesta habíamos imaginado, algo dentro de nosotros lo sabía, y probablemente, una versión oscura y pervertida de nuestra personalidad así lo deseaba, allí estábamos, unos cuantos amigos, gente de confianza, conocidos desde hacía años, tres parejas tomando unas copas frente a la chimenea en pleno invierno y dejando que todo fluya en la burbuja que se había convertido esa casa. El anfitrión de la…", "g": ["archivo", "relatos", "relaciones"]}, {"f": "2015-10-24", "t": "El trascender del momento", "u": "/blog/2015/10/24/nostalgia/", "r": "Existe un lugar en el tiempo donde el ahora es eterno. Un refugio de tempestades, para el errante viajero. Allí busca cobijo en las frías noches de invierno. Encontrará cincelado, en el marmol del recuerdo, una mirada perdida, una duda, un momento. Y en mitad de la sala, congelados dos amantes, intercambian palabras, sin decirse nada.", "g": ["archivo", "poesía"]}, {"f": "2016-07-15", "t": "Proyecto Arca · I. El Despertar", "u": "/blog/2016/07/15/proyecto-arca-01-el-despertar/", "r": "Índice de la novela Academia Arca, julio de 2016 La Sala del Despertar Para todos fue igual: una voz, una mano capaz de cubrir una montaña, y la sensación de no ser nada. Daba lo mismo estar a la orilla del mar, al pie de una cordillera o en mitad de una llanura. La voz decía siempre lo mismo. «La Casa te llama. Tienes un lugar en Arca. Dejarás tu pasado atrás; lo que eras ya no será. A cambio aprenderás, mejorarás, y recibirás una oportunidad para salvar tu tierra, o para…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-08-05", "t": "Proyecto Arca · II. La Academia", "u": "/blog/2016/08/05/proyecto-arca-02-la-academia/", "r": "‹ Capítulo anterior: I. El Despertar · Índice Academia Arca, agosto de 2016 El Guardián del Norte La bestia que salió del bosque era el doble de grande que el vehículo, y embestir contra ella con una oruga blindada no resultó la idea brillante que parecía. Durante un buen rato la criatura los zarandeó a cabezazos, atrapó a Fénix entre las fauces y estuvo a punto de volcarlos. La sacaron adelante a base de insistencia: Kendra le clavó el arpón y la fue acercando al casco a…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-08-13", "t": "Proyecto Arca · III. Lo que somos", "u": "/blog/2016/08/13/proyecto-arca-03-lo-que-somos/", "r": "‹ Capítulo anterior: II. La Academia · Índice Academia Arca, agosto de 2016 La Mansión Cronos A los dos Relojeros los citaron en una mansión de la Plaza Mayor, un edificio de fachada blanca y puertas barrocas en madera y pan de oro, vigilado desde lo alto por gárgolas de mármol. Tabris llegó el primero, y llegó tarde. -Es increíble que sea capaz de controlar el tiempo y siempre llegue cinco minutos tarde. Vance apareció poco después, con una mezcla de curiosidad y…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-08-21", "t": "Proyecto Arca · IV. El nuevo director", "u": "/blog/2016/08/21/proyecto-arca-04-el-nuevo-director/", "r": "‹ Capítulo anterior: III. Lo que somos · Índice Academia Arca, agosto de 2016 Las clases y el Coliseo A partir del 17 de agosto, durante unos días, la Academia se pareció de verdad a una escuela. Empezaron las clases. El curso de Conocimiento sobre el Cataclismo era obligatorio para todos, y a partir de ahí cada uno acudía a las materias que había elegido. Los profesores eran una colección tan variopinta como los alumnos: un doctor en historia de mirada incómoda, una…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-09-15", "t": "Proyecto Arca · V. La única ley", "u": "/blog/2016/09/15/proyecto-arca-05-la-unica-ley/", "r": "‹ Capítulo anterior: IV. El nuevo director · Índice Academia Arca, septiembre de 2016 La enfermería Tabris había invitado a Egia a un duelo en el Coliseo, y subió al cuadrilátero con su mejor sonrisa. -¿Cómo no iba a jugar con una niñita tan encantadora? Fue el peor cálculo de su vida. La niña de ocho años, de aspecto inofensivo y vestido celeste, lo recibió con un Rugido que le metió el miedo en el cuerpo, le hizo perder pie y, cuando lo tuvo en el suelo, le dejó caer…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-10-15", "t": "Proyecto Arca · VI. El Hombre del Saco", "u": "/blog/2016/10/15/proyecto-arca-06-el-hombre-del-saco/", "r": "‹ Capítulo anterior: V. La única ley · Índice Academia Arca, octubre de 2016 El Bufón y el pintor Una de aquellas noches, Tabris se paseó por el Barrio Artístico, que era un mar de ciudadanos convertidos en piedra. Gente que no había hecho otra cosa que disfrutar de la genialidad de los pocos individuos realmente únicos de Arca, y que ahora eran estatuas, y el silencio absoluto lo dejaba vacío y nostálgico. Arca necesitaba color, decidió. Arca necesitaba arte. Se colocó una…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-11-15", "t": "Proyecto Arca · VII. La silla vacía", "u": "/blog/2016/11/15/proyecto-arca-07-la-silla-vacia/", "r": "‹ Capítulo anterior: VI. El Hombre del Saco · Índice Academia Arca, noviembre de 2016 La noche de Baal Durante cuatro noches, el Parque de Atracciones se quedó con ellos. Cada uno recorrió la atracción que la ruleta del Hombre del Saco le había asignado, un mundo de carnaval podrido donde cada juego escondía una trampa y cada premio un precio. Y a la cuarta noche llegó lo que el Hombre del Saco había prometido: la noche de Baal. De lo que ocurrió aquella noche, los que…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2016-12-20", "t": "Proyecto Arca · VIII. La Noche Blanca", "u": "/blog/2016/12/20/proyecto-arca-08-la-noche-blanca/", "r": "‹ Capítulo anterior: VII. La silla vacía · Índice Academia Arca y Academia Longinus, diciembre de 2016 y enero de 2017 La Noche Blanca Hay en Izaro una noche al año parecida a la Navidad. La llaman la Noche Blanca, y cuentan que esa noche el Éter vibra y la luna llena flota más cerca que nunca, resplandeciendo como una joya que aparta la oscuridad y espanta a los Engendros. Una noche de paz para el justo, para el pobre, para el que sin merecerlo solo ha recibido dolor. Una…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-01-26", "t": "Proyecto Arca · IX. La hija de Jericó", "u": "/blog/2017/01/26/proyecto-arca-09-la-hija-de-jerico/", "r": "‹ Capítulo anterior: VIII. La Noche Blanca · Índice El Viaje de Kendra · Jericó, enero y febrero de 2017 El diente del Cazador El viaje empezó donde Kendra había nacido. La enviaron a Jericó, su tierra, la tierra de piel oscura y sol de plomo de la que su madre era hija y a la que ella misma se había ganado el derecho de pertenecer, y el viaje fue, desde el primer paso, una cosa suya y de nadie más. No había equipo, ni academia, ni cafetería. Solo el mapa, el calor, y ella.…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-02-05", "t": "Proyecto Arca · X. El veneno del valor", "u": "/blog/2017/02/05/proyecto-arca-10-el-veneno-del-valor/", "r": "‹ Capítulo anterior: IX. La hija de Jericó · Índice El Viaje de Kendra · Jericó, febrero de 2017 Bajo otra piel Para entrar en los campamentos sin que nadie la reconociera, Kendra tenía que dejar de ser Kendra. Anikura preparó el cambio en el mirador del jardín, removiendo una marmita de ingredientes que olían a muerto y consultando, muy en serio, la opinión de un esqueleto medio sumergido en la laguna. Resultó que el esqueleto era el abuelo de Anikura, y que de él salía…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-02-20", "t": "Proyecto Arca · XI. Cazadora y presa", "u": "/blog/2017/02/20/proyecto-arca-11-cazadora-y-presa/", "r": "‹ Capítulo anterior: X. El veneno del valor · Índice El Viaje de Kendra · Jericó, febrero y marzo de 2017 El consejo El caudillo de los Koi Koi cumplió su palabra y convocó a las tribus. En el centro del campamento se sentaron ancianos, ancianas y jefes, y, antes de que Kendra lo esperase, el caudillo la presentó y le cedió la voz. Kendra dijo lo que había venido a decir, y lo dijo sin rodeos. -Me da igual vuestro odio a la reina o vuestras nuevas creencias. Eso ya se…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-03-20", "t": "Proyecto Arca · XII. La boca de la sierpe", "u": "/blog/2017/03/20/proyecto-arca-12-la-boca-de-la-sierpe/", "r": "‹ Capítulo anterior: XI. Cazadora y presa · Índice El Viaje de Kendra · Jericó, marzo, abril y mayo de 2017 No lo condenaré El lobo de la laguna era un Caído, una de aquellas criaturas del Éter que no podían caminar por el mundo a menos que se uniesen a un humano y lo convirtieran en un Maldito. Y Kendra, para salir de aquel bosque de luna roja en el que el lobo la tenía atrapada, había cerrado un mal trato: encontrarle un candidato. La flauta de madera que se había…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-05-25", "t": "Proyecto Arca · XIII. Tú no eres solo tú", "u": "/blog/2017/05/25/proyecto-arca-13-tu-no-eres-solo-tu/", "r": "‹ Capítulo anterior: XII. La boca de la sierpe · Índice El Viaje de Kendra · Jericó, mayo y junio de 2017 Las marcas La fiesta siguió, y Kendra y Reich siguieron bebiendo y hablando. Reich, al que el licor de Jericó le iba pareciendo cada trago menos horrible, le sonsacó a Kendra una confesión a medias: que había un hombre, uno solo, que le había dejado el listón demasiado alto, y que se había prometido olvidarlo durante el viaje y le estaba costando. No era mujer de un solo…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-06-20", "t": "Proyecto Arca · XIV. Colmillos y garras", "u": "/blog/2017/06/20/proyecto-arca-14-colmillos-y-garras/", "r": "‹ Capítulo anterior: XIII. Tú no eres solo tú · Índice El Viaje de Kendra · Arca, junio y julio de 2017 Paciente Pandora El templo del sur había quedado inservible, y Kendra había vuelto a la Academia con dos cosas que no había pedido: una sombra parlanchina pegada a sus pasos y una niña inconsciente en brazos. La niña no era una niña. Era un arma que los Ascendidos habían fabricado contra Lilith antes de que el Imperio Gon arrasara sus templos, y que el proyecto, al…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-07-05", "t": "Proyecto Arca · XV. Padre", "u": "/blog/2017/07/05/proyecto-arca-15-padre/", "r": "‹ Capítulo anterior: XIV. Colmillos y garras · Índice El Viaje de Kendra · Jericó, julio de 2017 Pandora Bela se sentó al lado de Kendra, abrió el pergamino entre las piernas y la aguja de cristal se encendió. -Respira tranquila y no te muevas, ¿vale? Empezó a escribir y dibujar sobre el brazo de Kendra, dejando un trazo oscuro que no dolía demasiado pero quemaba más a cada línea. Tardó un buen rato, y dejó bastante sangre. Cuando terminó, la marca entera se iluminó y volvió…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-07-20", "t": "Proyecto Arca · XVI. Yo poseo la respuesta", "u": "/blog/2017/07/20/proyecto-arca-16-yo-poseo-la-respuesta/", "r": "‹ Capítulo anterior: XV. Padre · Índice El Viaje de Kendra · Jericó, julio y agosto de 2017 El dragón Subían las escaleras de la fragua cuando todo empezó a temblar. Cayó parte del techo, y un rugido lejano y desgarrador hizo que las bestias colgadas se retorcieran en sus cadenas. El Cazador se giró con los ojos abiertos de par en par. -No puede ser. ¿Qué habéis hecho, insensatos? -Dejar a una maldita Gon sola -dijo Kendra, ya corriendo hacia el pozo del dragón-. Ya dije que…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-08-08", "t": "Proyecto Arca · XVII. El mundo perfecto", "u": "/blog/2017/08/08/proyecto-arca-17-el-mundo-perfecto/", "r": "‹ Capítulo anterior: XVI. Yo poseo la respuesta · Índice El Viaje de Kendra · Jericó, agosto de 2017 La ciudad sagrada El olor a carne quemada salía de la grieta, y con él un calor agradable. Kendra decidió que descansarían allí; ella mandaba. Bajaron por una pendiente escarpada, despacio, sosteniendo a Reich, hasta una gruta subterránea con una laguna burbujeante que despedía vapor. Aguas termales. Una maldición en pleno desierto, dijo Bela, salvo de noche, cuando eran la…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-08-25", "t": "Proyecto Arca · XVIII. La Horca", "u": "/blog/2017/08/25/proyecto-arca-18-la-horca/", "r": "‹ Capítulo anterior: XVII. El mundo perfecto · Índice El Viaje de Kendra · Jericó y Arca, agosto y septiembre de 2017 Lo que me queda Kendra echó a andar, dando la serpiente por muerta y el asunto por cerrado. Una mano se cerró sobre su muñeca, firme como una tenaza, y la detuvo. -¿Y qué importa? -dijo el Cazador-. Esto era solo una misión de paso. Tu misión real es ser entrenada por mí. Y con esa actitud estás lejos de que comunique a la Academia que estás lista. -Me da…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-09-10", "t": "Proyecto Arca · XIX. Sin reflejo", "u": "/blog/2017/09/10/proyecto-arca-19-sin-reflejo/", "r": "‹ Capítulo anterior: XVIII. La Horca · Índice El Viaje de Kendra · Nod y Arca, septiembre de 2017 La huida de Nod Kendra le puso a Abel las esposas, que se iluminaron al cerrarse. Mientras las llevara, le explicó Raven, su poder quedaría anulado, y solo Kendra podría quitárselas. El resto del equipo fue llegando, magullado, manchado de sangre. Y entonces la tierra empezó a temblar. Brok, el hombre del brazo de piedra, salió disparado del suelo y aterrizó entre ellos. -Regia…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-09-25", "t": "Proyecto Arca · XX. El Proyecto Avatar", "u": "/blog/2017/09/25/proyecto-arca-20-el-proyecto-avatar/", "r": "‹ Capítulo anterior: XIX. Sin reflejo · Índice El Viaje de Kendra · Arca, septiembre, octubre y noviembre de 2017 El pozo de sacrificios -¡Quiero entrar! -dijo Kendra. El mundo se volvió borroso, y apareció en la jungla, junto a Kulum. Set seguía a su lado, deslizándose por el aire a grandes saltos. -Soy algo así como un cliente -le dijo. Empezaron a silbar balas. Kendra intentó contactar con Data, pedir que avisaran al General Luxis de que los Buscadores pretendían usarla…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-11-05", "t": "Proyecto Arca · XXI. La vieja sangre", "u": "/blog/2017/11/05/proyecto-arca-21-la-vieja-sangre/", "r": "‹ Capítulo anterior: XX. El Proyecto Avatar · Índice El Viaje de Kendra · Daelvania, noviembre de 2017 El doctor Krevestein El equipo eran tres. Maxi, un chico entusiasta y crédulo, usuario de un Arma Arcana viva, un revólver mitad mecánico mitad orgánico que podía adaptar su materia al cuerpo de Maxi y darle alas o un exoesqueleto de insecto; Irina insistía en que eso lo hacía un Maldito, y Maxi insistía en que no. E Irina, una mujer del parche en el ojo, danzarina de…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-11-22", "t": "Proyecto Arca · XXII. La caída de una estrella", "u": "/blog/2017/11/22/proyecto-arca-22-la-caida-de-una-estrella/", "r": "‹ Capítulo anterior: XXI. La vieja sangre · Índice El Viaje de Kendra · Daelvania y Arca, noviembre y diciembre de 2017 El mercenario -¿Quién te iba a decir a ti que encontrarías una diosa en este infierno? -le dijo Kendra al mercenario rubio. -Si eres una diosa, me convierto en tu adepto. No se me ocurre mejor modo de rendir culto que este. Lo que vino después fue una tarde robada al frío y a la guerra. El rubio era buen amante, generoso, atento, capaz de sostener el ritmo…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-12-08", "t": "Proyecto Arca · XXIII. El primer amigo", "u": "/blog/2017/12/08/proyecto-arca-23-el-primer-amigo/", "r": "‹ Capítulo anterior: XXII. La caída de una estrella · Índice El Viaje de Kendra · Arca, los recuerdos y diciembre de 2017 La fruta El recuerdo siguió. Anikura, en lugar de salir por la puerta, hizo que Kendra la siguiera por un camino que ella jamás habría escogido: trepando, colándose por la casa de un desconocido dormido. Romper su zona de confort, dijo, era el mejor modo de que Kendra viera quién era de verdad. Su zona de confort era seguir a otros; su padre la había…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2017-12-22", "t": "Proyecto Arca · XXIV. El corazón de Arca", "u": "/blog/2017/12/22/proyecto-arca-24-el-corazon-de-arca/", "r": "‹ Capítulo anterior: XXIII. El primer amigo · Índice El Viaje de Kendra · Arca, diciembre de 2017 y enero de 2018 El gato blanco El gato blanco no se dejó espantar. Se restregó entre las piernas de Kendra, le cortó el camino, y maulló insistente desde un callejón hasta que ella lo siguió, maldiciendo que hasta un gato le diera órdenes. La llevó por los barrios de Arca que la reconstrucción aún no había tocado, hasta una vivienda derruida. Entre los escombros, el gato se…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-01-08", "t": "Proyecto Arca · XXV. Volver a la vida", "u": "/blog/2018/01/08/proyecto-arca-25-volver-a-la-vida/", "r": "‹ Capítulo anterior: XXIV. El corazón de Arca · Índice El Viaje de Kendra · Arca, enero de 2018 La caída de Karthas Amelia tecleó hasta que un elevador subió a Abel desde el suelo, con las manos inmovilizadas y un collar metálico que le tapaba los ojos. Le quitaron los anclajes y las mordazas, y la cabeza de Nod se rio. -Mi pobre tío. Mira en lo que ha quedado. Kendra le ofreció a Abel algo distinto a lo que le daba Karthas: nada de cadenas ni celdas, colaboración mano a…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-01-22", "t": "Proyecto Arca · XXVI. Mi estrellita", "u": "/blog/2018/01/22/proyecto-arca-26-mi-estrellita/", "r": "‹ Capítulo anterior: XXV. Volver a la vida · Índice El Viaje de Kendra · Arca, enero y febrero de 2018 La casa de mis padres El cascabel llevó a Pandora, y Pandora llevó a Kendra, hasta la misma casa derruida de antes: la del retrato familiar. Ilidan esperaba dentro, encapuchado. -Porque no hay otros sitios a los que creo que deberías ir -le dijo, cuando Kendra le reprochó su insistencia-. Es importante que estés en paz contigo misma. Que no sea tu hogar no significa que no…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-02-08", "t": "Proyecto Arca · XXVII. Adán", "u": "/blog/2018/02/08/proyecto-arca-27-adan/", "r": "‹ Capítulo anterior: XXVI. Mi estrellita · Índice El Viaje de Kendra · Arca y las Doce Colinas, febrero de 2018 Las Sombras El banquete de bienvenida en la mansión Creew era abundante, con platos de las naciones de cada uno. Ilidan apenas comía; bebía y miraba con una sonrisa satisfecha a Reich y a Pandora, que lo mezclaba todo sin importarle qué fuera. Y, en mitad de la cena, Ilidan confesó algo que no quería que asustara a nadie. -Puedo controlar Engendros. Tengo varias…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-02-22", "t": "Proyecto Arca · XXVIII. No somos dioses", "u": "/blog/2018/02/22/proyecto-arca-28-no-somos-dioses/", "r": "‹ Capítulo anterior: XXVII. Adán · Índice El Viaje de Kendra · Izaro y Arca, febrero y marzo de 2018 Kilik Adán no era el dueño del niño; Kendra tendría que convencerlo a él. Así que se arrodilló a su altura y le habló de igual a igual: ella también era un Avatar, también había tenido a alguien que la obligaba a pelear, y nadie entendería mejor cómo se sentía. No lo llevaría a ningún sitio si no quería. -Vale -dijo el niño, y le dio la mano. Adán se llevó las manos a los…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-03-20", "t": "Proyecto Arca · XXIX. La canción de las estrellas", "u": "/blog/2018/03/20/proyecto-arca-29-la-cancion-de-las-estrellas/", "r": "‹ Capítulo anterior: XXVIII. No somos dioses · Índice El Viaje de Kendra · Izaro y Arca, marzo y abril de 2018 El páramo de Yedá El equipo que le tocó a Kendra eran los dos peores: Ax, sardónico, y Vina, insufrible. Más el soldado White, callado y disciplinado, y Pandora. Amelia le dio las llaves de un vehículo oruga acorazado, preparado por la Casa de la Rueda, con plataforma de salto propia y un pequeño arsenal. Kendra, que no sabía conducir nada, se las lanzó a White. El…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-04-25", "t": "Proyecto Arca · XXX. La fórmula de la felicidad", "u": "/blog/2018/04/25/proyecto-arca-30-la-formula-de-la-felicidad/", "r": "‹ Capítulo anterior: XXIX. La canción de las estrellas · Índice El Viaje de Kendra · Arca, abril y mayo de 2018 Alfred En una habitación de la enfermería en cuarentena, atado a una cama e intubado, estaba la última incorporación: Alfred, el Creew que Kendra había arrancado de Raignor. Un Avatar al que su madre había despojado de su Ascendido nada más nacer. Un borracho de un solo brazo, lo que quedaba del prometedor heredero. Kendra no fue amable. Le dijo lo que era: un niño…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-05-14", "t": "15M", "u": "/blog/2018/05/14/15m/", "r": "\"Podíamos expresarnos libremente. Sin ataduras, ni formalismos. Nadie juzgaba a nadie. De alguna manera todos cambiamos. Aprendimos de los mayores, ellos nos enseñaban, nos animaban a seguir, nos aconsejaban... Recuperamos la esperanza, las ganas de vivir y de luchar. Teníamos entusiasmo. Allí había luz. Si, echo de menos la plaza.\"", "g": ["archivo", "diario"]}, {"f": "2018-05-25", "t": "Proyecto Arca · XXXI. La ciudad de oro", "u": "/blog/2018/05/25/proyecto-arca-31-la-ciudad-de-oro/", "r": "‹ Capítulo anterior: XXX. La fórmula de la felicidad · Índice El Viaje de Kendra · Izaro, mayo y junio de 2018 El sueño de Fable Antes de partir, Ilidan le pidió a Kendra que volviera a verlo: tenía algo que enseñarle. Pandora soltó su «amor» de siempre y se ganó una colleja. Y, ya de noche, en el cuarto, la niña le hizo a Kendra una pregunta que la dejó sin respuesta. -¿Qué hace una niña de verdad cuando se preocupa por su madre y quiere que sea feliz? -No lo sé -dijo…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-06-25", "t": "Proyecto Arca · XXXII. La flor", "u": "/blog/2018/06/25/proyecto-arca-32-la-flor/", "r": "‹ Capítulo anterior: XXXI. La ciudad de oro · Índice El Viaje de Kendra · Izaro, junio y julio de 2018 Caín cerca Kendra quería volver a la ciudad de oro a averiguar qué era aquella sombra. No le dio tiempo. Los ojos de Pandora se encendieron. -Hijo de Lilith detectado. Caín, a ocho kilómetros. -¡Corred! -gritó Kendra. Huyeron a lomos de los camellos hasta el vehículo, cruzando una puerta flotante de Amber, y saltaron a Arca. Por el camino, el Avatar herido al que habían…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-07-25", "t": "Proyecto Arca · XXXIII. El Espinazo del mundo", "u": "/blog/2018/07/25/proyecto-arca-33-el-espinazo-del-mundo/", "r": "‹ Capítulo anterior: XXXII. La flor · Índice El Viaje de Kendra · Izaro y Arca, julio, agosto y septiembre de 2018 La prisión Void El siguiente Avatar era Brad, un convicto de Ascendido violento e incontrolable, encerrado en la prisión del Vórtex: las instalaciones Void, los laboratorios de la corporación Creew. El salto los dejó dentro, y dentro era una pesadilla. Pasillos de metal cubiertos de un musgo negro que, cuando sonó una alarma, se descompuso y dejó caer cadáveres…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-08-01", "t": "Ressaca", "u": "/blog/2018/08/01/ressaca/", "r": "Se'm gira el cor cada vegada que veig la teva foto, els teus ulls, brillants, com sols joves amb l'eternitat per davant, el teu somriure inspirador, ple d'energia i de força. Creia en les teves paraules, donaven sentit al què feia, els teus passos, em guiaven, m'empenyien. El teu reflexe al mirall, mentre et rentaves les dents, dient sense paraules que podria fer qualsevol cosa. Se'm gira el cor al recordar la teva ingenuïtat, al recordar totes les coses que mai vàrem fer…", "g": ["archivo", "poesía", "català"]}, {"f": "2018-09-20", "t": "Proyecto Arca · XXXIV. El centinela de la montaña", "u": "/blog/2018/09/20/proyecto-arca-34-el-centinela-de-la-montana/", "r": "‹ Capítulo anterior: XXXIII. El Espinazo del mundo · Índice El Viaje de Kendra · Izaro, septiembre y octubre de 2018 Quemaduras de Éter Alfred Creew llamó a su puerta cubierto de sudor, con la ropa chamuscada. Había seguido el consejo de Kendra, había concentrado su poder, y algo había salido mal: bajo las quemaduras de la tela, en la piel, le habían brotado unas marcas extrañas. Kendra le pasó los dedos por el brazo sin reconocer nada de aquello, y fue Pandora quien lo…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-10-25", "t": "Proyecto Arca · XXXV. El Crisol", "u": "/blog/2018/10/25/proyecto-arca-35-el-crisol/", "r": "‹ Capítulo anterior: XXXIV. El centinela de la montaña · Índice El Viaje de Kendra · Izaro, octubre, noviembre y diciembre de 2018 El oasis Ilidan resultó ser más difícil de rechazar que su gato, porque sabía hablar. La cogió de la cintura y la llevó por la ciudad hasta un barrio apartado de faroles encendidos, y al salir de un callejón apareció un valle imposible: montañas, una cascada, un lago donde bebían animales y revoloteaban hadas, la silueta de un enorme pez dorado…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2018-12-28", "t": "Proyecto Arca · XXXVI. El reflejo", "u": "/blog/2018/12/28/proyecto-arca-36-el-reflejo/", "r": "‹ Capítulo anterior: XXXV. El Crisol · Índice El Viaje de Kendra · Izaro, diciembre de 2018 y enero de 2019 El monstruo -¿Ves? -dijo el padre, mientras Kendra se alejaba-. Era tu odio el que te traía, no otra cosa. Está bien. Es lo que merezco. Kendra volvió sobre sus pasos y se encaró a la ventanilla. ¿De verdad pretendía hacerse el indignado, regodearse en tener razón después de hacerla explotar? El hombre le respondió que no era indignación: aceptaba aquel odio, sabía que…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2019-06-03", "t": "El perfum de la Lluna", "u": "/blog/2019/06/03/el-perfum-de-la-lluna/", "r": "La pols ja torna al terra, de la desolada e inhabitada lluna", "g": ["archivo", "poesía", "català"]}, {"f": "2026-05-21", "t": "Bienvenidos a Malkevnia", "u": "/blog/2026/05/21/bienvenida/", "r": "Hola viajero. Si has llegado hasta aquí desde la portada estrellada, ya sabes dónde estás. Bienvenido a Malkevnia. ¿Qué es esto? Este blog es el rincón donde voy a soltar — sin ningún orden particular — cosas que me interesan: videojuegos, juegos de mesa, libros, películas y series, fotografía y lo que se tercie. A veces serán reseñas, otras veces solo notas sueltas o pensamientos a medio hacer. No esperes una línea editorial muy estricta. El plan es no tener plan. Cuanto…", "g": ["meta", "bienvenida"]}, {"f": "2026-05-24", "t": "Proyecto Arca — la novela", "u": "/blog/2026/05/24/proyecto-arca/", "r": "Durante casi tres años mantuve vivo un rol llamado Proyecto Arca: una historia jugada entre varias personas, escribiendo, mensaje a mensaje. No fue nunca multitudinario, pero sí un mundo entero, el de Izaro, levantado pieza a pieza y jugado casi a diario. El material no salió de un solo sitio. Se jugó en dos foros distintos, se prolongó en correos y en partidas por Skype, y de todo ese archivo disperso he reunido una sola historia. Esta entrada es su hub: la crónica de lo…", "g": ["proyecto-arca", "rol", "novela", "izaro"]}, {"f": "2026-05-25", "t": "Proyecto Arca — El mundo de Izaro", "u": "/blog/2026/05/25/proyecto-arca-trasfondo/", "r": "‹ Volver al índice de Proyecto Arca Esto es el trasfondo de Proyecto Arca: el material de ambientación del mundo de Izaro tal como quedó fijado antes de empezar a jugar. No es relato. No hay escenas ni personajes jugadores; es la enciclopedia del mundo, las fichas que el narrador escribió para que todos supiéramos dónde estábamos pisando. Lo recojo aquí ordenado y limpio, como complemento de la novela y del archivo. El mundo de Izaro Izaro es el continente donde transcurre…", "g": ["proyecto-arca", "rol", "izaro", "trasfondo"]}];
+
+
+const nav = document.getElementById('nav');
+const term = init(document.getElementById('pantalla'), {
+  data: { games, posts },
+  onNavigate: (id, sala) => { nav.innerHTML = `En la nave, ahora caminarías hasta <b>${sala.name}</b>. Aquí solo es una demo.`; },
+  onCourse: (id, p) => { nav.innerHTML = `Rumbo a <b>${p.name}</b>. El vuelo libre vive en otro hilo.`; },
+  onOpenUrl: (url) => { nav.innerHTML = `Entrada lista: <a href="${url}" target="_blank" rel="noopener">${url}</a>`; },
+  effects: !matchMedia('(prefers-reduced-motion: reduce)').matches,
+});
+for (const c of ['ayuda', 'estado', 'salas', 'ir cine', 'buscar dune', 'dónde root', 'sugerir 2', 'bitácora', 'leer 135', 'rumbo izaro', 'tirar 1d20', 'tema ámbar', 'café']) {
+  const b = document.createElement('button'); b.textContent = c;
+  b.onclick = () => { term.exec(c); term.focus(); };
+  document.getElementById('chips').appendChild(b);
+}
+</script>
