@@ -1,0 +1,11 @@
+# Se aplica a `docker build -f web/Dockerfile .` (contexto = raíz del repo).
+# Solo hacen falta web/ y assets/; todo lo demás se queda fuera.
+**
+!web/
+!assets/
+web/node_modules
+web/dist
+web/.astro
+web/.env
+web/public/assets
+**/*.py

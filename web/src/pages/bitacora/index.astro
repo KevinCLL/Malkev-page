@@ -3,12 +3,13 @@ import Sala from '../../components/Sala.astro';
 import { listarEntradas } from '../../lib/bitacora';
 
 const entradas = await listarEntradas();
+const anyoDe = new Intl.DateTimeFormat('es-ES', { year: 'numeric', timeZone: 'Europe/Madrid' });
 const porAnyo = new Map<number, typeof entradas>();
 for (const e of entradas) {
-  const y = e.fecha.getFullYear();
+  const y = Number(anyoDe.format(e.fecha));
   porAnyo.set(y, [...(porAnyo.get(y) ?? []), e]);
 }
-const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short' });
+const fmt = new Intl.DateTimeFormat('es-ES', { day: 'numeric', month: 'short', timeZone: 'Europe/Madrid' });
 ---
 <Sala slug="bitacora">
   {entradas.length === 0 && <p>La bitácora está vacía: falta el módulo <code>modulos/bitacora/posts.json</code> o la base de datos.</p>}

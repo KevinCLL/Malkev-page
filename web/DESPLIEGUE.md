@@ -51,6 +51,21 @@ docker compose exec web node scripts/seed.mjs   # solo la primera vez: carga la 
 curl -s http://127.0.0.1:4321/api/salud   # {"estado":"ok","baseDeDatos":"ok"}
 ```
 
+### 3b. Con el catálogo (base de datos y panel)
+
+Cuando el PR del catálogo (`packages/catalogo`) esté en el repo, levántalo junto a la web.
+Así hay **una sola base de datos** (la del servicio `db`) y la web lee todo de su API:
+
+```bash
+# En .env: ADMIN_PASSWORD (la del capitán para /admin) y, si quieres, TMDB_API_KEY
+docker compose -f docker-compose.yml -f docker-compose.catalogo.yml up -d --build
+docker compose -f docker-compose.yml -f docker-compose.catalogo.yml exec catalogo npm run seed   # primera vez
+curl -s http://127.0.0.1:4400/api/v1 | head -c 200
+```
+
+En este modo no hace falta el `seed.mjs` de la web. Para no repetir los `-f`, pon en `.env`:
+`COMPOSE_FILE=docker-compose.yml:docker-compose.catalogo.yml`.
+
 ## 4. Publica con el proxy inverso
 
 Elige el bloque según lo que encontraste en el paso 0.
@@ -58,7 +73,14 @@ Elige el bloque según lo que encontraste en el paso 0.
 **Caddy** (`Caddyfile`), que saca el certificado solo:
 
 ```caddy
-malkevnia.com, www.malkevnia.com {
+www.malkevnia.com {
+    redir https://malkevnia.com{uri} permanent
+}
+malkevnia.com {
+    encode zstd gzip
+    # Solo con el catálogo: panel y API pública (comentarios incluidos)
+    @catalogo path /admin /admin/* /api/v1 /api/v1/*
+    reverse_proxy @catalogo 127.0.0.1:4400
     reverse_proxy 127.0.0.1:4321
 }
 ```
@@ -70,6 +92,14 @@ malkevnia.com, www.malkevnia.com {
 server {
     listen 80;
     server_name malkevnia.com www.malkevnia.com;
+    # Solo con el catálogo: panel y API pública
+    location ~ ^/(admin|api/v1)(/|$) {
+        proxy_pass http://127.0.0.1:4400;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        client_max_body_size 20m;
+    }
     location / {
         proxy_pass http://127.0.0.1:4321;
         proxy_set_header Host $host;
@@ -128,7 +158,8 @@ Hoy malkevnia.com apunta a las IP de GitHub Pages y `www` es un CNAME a `kevincl
 # Actualizar a la última versión
 cd /srv/malkevnia && git pull && cd web && docker compose up -d --build
 
-# Copia de seguridad de la base de datos (ponlo en cron, p. ej. cada noche)
+# Copia de seguridad de la base de datos (ponlo en cron, p. ej. cada noche).
+# Con el catálogo, guarda también el volumen de imágenes subidas (malkevnia_subidas).
 docker compose exec -T db pg_dump -U malkevnia malkevnia | gzip > ~/backups/malkevnia-$(date +%F).sql.gz
 
 # Restaurar
@@ -140,6 +171,7 @@ docker compose logs -f web
 
 ## Pendiente antes de abrir al público
 
-- Comentarios: la web Jekyll usa Cusdis; hay tabla `comentarios` pero aún no formulario.
-- `/consola` todavía no tiene login: no publicar escritura hasta que lo tenga.
-- La bitácora del módulo trae 100 de los 135 posts de `_posts/`; hay que completar la importación.
+- Comentarios: la web Jekyll usa Cusdis. El catálogo ya tiene `GET/POST /posts/:slug/comments`
+  con moderación; falta el formulario en `/bitacora/<slug>`.
+- `/consola` es solo un marcador: el panel de verdad es `/admin` del catálogo, con login.
+- Los 35 posts de `_posts/` con `published: false` no salen en la web (es lo esperado).

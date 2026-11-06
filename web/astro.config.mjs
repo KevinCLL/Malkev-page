@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, envField } from 'astro/config';
 import node from '@astrojs/node';
 import vue from '@astrojs/vue';
 
@@ -12,4 +12,12 @@ export default defineConfig({
   integrations: [vue()],
   trailingSlash: 'ignore',
   server: { host: true, port: 4321 },
+  // Secretos que se leen al arrancar el servidor (nunca se meten en el build).
+  // En local salen de .env; en Docker, de las variables del contenedor.
+  env: {
+    schema: {
+      DATABASE_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
+      CATALOGO_API_URL: envField.string({ context: 'server', access: 'secret', optional: true }),
+    },
+  },
 });

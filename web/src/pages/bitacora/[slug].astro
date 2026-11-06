@@ -4,7 +4,7 @@ import { leerEntrada } from '../../lib/bitacora';
 
 const e = await leerEntrada(Astro.params.slug!);
 if (!e) return new Response(null, { status: 404 });
-const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long' });
+const fmt = new Intl.DateTimeFormat('es-ES', { dateStyle: 'long', timeZone: 'Europe/Madrid' });
 ---
 <Nave titulo={e.titulo} descripcion={e.descripcion || undefined} sala="bitacora">
   <article class="entrada">

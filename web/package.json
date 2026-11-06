@@ -10,10 +10,10 @@
     "dev": "node scripts/link-assets.mjs && astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "start": "node ./dist/server/entry.mjs",
+    "start": "node --env-file-if-exists=.env ./dist/server/entry.mjs",
     "check": "astro check",
-    "db:migrate": "node scripts/migrate.mjs",
-    "db:seed": "node scripts/seed.mjs",
+    "db:migrate": "node --env-file-if-exists=.env scripts/migrate.mjs",
+    "db:seed": "node --env-file-if-exists=.env scripts/seed.mjs",
     "modulos:sync": "node scripts/sync-modulos.mjs",
     "assets:link": "node scripts/link-assets.mjs"
   },

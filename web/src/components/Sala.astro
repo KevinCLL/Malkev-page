@@ -14,7 +14,7 @@ const montado = urlModulo(s);
 ---
 {montado ? (
   <Nave titulo={s.nombre} descripcion={s.resumen} sala={s.slug} inmersivo>
-    <iframe class="modulo" src={montado} title={s.nombre} allow="fullscreen; gyroscope; accelerometer; autoplay"></iframe>
+    <iframe class="modulo" src={montado} title={s.nombre} allow="fullscreen; autoplay; gyroscope; accelerometer; xr-spatial-tracking; clipboard-write"></iframe>
     <a class="volver panel" href="/">◂ Puente</a>
   </Nave>
 ) : (

@@ -15,7 +15,8 @@ COPY assets ./public/assets
 RUN npm run build && npm prune --omit=dev
 
 FROM node:22-alpine AS runtime
-ENV NODE_ENV=production HOST=0.0.0.0 PORT=4321
+# TZ: las fechas de la bitácora se agrupan y muestran en hora de Madrid
+ENV NODE_ENV=production HOST=0.0.0.0 PORT=4321 TZ=Europe/Madrid
 WORKDIR /app
 COPY --from=build --chown=node:node /app/package.json ./
 COPY --from=build --chown=node:node /app/node_modules ./node_modules
