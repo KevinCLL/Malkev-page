@@ -37,8 +37,10 @@ El CSV propio admite comas o punto y coma y estas columnas (en español o inglé
 
 - **TMDB** (pelis y series): necesita una clave gratuita en `TMDB_API_KEY` (la *API Key* v3 o el *Read Access
   Token* v4). Busca por título y año en español; si el título y el año cuadran y no hay otro candidato igual de
-  bueno, la da por buena. Si duda, compara el director (o el creador, en series) para desempatar. Completa
-  sinopsis en español, póster, fondo, géneros, duración o temporadas, título original e ids de TMDB e IMDb.
+  bueno, la da por buena. Si duda, compara el director (o el creador, en series; con los nombres en inglés para
+  que el anime case) para desempatar. Si no encuentra nada, prueba sin tildes, sin lo que va entre paréntesis y
+  con la parte antes de «:» (la búsqueda de TMDB falla con algunos títulos largos en español). Completa
+  sinopsis en español, tagline, póster, fondo, géneros, duración o temporadas, título original e ids de TMDB e IMDb.
   Sin clave, las pelis y series salen tal cual, marcadas como *pendientes*.
 - **Open Library** (libros): sin clave. Busca por ISBN y, si no, por título y autor (quitando coletillas de
   Goodreads como «(Mistborn, #2)» o «(Spanish Edition)»). Completa sinopsis, temas, páginas, año de primera
@@ -53,11 +55,20 @@ Las respuestas se guardan en `cache/`, así que repetir la importación es casi 
 - `fichas.json`: todas las fichas en el formato normalizado (abajo).
 - `catalogo.sql`: SQL para el catálogo. Una transacción que se puede ejecutar varias veces sin duplicar:
   1. carga las fichas en una tabla temporal;
-  2. actualiza las que ya existen (mismo tipo y algún id externo en común);
-  3. inserta el resto con `ON CONFLICT (kind, slug) DO UPDATE`, salvo que el año diga que es otra obra.
+  2. las empareja con las que ya existen por id externo: primero el de la fuente (Filmaffinity, Goodreads,
+     AniList) y después el de la obra (TMDB, Open Library, ISBN), sin juntar nunca dos entradas distintas de la
+     misma fuente (dos ediciones de un libro son dos fichas aunque Open Library diga que son la misma obra);
+  3. las que siguen sin pareja, por tipo y slug, si el año no dice que es otra obra;
+  4. actualiza las emparejadas e inserta el resto. Si el slug de una nueva está ocupado por otra obra, no entra
+     y sale en la lista que imprime `psql` al final.
 
   Al actualizar solo rellena huecos: lo que ya está en la base de datos (lo que hayas tocado en el panel) gana, y
-  tus notas nunca se pisan. Con `--sobrescribir`, la nota, el estado y la portada importados mandan.
+  tus notas nunca se pisan. La portada sí se mejora: si la que hay es la que traía la fuente (el póster de
+  Filmaffinity), se cambia por la de TMDB; si la has puesto tú, se respeta. Con `--sobrescribir`, la nota, el
+  estado y la portada importados mandan.
+
+  Para probarlo contra un PostgreSQL de verdad: `PG_PRUEBAS=postgres://… ESQUEMA_SQL=…/001_esquema.sql node --test test/*.test.js`
+  (machaca esa base de datos).
 - `revisar.json`: las fichas sin emparejar claro, con sus candidatos (id, título, año y puntuación).
 - `informe.md`: el resumen de la importación.
 
@@ -78,6 +89,10 @@ emparejamiento automático no resuelve. La clave es `tipo/slug` (como sale en `r
 
 Admite `tmdb`, `openlibrary`, `titulo`, `titulo_original`, `autor`, `año`, `slug`, `tipo`, `estado`, `isbn`,
 `imdb`, `oculto`, `destacado` e `ignorar`.
+
+- Lo corregido (título, año, autor, estado, oculto, destacado) manda también sobre lo que ya haya en la base de datos.
+- El `slug` solo cuenta para fichas nuevas: el de una ficha que ya existe no se cambia, para no romper sus URLs.
+- `ignorar` deja la ficha fuera de la importación, pero no la borra si ya estaba en la base de datos.
 
 ## Formato normalizado
 
@@ -101,7 +116,8 @@ Admite `tmdb`, `openlibrary`, `titulo`, `titulo_original`, `autor`, `año`, `slu
   "featured": false, "hidden": false,
   "started_on": null, "finished_on": null,
   "sources": ["filmaffinity", "tmdb"],
-  "match": { "provider": "tmdb", "estado": "auto", "id": 985939, "score": 1 }
+  "match": { "provider": "tmdb", "estado": "auto", "id": 985939, "score": 1 },
+  "corregido": ["title"]          // solo si correcciones.json ha cambiado algo
 }
 ```
 

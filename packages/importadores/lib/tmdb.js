@@ -80,7 +80,7 @@ export function crearTmdb({ clave = process.env.TMDB_API_KEY, idioma = process.e
     }
     const candidatos = await buscar(f)
     if (candidatos === undefined) return { ...f, match: { provider: 'tmdb', estado: 'pendiente', motivo: 'sin caché y sin red' } }
-    const resumen = candidatos.slice(0, 3).map((c) => ({ id: c.r.id, titulo: c.r.title || c.r.name, año: año(c.r), score: round(c.score) }))
+    const resumen = candidatos.filter((c) => c.score >= 0.2).slice(0, 3).map((c) => ({ id: c.r.id, titulo: c.r.title || c.r.name, año: año(c.r), score: round(c.score) }))
     if (!candidatos.length) return { ...f, match: { provider: 'tmdb', estado: 'sin-resultado', candidatos: [] } }
     let [mejor, segundo] = candidatos
     let d = null

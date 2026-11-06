@@ -67,7 +67,7 @@ test('TMDB: dudoso, se desempata por director', async () => {
 })
 
 test('TMDB: sin candidato claro → revisar con candidatos', async () => {
-  rutas = [[/^\/3\/search\/tv/, { results: [{ id: 7, name: 'Algo muy distinto', first_air_date: '2001-01-01' }] }]]
+  rutas = [[/^\/3\/search\/tv/, { results: [{ id: 7, name: 'Heroicos', first_air_date: '2006-01-01' }] }]]
   const tmdb = crearTmdb({ clave: 'k', cache: memoria() })
   const f = await tmdb.enriquecer(crearFicha({ kind: 'series', title: 'Héroes', year: 2006 }))
   assert.equal(f.match.estado, 'revisar')
