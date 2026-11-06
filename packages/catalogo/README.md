@@ -35,8 +35,13 @@ npm run dev                   # http://localhost:4400/admin
   hueco;
 - tres colecciones base: filmoteca, biblioteca y lista de deseos.
 
-Se puede repetir sin duplicar nada. `npm run seed -- --reset` vacía catálogo y blog antes de cargar (la cuenta del
-capitán se queda) y `--solo=posts|coleccion|kallax` carga solo una parte.
+Se puede repetir cuando quieras: solo añade lo que falta y **nunca pisa lo que hayas cambiado en el panel** (notas,
+estados, textos, cómo has reordenado una Kallax). Opciones:
+
+- `npm run seed -- --actualizar` vuelve a copiar los datos de las fuentes encima (textos de los posts, datos de las
+  fichas y colocación de las Kallax). Las notas y estados que pusiste a mano se conservan.
+- `npm run seed -- --reset` vacía catálogo y blog antes de cargar (la cuenta del capitán se queda).
+- `--solo=posts|coleccion|kallax` carga solo una parte.
 
 Las portadas de los videojuegos apuntan a `/uploads/videojuegos/…`, que eran imágenes locales de LaunchBox en el POC:
 copia esa carpeta (`poc/data/uploads/videojuegos`) dentro de `uploads/` y se verán. Mientras, el panel enseña una tapa
@@ -83,6 +88,10 @@ arrancar) en `127.0.0.1:4400`. El proxy inverso que ya tenga el servidor (Caddy,
 lanza desde fuera del contenedor (necesita `_posts/`), apuntando `DATABASE_URL` a esa base de datos.
 
 El puerto por defecto es el 4400 para no chocar con Astro, que usa el 4321.
+
+El panel compilado sale con una Content-Security-Policy estricta (solo scripts propios). Las IPs reales llegan por
+`X-Forwarded-For` desde proxies en redes privadas (lo normal en Docker); si el proxy está en otra parte, ajusta
+`TRUST_PROXY`.
 
 Pendiente para producción: copias de seguridad diarias (`pg_dump` + `uploads/`) fuera del servidor, y poner
 `POSTGRES_PASSWORD` y `APP_SECRET` propios en el entorno.

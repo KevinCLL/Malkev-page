@@ -89,6 +89,8 @@ watch(() => props.modelValue, (html) => {
   if (editor.value && html !== editor.value.getHTML()) {
     editor.value.commands.setContent(html || '', { emitUpdate: false })
     countWords(editor.value)
+    // El documento JSON tiene que corresponder al HTML cargado, aunque no se toque el texto.
+    emit('json', editor.value.getJSON())
   }
 })
 

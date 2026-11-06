@@ -16,10 +16,32 @@ const PORT = Number(process.env.PORT) || 4400
 const UPLOADS_DIR = resolve(ROOT, process.env.UPLOADS_DIR || 'uploads')
 mkdirSync(UPLOADS_DIR, { recursive: true })
 
+// CSP del panel compilado: solo scripts propios; las imágenes pueden venir de fuera (portadas) y los
+// vídeos incrustados en las entradas antiguas son iframes de YouTube/Vimeo.
+const CSP = [
+  "default-src 'self'",
+  "script-src 'self'",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com",
+  'img-src * data: blob:',
+  "media-src 'self' https:",
+  "connect-src 'self'",
+  'frame-src https://www.youtube.com https://www.youtube-nocookie.com https://player.vimeo.com https://open.spotify.com',
+  "frame-ancestors 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ')
+function adminCsp(req, res, next) {
+  res.setHeader('Content-Security-Policy', CSP)
+  next()
+}
+
 export async function createApp({ dev = false } = {}) {
   const app = express()
   app.disable('x-powered-by')
-  app.set('trust proxy', 'loopback') // detrás de Caddy/Nginx en el Hetzner
+  // Detrás de Caddy/Nginx en el Hetzner: en Docker el proxy llega desde una red privada, no desde 127.0.0.1.
+  // Sin esto, todas las visitas tendrían la IP del proxy y compartirían los límites de intentos.
+  app.set('trust proxy', process.env.TRUST_PROXY || 'loopback, linklocal, uniquelocal')
   app.use(securityHeaders)
 
   const origins = String(process.env.CORS_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean)
@@ -38,8 +60,11 @@ export async function createApp({ dev = false } = {}) {
   } else {
     const dist = join(ROOT, 'dist')
     if (existsSync(dist)) {
-      app.use('/admin', express.static(dist, { index: false, maxAge: '1h' }))
-      app.get(/^\/admin(\/.*)?$/, (req, res) => res.sendFile(join(dist, 'index.html')))
+      app.use('/admin', adminCsp, express.static(dist, { index: false, maxAge: '1h' }))
+      app.get(/^\/admin(\/.*)?$/, adminCsp, (req, res) => {
+        res.setHeader('Cache-Control', 'no-cache')
+        res.sendFile(join(dist, 'index.html'))
+      })
     }
   }
   app.get('/', (req, res) => res.redirect('/admin/'))

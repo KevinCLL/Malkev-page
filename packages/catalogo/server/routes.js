@@ -13,7 +13,9 @@ import {
   attachCaptain, requireCaptain, verifyPassword, createSession, cookieHeader, destroySession,
   destroyOtherSessions, hashPassword, checkNewPassword, hasCaptain,
 } from './auth.js'
-import { sameOrigin, tooMany, commentToken, checkCommentToken, looksSpammy, ipHash } from './guard.js'
+import { sameOrigin, tooMany, isBlocked, recordFailure, clearFailures, commentToken, checkCommentToken, looksSpammy, ipHash } from './guard.js'
+
+const DUMMY_HASH = hashPassword('contraseña-que-nunca-coincide')
 
 export function apiRouter({ uploadsDir }) {
   const api = express.Router()
@@ -89,10 +91,18 @@ export function apiRouter({ uploadsDir }) {
   })
 
   api.post('/auth/login', async (req, res) => {
-    if (tooMany(`login:${req.ip}`, 8, 15 * 60 * 1000)) throw httpError(429, 'Demasiados intentos. Espera unos minutos.')
+    const key = `login:${req.ip}`
+    const WINDOW = 15 * 60 * 1000
+    if (isBlocked(key, 8, WINDOW)) throw httpError(429, 'Demasiados intentos fallidos. Espera unos minutos.')
     const user = await one('SELECT id, username, password_hash FROM admin_users WHERE username = $1',
       [String(req.body.username || 'capitan').trim()])
-    if (!user || !verifyPassword(req.body.password, user.password_hash)) throw httpError(401, 'Usuario o contraseña incorrectos.')
+    // Con usuario inexistente también se calcula un scrypt, para que el tiempo de respuesta no lo delate.
+    const valid = verifyPassword(String(req.body.password ?? ''), user?.password_hash ?? DUMMY_HASH) && !!user
+    if (!valid) {
+      recordFailure(key, WINDOW)
+      throw httpError(401, 'Usuario o contraseña incorrectos.')
+    }
+    clearFailures(key)
     const token = await createSession(user.id, req.headers['user-agent'])
     res.setHeader('Set-Cookie', cookieHeader(req, token))
     res.json({ configured: true, captain: { username: user.username } })
@@ -144,9 +154,9 @@ export function apiRouter({ uploadsDir }) {
   admin.post('/items/bulk', async (req, res) => {
     const { ids, patch, action } = req.body
     if (!Array.isArray(ids) || !ids.length) throw httpError(400, 'No hay nada seleccionado.')
-    if (action === 'delete') await query('DELETE FROM items WHERE id = ANY($1::bigint[])', [ids])
-    else for (const id of ids) await catalog.saveItem(Number(id), patch || {})
-    res.json({ ok: true, count: ids.length })
+    if (ids.length > 1000) throw httpError(400, 'Demasiados a la vez (máximo 1000).')
+    const count = action === 'delete' ? await catalog.deleteItems(ids) : await catalog.bulkUpdate(ids, patch || {})
+    res.json({ ok: true, count })
   })
 
   // Etiquetas

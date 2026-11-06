@@ -27,29 +27,45 @@ export function cors(origins) {
   }
 }
 
-// Lo que cambia cosas en el panel solo se acepta desde el mismo origen.
+// Lo que cambia cosas en el panel solo se acepta desde el mismo origen (o desde APP_ORIGINS, si el panel
+// se sirve en otro dominio). Detrás del proxy, req.host respeta X-Forwarded-Host gracias a «trust proxy».
+const extraOrigins = new Set(String(process.env.APP_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean))
 export function sameOrigin(req, res, next) {
   if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return next()
   const origin = req.headers.origin
-  if (origin && origin !== 'null') {
-    let host = ''
+  if (origin) {
+    let host = null
     try { host = new URL(origin).host } catch {}
-    if (host !== req.headers.host) return next(httpError(403, 'Petición rechazada: viene de otro sitio.'))
+    if (!extraOrigins.has(origin) && host !== req.host && host !== req.headers.host) {
+      return next(httpError(403, 'Petición rechazada: viene de otro sitio.'))
+    }
   }
   next()
 }
 
 const buckets = new Map()
+const recent = (key, windowMs) => (buckets.get(key) || []).filter((t) => t > Date.now() - windowMs)
+function prune() {
+  if (buckets.size < 5000) return
+  const cutoff = Date.now() - 3600_000
+  for (const [k, v] of buckets) if (v.every((t) => t < cutoff)) buckets.delete(k)
+}
 // Cuenta un intento y dice si ya van demasiados en la ventana.
 export function tooMany(key, max, windowMs) {
-  const now = Date.now()
-  if (buckets.size > 5000) for (const [k, v] of buckets) if (v.every((t) => t < now - windowMs)) buckets.delete(k)
-  const hits = (buckets.get(key) || []).filter((t) => t > now - windowMs)
+  prune()
+  const hits = recent(key, windowMs)
   const blocked = hits.length >= max
-  if (!blocked) hits.push(now)
+  if (!blocked) hits.push(Date.now())
   buckets.set(key, hits)
   return blocked
 }
+// Para los inicios de sesión solo cuentan los fallos: mirar sin apuntar, y apuntar al fallar.
+export const isBlocked = (key, max, windowMs) => recent(key, windowMs).length >= max
+export function recordFailure(key, windowMs) {
+  prune()
+  buckets.set(key, [...recent(key, windowMs), Date.now()])
+}
+export const clearFailures = (key) => buckets.delete(key)
 
 let secret = null
 async function serverSecret() {

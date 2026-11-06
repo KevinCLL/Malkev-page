@@ -11,6 +11,9 @@ export const pool = new pg.Pool({
   max: Number(process.env.PG_POOL_MAX) || 10,
 })
 
+// Un cliente inactivo que pierde la conexión (reinicio de Postgres) emite 'error'; sin esto el proceso cae.
+pool.on('error', (err) => console.error('PostgreSQL:', err.message))
+
 export const query = (text, params) => pool.query(text, params)
 export const one = async (text, params) => (await pool.query(text, params)).rows[0] ?? null
 export const many = async (text, params) => (await pool.query(text, params)).rows

@@ -2,7 +2,7 @@
 import { one, many, query, tx } from './db.js'
 import { httpError } from './lib/http.js'
 import { slugify, wordCount, excerpt } from './lib/text.js'
-import { setTags } from './catalog.js'
+import { setTags, likeEscape } from './catalog.js'
 
 export const POST_STATUSES = ['draft', 'scheduled', 'published']
 export const COMMENT_STATUSES = ['pending', 'visible', 'hidden', 'spam']
@@ -31,7 +31,8 @@ export async function listPosts(f = {}, { admin = false } = {}) {
   let rank = ''
   if (f.q) {
     const q = p(String(f.q).slice(0, 200))
-    where.push(`(p.search @@ websearch_to_tsquery('spanish', f_unaccent(${q})) OR f_unaccent(lower(p.title)) LIKE '%' || f_unaccent(lower(${q})) || '%')`)
+    const like = p(`%${likeEscape(String(f.q).trim().slice(0, 200).toLowerCase())}%`)
+    where.push(`(p.search @@ websearch_to_tsquery('spanish', f_unaccent(${q})) OR f_unaccent(lower(p.title)) LIKE f_unaccent(${like}))`)
     rank = `ts_rank(p.search, websearch_to_tsquery('spanish', f_unaccent(${q}))) DESC, `
   }
   const sql = where.length ? `WHERE ${where.join(' AND ')}` : ''
@@ -112,6 +113,8 @@ export async function savePost(id, body) {
     if (publishedAt && Number.isNaN(publishedAt.getTime())) throw httpError(400, 'Fecha de publicación no válida.')
     if (status === 'published' && !publishedAt) publishedAt = new Date()
     if (status === 'scheduled' && !publishedAt) throw httpError(400, 'Para programarla hace falta fecha y hora.')
+    // Programada para una hora que ya pasó = publicada (si no, el panel la enseñaría "programada" para siempre).
+    if (status === 'scheduled' && publishedAt <= new Date()) data.status = 'published'
     data.published_at = publishedAt
     if (body.slug || !cur) {
       const base = slugify(body.slug || data.title, 120)

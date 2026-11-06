@@ -2,10 +2,12 @@
 //  - los posts de Jekyll (../../_posts), conservando sus URLs y las redirecciones antiguas,
 //  - la colección real exportada del POC (seed/coleccion.json: pelis, series, libros, manga, videojuegos),
 //  - las dos Kallax leídas de las fotos (seed/kallax-real.js), como colecciones con cada caja en su hueco,
-//  - y unas colecciones base: filmoteca, biblioteca y favoritos.
+//  - y unas colecciones base: filmoteca, biblioteca y lista de deseos.
 //
-// Uso: npm run seed            (añade o actualiza; no borra nada)
-//      npm run seed -- --reset (vacía catálogo y blog antes de cargar; la cuenta del capitán se queda)
+// Uso: npm run seed                 solo añade lo que falta: nunca pisa lo que hayas cambiado en el panel
+//      npm run seed -- --actualizar  vuelve a copiar los datos de las fuentes encima de lo que haya
+//                                    (textos de los posts, datos de las fichas, colocación de las Kallax)
+//      npm run seed -- --reset       vacía catálogo y blog antes de cargar (la cuenta del capitán se queda)
 //      npm run seed -- --solo=posts|coleccion|kallax
 import { readFileSync, readdirSync, existsSync } from 'node:fs'
 import { join, dirname } from 'node:path'
@@ -20,6 +22,7 @@ const ROOT = join(here, '..')
 const POSTS_DIR = process.env.POSTS_DIR || join(ROOT, '..', '..', '_posts')
 const args = process.argv.slice(2)
 const RESET = args.includes('--reset')
+const UPDATE = args.includes('--actualizar')
 const ONLY = args.find((a) => a.startsWith('--solo='))?.split('=')[1]
 const want = (part) => !ONLY || ONLY === part
 
@@ -81,21 +84,22 @@ async function seedPosts(client) {
     const row = (await client.query(
       `INSERT INTO posts (slug, title, description, content_html, cover_url, status, published_at, legacy_path, aliases, word_count, category)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
-       ON CONFLICT (slug) DO UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description,
-         content_html = EXCLUDED.content_html, cover_url = EXCLUDED.cover_url, status = EXCLUDED.status,
+       ON CONFLICT (slug) DO ${UPDATE ? `UPDATE SET title = EXCLUDED.title, description = EXCLUDED.description,
+         content_html = EXCLUDED.content_html, content_json = NULL, cover_url = EXCLUDED.cover_url, status = EXCLUDED.status,
          published_at = EXCLUDED.published_at, legacy_path = EXCLUDED.legacy_path, aliases = EXCLUDED.aliases,
-         word_count = EXCLUDED.word_count
+         word_count = EXCLUDED.word_count` : 'NOTHING'}
        RETURNING id`,
       [slug, data.title || name, data.description || '', html, cover, status, date,
         `/blog/${y}/${mo}/${d}/${name}/`, aliases, wordCount(html), (data.tags || []).includes('archivo') ? 'Archivo' : 'Bitácora'],
     )).rows[0]
+    if (!row) continue // ya estaba y no se pidió --actualizar: se respeta lo editado en el panel
     await client.query('DELETE FROM post_tags WHERE post_id = $1', [row.id])
     for (const tagId of await upsertTags(client, data.tags || [])) {
       await client.query('INSERT INTO post_tags (post_id, tag_id) VALUES ($1, $2) ON CONFLICT DO NOTHING', [row.id, tagId])
     }
     n++
   }
-  console.log(`  ✓ ${n} posts`)
+  console.log(`  ✓ ${n} posts ${UPDATE ? 'cargados o actualizados' : 'nuevos'} (de ${files.length})`)
 }
 
 /* --------------------------------------------------- colección real del POC */
@@ -146,23 +150,29 @@ async function insertItem(client, it, slugFor) {
     `INSERT INTO items (kind, slug, title, original_title, creator, year, synopsis, cover_url, color, rating, status,
                         notes, featured, hidden, finished_on, external_ids, meta)
      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
-     ON CONFLICT (kind, slug) DO UPDATE SET title = EXCLUDED.title, creator = EXCLUDED.creator, year = EXCLUDED.year,
+     ON CONFLICT (kind, slug) DO ${UPDATE ? `UPDATE SET title = EXCLUDED.title, creator = EXCLUDED.creator,
+       year = COALESCE(EXCLUDED.year, items.year),
        cover_url = COALESCE(EXCLUDED.cover_url, items.cover_url), color = COALESCE(EXCLUDED.color, items.color),
-       rating = EXCLUDED.rating, status = EXCLUDED.status, finished_on = EXCLUDED.finished_on,
-       external_ids = items.external_ids || EXCLUDED.external_ids, meta = items.meta || EXCLUDED.meta
+       rating = COALESCE(EXCLUDED.rating, items.rating),
+       status = CASE WHEN $18::boolean THEN EXCLUDED.status ELSE items.status END,
+       finished_on = COALESCE(EXCLUDED.finished_on, items.finished_on),
+       external_ids = items.external_ids || EXCLUDED.external_ids, meta = items.meta || EXCLUDED.meta` : 'NOTHING'}
      RETURNING id`,
     [kind, slug, it.title, rest.title_native || null, it.creator || '', year, rest.overview || '', it.cover_url || null,
       validColor(it.color), Number.isInteger(it.rating) ? Math.max(0, Math.min(10, it.rating)) : null,
-      STATUS.has(it.status) ? it.status : 'owned', it.notes || '', !!it.featured, !!it.hidden, finished, external, rest],
+      STATUS.has(it.status) ? it.status : 'owned', it.notes || '', !!it.featured, !!it.hidden, finished, external, rest,
+      ...(UPDATE ? [!it.keepStatus] : [])],
   )).rows[0]
-  return row.id
+  if (row) return row.id
+  // Ya existía: solo hace falta su id (para colocarlo en su Kallax).
+  return (await client.query('SELECT id FROM items WHERE kind = $1 AND slug = $2', [kind, slug])).rows[0].id
 }
 
 async function seedCollection(client, slugFor) {
   const file = join(ROOT, 'seed', 'coleccion.json')
   const { items } = JSON.parse(readFileSync(file, 'utf8'))
   for (const it of items) await insertItem(client, it, slugFor)
-  console.log(`  ✓ ${items.length} cosas de la colección`)
+  console.log(`  ✓ ${items.length} cosas de la colección revisadas${UPDATE ? ' y actualizadas' : ' (lo que ya estaba no se toca)'}`)
 }
 
 /* ------------------------------------------------------------- las Kallax */
@@ -174,7 +184,7 @@ async function placeFurniture(client, f, slugFor) {
   const realItem = async (it, row, col, placement) => {
     if (it.deco) return it
     const id = await insertItem(client, {
-      kind: it.kind || 'boardgame', title: it.title, color: it.color, status: 'owned',
+      kind: it.kind || 'boardgame', title: it.title, color: it.color, status: 'owned', keepStatus: true,
       notes: it.note ? `Pósit: «${it.note}»` : '',
       meta: { ...(it.dot ? { sticker: it.dot } : {}), ...(it.doubt ? { doubt: it.doubt } : {}) },
     }, slugFor)
@@ -218,9 +228,13 @@ async function placeFurniture(client, f, slugFor) {
 async function seedKallax(client, slugFor) {
   const { furniture } = await import('../seed/kallax-real.js')
   let total = 0
+  let skipped = 0
   for (const [i, f] of furniture.entries()) {
-    const { layout, placed } = await placeFurniture(client, f, slugFor)
     const slug = slugify(f.key || `kallax-${i + 1}`)
+    const existing = (await client.query('SELECT id FROM collections WHERE slug = $1', [slug])).rows[0]
+    // Una Kallax que ya está en la base de datos no se toca sin --actualizar: puede haberse reordenado en el panel.
+    if (existing && !UPDATE) { skipped++; continue }
+    const { layout, placed } = await placeFurniture(client, f, slugFor)
     const col = (await client.query(
       `INSERT INTO collections (slug, name, kind, room, rows, cols, layout, position, description)
        VALUES ($1, $2, 'kallax', 'sala-recreativa', $3, $4, $5, $6, $7)
@@ -238,7 +252,7 @@ async function seedKallax(client, slugFor) {
     }
     total += placed.length
   }
-  console.log(`  ✓ ${furniture.length} Kallax con ${total} cajas y libros de rol colocados`)
+  console.log(`  ✓ ${furniture.length - skipped} Kallax con ${total} cajas y libros de rol colocados${skipped ? ` (${skipped} ya estaban)` : ''}`)
 }
 
 /* ------------------------------------------------------ colecciones base */
@@ -249,7 +263,11 @@ async function seedBaseCollections(client) {
     { slug: 'biblioteca', name: 'Biblioteca', kind: 'bookcase', room: 'biblioteca', where: "kind IN ('book', 'manga') AND status <> 'wishlist'", description: 'Libros y manga leídos o en curso.' },
     { slug: 'lista-de-deseos', name: 'Lista de deseos', kind: 'list', room: null, where: "status = 'wishlist'", description: 'Lo que aún no está a bordo.' },
   ]
+  let made = 0
   for (const [i, c] of base.entries()) {
+    const existing = (await client.query('SELECT id FROM collections WHERE slug = $1', [c.slug])).rows[0]
+    if (existing && !UPDATE) continue
+    made++
     const col = (await client.query(
       `INSERT INTO collections (slug, name, kind, room, description, position) VALUES ($1, $2, $3, $4, $5, $6)
        ON CONFLICT (slug) DO UPDATE SET name = EXCLUDED.name RETURNING id`,
@@ -260,7 +278,7 @@ async function seedBaseCollections(client) {
       `INSERT INTO collection_items (collection_id, item_id, position)
        SELECT $1, id, row_number() OVER (ORDER BY f_unaccent(lower(title))) FROM items WHERE ${c.where}`, [col.id])
   }
-  console.log(`  ✓ ${base.length} colecciones base (filmoteca, biblioteca, lista de deseos)`)
+  console.log(`  ✓ ${made} colecciones base nuevas o rehechas (filmoteca, biblioteca, lista de deseos)`)
 }
 
 /* ------------------------------------------------------------------ main */
@@ -272,7 +290,7 @@ async function main() {
       await client.query('TRUNCATE items, item_ratings, tags, item_tags, collections, collection_items, posts, post_tags, post_items, comments RESTART IDENTITY CASCADE')
       console.log('  · catálogo y blog vaciados')
     }
-    // Sin --reset, ON CONFLICT actualiza la misma fila: el orden de carga es fijo, así que los slugs salen iguales.
+    // El orden de carga es fijo, así que en cada pasada salen los mismos slugs y ON CONFLICT reconoce lo que ya hay.
     const slugFor = slugger()
     if (want('posts')) await seedPosts(client)
     if (want('coleccion')) await seedCollection(client, slugFor)

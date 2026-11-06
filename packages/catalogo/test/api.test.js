@@ -116,6 +116,40 @@ test('bitácora: borrador, publicación, URL antigua y comentarios moderados', {
   assert.equal(list.data.comments[0].email, undefined, 'el correo nunca sale')
 })
 
+test('cambios en bloque, comodines de búsqueda y programadas pasadas', { skip }, async () => {
+  const a = await call('POST', '/admin/items', { kind: 'boardgame', title: 'Azul' })
+  const b = await call('POST', '/admin/items', { kind: 'boardgame', title: '100% Orange Juice' })
+  const bulk = await call('POST', '/admin/items/bulk', { ids: [a.data.id, b.data.id], patch: { featured: true, status: 'playing' } })
+  assert.equal(bulk.data.count, 2)
+  const both = await call('GET', '/items?kind=boardgame&featured=true&status=playing')
+  assert.equal(both.data.total, 2)
+  assert.equal((await call('POST', '/admin/items/bulk', { ids: [a.data.id], patch: { title: 'x' } })).status, 400)
+
+  // "%" es un carácter, no un comodín: "100%" no debe encontrar "Azul".
+  assert.deepEqual((await call('GET', '/items?q=100%25')).data.items.map((i) => i.title), ['100% Orange Juice'])
+  assert.equal((await call('GET', '/items?q=_')).data.total, 0)
+
+  const past = await call('POST', '/admin/posts', { title: 'Del pasado', content_html: '<p>x</p>', status: 'scheduled', published_at: '2020-01-01T10:00:00Z' })
+  assert.equal(past.data.status, 'published', 'programar en el pasado es publicar')
+
+  const items = (await call('GET', '/admin/items?kind=boardgame')).data.items
+  const col = await call('POST', '/admin/collections', { name: 'Mesa', kind: 'list' })
+  const put = await call('PUT', `/admin/collections/${col.data.id}/items`, { items: items.map((it, i) => ({ item_id: it.id, position: items.length - i })) })
+  assert.equal(put.status, 200)
+  const pub = await call('GET', '/collections/mesa')
+  assert.equal(pub.data.items[0].id, items.at(-1).id, 'respeta el orden enviado')
+})
+
+test('solo los fallos cuentan para bloquear el inicio de sesión', { skip }, async () => {
+  const saved = cookie
+  for (let i = 0; i < 10; i++) {
+    cookie = ''
+    const ok = await call('POST', '/auth/login', { username: 'capitan', password: 'contraseña-de-prueba' })
+    assert.equal(ok.status, 200, `inicio correcto nº ${i + 1}`)
+  }
+  cookie = saved
+})
+
 test('el panel rechaza peticiones de otro origen', { skip }, async () => {
   const r = await call('POST', '/admin/tags', { name: 'x' }, { Origin: 'https://otra-web.example' })
   assert.equal(r.status, 403)

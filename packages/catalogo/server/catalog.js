@@ -17,6 +17,9 @@ export const STATUS_LABELS = {
   done: 'Terminado', paused: 'Aparcado', dropped: 'Abandonado',
 }
 
+// En LIKE, % y _ son comodines: quien busca "100%" quiere el carácter, no "lo que sea".
+export const likeEscape = (s) => String(s).replace(/[\\%_]/g, (c) => `\\${c}`)
+
 const TAGS_JSON = (table, fk, alias) => `COALESCE((
   SELECT json_agg(json_build_object('slug', t.slug, 'name', t.name, 'color', t.color) ORDER BY t.name)
   FROM ${table} x JOIN tags t ON t.id = x.tag_id WHERE x.${fk} = ${alias}.id), '[]'::json)`
@@ -72,10 +75,12 @@ export async function listItems(f = {}, { admin = false } = {}) {
     where.push(`(i.external_ids ->> ${p(key)}) = ${p(value)}`)
   }
   if (f.q) {
-    const q = p(String(f.q).slice(0, 200))
+    const text = String(f.q).trim().slice(0, 200)
+    const q = p(text)
+    const like = p(`%${likeEscape(text.toLowerCase())}%`)
     where.push(`(i.search @@ websearch_to_tsquery('simple', f_unaccent(${q}))
-      OR f_unaccent(lower(i.title)) LIKE '%' || f_unaccent(lower(${q})) || '%'
-      OR f_unaccent(lower(i.creator)) LIKE '%' || f_unaccent(lower(${q})) || '%')`)
+      OR f_unaccent(lower(i.title)) LIKE f_unaccent(${like})
+      OR f_unaccent(lower(i.creator)) LIKE f_unaccent(${like}))`)
   }
   const sql = where.length ? `WHERE ${where.join(' AND ')}` : ''
   const order = SORTS[f.sort] || (f.q ? 'i.featured DESC, f_unaccent(lower(i.title))' : SORTS.title)
@@ -208,6 +213,24 @@ export async function saveItem(id, body) {
     }
     return row.id
   }).then((newId) => getItem({ id: newId }, { admin: true }))
+}
+
+export async function deleteItems(ids) {
+  return (await query('DELETE FROM items WHERE id = ANY($1::bigint[])', [ids.map(Number)])).rowCount
+}
+
+// Cambios en bloque: solo los interruptores (visible, destacado) y el estado, en una sola consulta.
+export async function bulkUpdate(ids, patch) {
+  const sets = []
+  const params = [ids.map(Number)]
+  for (const key of ['hidden', 'featured']) {
+    if (key in patch) { params.push(!!patch[key]); sets.push(`${key} = $${params.length}`) }
+  }
+  if ('status' in patch) {
+    params.push(ITEM_FIELDS.status(patch.status)); sets.push(`status = $${params.length}::item_status`)
+  }
+  if (!sets.length) throw httpError(400, 'En bloque solo se puede cambiar: oculto, destacado o estado.')
+  return (await query(`UPDATE items SET ${sets.join(', ')} WHERE id = ANY($1::bigint[])`, params)).rowCount
 }
 
 export async function deleteItem(id) {
@@ -372,15 +395,20 @@ export async function placeItem(collectionId, slot) {
 // Sustituye el contenido entero (para reordenar arrastrando en el panel).
 export async function replaceCollectionItems(collectionId, slots) {
   if (!Array.isArray(slots)) throw httpError(400, 'Hace falta una lista de items.')
+  if (slots.length > 10000) throw httpError(400, 'Demasiados items para una colección.')
+  const s = slots.map(slotOf)
+  if (s.some((x) => !Number.isInteger(x.item_id))) throw httpError(400, 'Hay un item sin id válido.')
   await tx(async (client) => {
+    const exists = (await client.query('SELECT 1 FROM collections WHERE id = $1 FOR UPDATE', [collectionId])).rowCount
+    if (!exists) throw httpError(404, 'Esa colección no existe.')
     await client.query('DELETE FROM collection_items WHERE collection_id = $1', [collectionId])
-    for (const [i, raw] of slots.entries()) {
-      const s = slotOf(raw, i)
-      await client.query(
-        `INSERT INTO collection_items (collection_id, item_id, position, row, col, placement, note)
-         VALUES ($1, $2, $3, $4, $5, $6, $7) ON CONFLICT DO NOTHING`,
-        [collectionId, s.item_id, s.position, s.row, s.col, s.placement, s.note])
-    }
+    // Todo de una vez con unnest: una colección de 800 pelis es una sola consulta, no 800.
+    await client.query(
+      `INSERT INTO collection_items (collection_id, item_id, position, row, col, placement, note)
+       SELECT $1, * FROM unnest($2::bigint[], $3::int[], $4::smallint[], $5::smallint[], $6::text[], $7::text[])
+       ON CONFLICT DO NOTHING`,
+      [collectionId, s.map((x) => x.item_id), s.map((x) => x.position), s.map((x) => x.row), s.map((x) => x.col),
+        s.map((x) => x.placement), s.map((x) => x.note)])
   })
 }
 

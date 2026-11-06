@@ -85,13 +85,17 @@ async function lookup() {
   try { candidates.value = (await api.lookup(form.kind, lq.value.trim())).results } catch (e) { lookupError.value = e.message; candidates.value = [] } finally { lookingUp.value = false }
 }
 function useCandidate(c) {
+  let ext, meta
+  try {
+    ext = parseJson(extJson.value, 'Identificadores')
+    meta = parseJson(metaJson.value, 'Datos extra')
+  } catch (e) { toast(e.message, 'error'); return }
   Object.assign(form, {
     title: c.title || form.title, original_title: c.original_title || form.original_title, creator: c.creator || form.creator,
     year: c.year || form.year, synopsis: c.synopsis || form.synopsis, cover_url: c.cover_url || form.cover_url, color: c.color || form.color,
   })
-  const ext = { ...parseJson(extJson.value, 'Identificadores'), ...Object.fromEntries(Object.entries(c.external_ids || {}).filter(([, v]) => v != null)) }
-  extJson.value = JSON.stringify(ext, null, 2)
-  metaJson.value = JSON.stringify({ ...parseJson(metaJson.value, 'Datos extra'), ...(c.meta || {}) }, null, 2)
+  extJson.value = JSON.stringify({ ...ext, ...Object.fromEntries(Object.entries(c.external_ids || {}).filter(([, v]) => v != null)) }, null, 2)
+  metaJson.value = JSON.stringify({ ...meta, ...(c.meta || {}) }, null, 2)
   candidates.value = []
   toast('Datos rellenados. Revisa y guarda.')
 }

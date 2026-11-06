@@ -5,7 +5,7 @@
   "type": "module",
   "description": "Malkevnia: base de datos PostgreSQL del catálogo (juegos, pelis, libros, manga) y del blog, con API y panel de administración.",
   "engines": {
-    "node": ">=22"
+    "node": ">=22.9"
   },
   "scripts": {
     "db:up": "docker compose up -d db",
