@@ -1,0 +1,43 @@
+# PostgreSQL para desarrollo (y base para el despliegue en el Hetzner).
+#   docker compose up -d db          → solo la base de datos
+#   docker compose --profile api up -d → base de datos + API y panel en un contenedor
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: malkevnia
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-malkevnia}
+      POSTGRES_DB: malkevnia
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U malkevnia -d malkevnia"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  api:
+    build: .
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://malkevnia:${POSTGRES_PASSWORD:-malkevnia}@db:5432/malkevnia
+      PORT: 4400
+      UPLOADS_DIR: /data/uploads
+      TMDB_API_KEY: ${TMDB_API_KEY:-}
+      BGG_TOKEN: ${BGG_TOKEN:-}
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+    ports:
+      - "127.0.0.1:4400:4400"
+    volumes:
+      - uploads:/data/uploads
+    profiles: ["api"]
+
+volumes:
+  pgdata:
+  uploads:

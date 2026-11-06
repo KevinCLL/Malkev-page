@@ -154,6 +154,7 @@ CREATE TABLE posts (
   status        post_status NOT NULL DEFAULT 'draft',
   published_at  timestamptz,                    -- para scheduled: cuándo sale
   legacy_path   text UNIQUE,                    -- /blog/2026/05/25/slug/ de Jekyll, para no romper enlaces
+  aliases       text[] NOT NULL DEFAULT '{}',   -- otras URLs antiguas que redirigen aquí (/?p=1038/ de WordPress…)
   allow_comments boolean NOT NULL DEFAULT true,
   word_count    integer NOT NULL DEFAULT 0,
   search        tsvector GENERATED ALWAYS AS (
@@ -231,6 +232,12 @@ CREATE TABLE admin_sessions (
   expires_at  timestamptz NOT NULL
 );
 CREATE INDEX admin_sessions_expiry ON admin_sessions (expires_at);
+
+-- Ajustes del servidor (secreto para firmar tokens de comentarios, etc.).
+CREATE TABLE settings (
+  key   text PRIMARY KEY,
+  value text NOT NULL
+);
 
 /* ------------------------------------------------------------------ vistas */
 
