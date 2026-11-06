@@ -30,7 +30,7 @@ export function apiRouter({ uploadsDir }) {
 
   const itemFilters = (q) => ({
     kinds: list(q.kind), statuses: list(q.status), tags: list(q.tag), q: q.q, featured: bool(q.featured),
-    collection: q.collection, year: q.year, sort: q.sort, external: q.external, rated: bool(q.rated),
+    collection: q.collection, year: q.year, sort: q.sort, external: q.external, rated: bool(q.rated), review: bool(q.review),
   })
 
   /* ------------------------------------------------------------ pública */

@@ -4,6 +4,7 @@ import { computed, onMounted, reactive, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, KINDS, STATUSES } from '../api.js'
 import { toast } from '../toast.js'
+import { reviewOf } from '../review.js'
 import Cover from '../components/Cover.vue'
 import Pager from '../components/Pager.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -12,7 +13,7 @@ const route = useRoute()
 const router = useRouter()
 const f = reactive({
   kind: route.query.kind || '', status: route.query.status || '', q: route.query.q || '',
-  hidden: route.query.hidden || '', tag: route.query.tag || '', sort: route.query.sort || 'title', offset: Number(route.query.offset) || 0,
+  hidden: route.query.hidden || '', tag: route.query.tag || '', review: route.query.review || '', sort: route.query.sort || 'title', offset: Number(route.query.offset) || 0,
 })
 const LIMIT = 50
 const data = ref({ total: 0, items: [] })
@@ -27,13 +28,18 @@ async function load() {
   } catch (e) { toast(e.message, 'error') } finally { loading.value = false }
 }
 let timer = 0
-watch(() => [f.kind, f.status, f.hidden, f.sort, f.tag], () => { f.offset = 0; sync() })
+watch(() => [f.kind, f.status, f.hidden, f.sort, f.tag, f.review], () => { f.offset = 0; sync() })
 watch(() => f.q, () => { clearTimeout(timer); timer = setTimeout(() => { f.offset = 0; sync() }, 250) })
 function sync() {
   router.replace({ query: Object.fromEntries(Object.entries(f).filter(([k, v]) => v !== '' && !(k === 'offset' && !v) && !(k === 'sort' && v === 'title'))) })
   load()
 }
-onMounted(load)
+// Cuántas fichas dejó el importador por revisar: el botón del filtro solo sale si hay alguna (o si ya está puesto).
+const toReview = ref(0)
+onMounted(async () => {
+  load()
+  try { toReview.value = (await api.stats()).to_review ?? 0 } catch { /* sin recuento, el botón no sale */ }
+})
 
 const allChecked = computed(() => data.value.items.length && data.value.items.every((i) => selected.value.has(i.id)))
 function toggleAll() {
@@ -54,7 +60,6 @@ async function bulk(patch, action) {
   } catch (e) { toast(e.message, 'error') }
 }
 const stars = (r) => (r == null ? '—' : `${r}/10`)
-const reviewState = (it) => it.meta?.import?.match?.estado
 </script>
 
 <template>
@@ -88,6 +93,9 @@ const reviewState = (it) => it.meta?.import?.match?.estado
         <option value="false">Solo visibles</option>
         <option value="true">Solo ocultos</option>
       </select>
+      <button v-if="toReview || f.review" type="button" class="chip" :class="{ active: f.review }" :aria-pressed="!!f.review" @click="f.review = f.review ? '' : 'true'">
+        <AppIcon name="check" :size="14" /> Por revisar <span class="n">{{ toReview }}</span>
+      </button>
       <select v-model="f.sort" class="select">
         <option value="title">Título A-Z</option>
         <option value="-updated">Tocados hace poco</option>
@@ -118,8 +126,8 @@ const reviewState = (it) => it.meta?.import?.match?.estado
             <th class="hide-sm">Tipo</th>
             <th class="hide-sm">Autoría</th>
             <th class="num hide-sm">Año</th>
-            <th class="num">Nota</th>
-            <th>Estado</th>
+            <th class="num hide-sm">Nota</th>
+            <th class="hide-sm">Estado</th>
           </tr>
         </thead>
         <tbody>
@@ -130,14 +138,15 @@ const reviewState = (it) => it.meta?.import?.match?.estado
               <RouterLink :to="`/catalogo/${it.id}`" class="row-title">{{ it.title }}</RouterLink>
               <AppIcon v-if="it.featured" name="star" :size="13" style="color: var(--amber); margin-left: 6px" />
               <AppIcon v-if="it.hidden" name="eye-off" :size="13" style="margin-left: 6px" />
-              <span v-if="reviewState(it) && reviewState(it) !== 'ok'" class="pill pill-warn" style="margin-left: 6px">{{ reviewState(it) }}</span>
+              <span v-if="reviewOf(it)" class="pill pill-warn review-pill" :title="reviewOf(it).help">{{ reviewOf(it).label }}</span>
               <div v-if="it.tags.length" class="muted" style="font-size: 12px">{{ it.tags.map((t) => t.name).join(' · ') }}</div>
+              <div class="muted show-sm" style="font-size: 12px">{{ STATUSES[it.status] }} · {{ stars(it.rating) }}</div>
             </td>
             <td class="muted hide-sm">{{ KINDS[it.kind].one }}</td>
             <td class="muted hide-sm">{{ it.creator || '—' }}</td>
             <td class="num muted hide-sm">{{ it.year || '—' }}</td>
-            <td class="num">{{ stars(it.rating) }}</td>
-            <td><span class="pill" :class="{ 'pill-ok': it.status === 'done' }">{{ STATUSES[it.status] }}</span></td>
+            <td class="num hide-sm">{{ stars(it.rating) }}</td>
+            <td class="hide-sm"><span class="pill" :class="{ 'pill-ok': it.status === 'done' }">{{ STATUSES[it.status] }}</span></td>
           </tr>
           <tr v-if="!loading && !data.items.length"><td colspan="8" class="empty">Nada por aquí con esos filtros.</td></tr>
         </tbody>
@@ -148,6 +157,18 @@ const reviewState = (it) => it.meta?.import?.match?.estado
 </template>
 
 <style scoped>
+.review-pill {
+  margin-left: 6px;
+  white-space: nowrap;
+}
+@media (max-width: 700px) {
+  .review-pill {
+    /* En su propia línea bajo el título (display: table perdería el redondeo por el border-collapse de la tabla). */
+    display: block;
+    width: fit-content;
+    margin: 4px 0 2px;
+  }
+}
 .bulk {
   display: flex;
   flex-wrap: wrap;

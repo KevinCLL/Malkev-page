@@ -7,6 +7,15 @@ import { slugify } from './lib/text.js'
 export const KINDS = ['boardgame', 'rpg', 'film', 'series', 'book', 'manga', 'videogame']
 export const STATUSES = ['owned', 'wishlist', 'reading', 'watching', 'playing', 'done', 'paused', 'dropped']
 export const COLLECTION_KINDS = ['kallax', 'shelf', 'bookcase', 'list']
+// «Por revisar»: fichas que el importador (packages/importadores) no pudo emparejar con seguridad, según
+// meta.import.match.estado: "revisar" (varias obras parecidas, no usó ninguna), "sin-resultado" (nada en TMDB u
+// Open Library) o "error" (falló la consulta). "auto" y "manual" están bien y "pendiente" aún no se ha intentado.
+// El capitán las da por buenas desde el panel con meta.revisado = { estado, en }: va fuera de meta.import, que el
+// importador reescribe en cada pasada, así que solo vuelven a salir si el importador cambia de veredicto.
+// admin/src/review.js aplica la misma regla a cada ficha.
+export const REVIEW_STATES = ['revisar', 'sin-resultado', 'error']
+const REVIEW_SQL = (param) => `((i.meta -> 'import' -> 'match' ->> 'estado') = ANY(${param}::text[])
+    AND (i.meta -> 'import' -> 'match' ->> 'estado') IS DISTINCT FROM (i.meta -> 'revisado' ->> 'estado'))`
 
 export const KIND_LABELS = {
   boardgame: 'Juego de mesa', rpg: 'Libro de rol', film: 'Película', series: 'Serie',
@@ -61,6 +70,7 @@ export async function listItems(f = {}, { admin = false } = {}) {
   if (f.featured !== undefined) where.push(`i.featured = ${p(!!f.featured)}`)
   if (f.year) where.push(`i.year = ${p(Number(f.year))}`)
   if (f.rated === true) where.push('i.rating IS NOT NULL')
+  if (admin && f.review === true) where.push(REVIEW_SQL(p(REVIEW_STATES)))
   for (const tag of f.tags || []) {
     where.push(`EXISTS (SELECT 1 FROM item_tags it JOIN tags t ON t.id = it.tag_id WHERE it.item_id = i.id AND t.slug = ${p(tag)})`)
   }
@@ -422,6 +432,9 @@ export async function catalogStats({ admin = false } = {}) {
   const byKind = await many(`SELECT kind, count(*)::int AS n FROM items ${hidden} GROUP BY kind`)
   const byStatus = await many(`SELECT kind, status, count(*)::int AS n FROM items ${hidden} GROUP BY kind, status`)
   const ratings = await many(`SELECT rating, count(*)::int AS n FROM items ${hidden ? `${hidden} AND` : 'WHERE'} rating IS NOT NULL GROUP BY rating ORDER BY rating`)
+  const toReview = admin
+    ? (await one(`SELECT count(*)::int AS n FROM items i WHERE ${REVIEW_SQL('$1')}`, [REVIEW_STATES])).n
+    : undefined
   const now = await many(
     `SELECT ${PUBLIC_COLS} FROM items i WHERE NOT i.hidden AND i.status IN ('reading', 'watching', 'playing')
      ORDER BY i.updated_at DESC LIMIT 12`)
@@ -430,5 +443,6 @@ export async function catalogStats({ admin = false } = {}) {
     by_status: byStatus,
     ratings: Object.fromEntries(ratings.map((r) => [r.rating, r.n])),
     now_on_board: now,
+    ...(admin ? { to_review: toReview } : {}),
   }
 }

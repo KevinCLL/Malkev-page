@@ -1,10 +1,12 @@
 <script setup>
 // Ficha de una cosa del catálogo. Al crearla, se busca por título en Open Library, TMDB, AniList o
-// BoardGameGeek y se rellenan los datos; tú pones la nota, el estado y dónde va.
+// BoardGameGeek y se rellenan los datos; tú pones la nota, el estado y dónde va. Si el importador la dejó
+// «por revisar», la misma búsqueda sirve para arreglarla, o se da por buena tal como está.
 import { computed, onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { api, KINDS, STATUSES, STATUS_FOR, fmtDate } from '../api.js'
 import { toast } from '../toast.js'
+import { reviewOf, reviewedMark } from '../review.js'
 import Cover from '../components/Cover.vue'
 import TagInput from '../components/TagInput.vue'
 import AppIcon from '../components/AppIcon.vue'
@@ -36,6 +38,7 @@ function fill(it) {
   })
   extJson.value = JSON.stringify(it.external_ids, null, 2)
   metaJson.value = JSON.stringify(it.meta, null, 2)
+  if (!lq.value && reviewOf(it)) lq.value = it.title
 }
 
 onMounted(async () => {
@@ -53,7 +56,7 @@ function parseJson(text, name) {
   } catch { throw new Error(`El campo «${name}» no es un JSON válido (tiene que ser un objeto { … }).`) }
 }
 
-async function save() {
+async function save(done = 'Guardado.') {
   saving.value = true
   try {
     const body = { ...form, external_ids: parseJson(extJson.value, 'Identificadores'), meta: parseJson(metaJson.value, 'Datos extra') }
@@ -63,7 +66,7 @@ async function save() {
       router.replace(`/catalogo/${created.id}`)
     } else {
       fill(await api.updateItem(props.id, body))
-      toast('Guardado.')
+      toast(done)
     }
   } catch (e) { toast(e.message, 'error') } finally { saving.value = false }
 }
@@ -71,6 +74,16 @@ async function save() {
 async function remove() {
   if (!confirm(`¿Borrar «${form.title}» del catálogo? También sale de todas las colecciones.`)) return
   try { await api.deleteItem(props.id); toast('Borrado.'); router.push('/catalogo') } catch (e) { toast(e.message, 'error') }
+}
+
+/* ---------- Por revisar (lo que dejó el importador) ---------- */
+const pending = computed(() => reviewOf(item.value))
+// Da la ficha por buena tal como está en el formulario: la guarda con la marca en meta.revisado.
+async function confirmReview() {
+  let meta
+  try { meta = parseJson(metaJson.value, 'Datos extra') } catch (e) { toast(e.message, 'error'); return }
+  metaJson.value = JSON.stringify({ ...meta, revisado: reviewedMark(pending.value) }, null, 2)
+  await save('Dada por buena: ya no sale en «Por revisar».')
 }
 
 /* ---------- Autocompletado ---------- */
@@ -95,9 +108,10 @@ function useCandidate(c) {
     year: c.year || form.year, synopsis: c.synopsis || form.synopsis, cover_url: c.cover_url || form.cover_url, color: c.color || form.color,
   })
   extJson.value = JSON.stringify({ ...ext, ...Object.fromEntries(Object.entries(c.external_ids || {}).filter(([, v]) => v != null)) }, null, 2)
-  metaJson.value = JSON.stringify({ ...meta, ...(c.meta || {}) }, null, 2)
+  // Elegir la obra buena a mano también resuelve la revisión (se apunta al guardar).
+  metaJson.value = JSON.stringify({ ...meta, ...(c.meta || {}), ...(pending.value ? { revisado: reviewedMark(pending.value) } : {}) }, null, 2)
   candidates.value = []
-  toast('Datos rellenados. Revisa y guarda.')
+  toast(pending.value ? 'Datos rellenados. Revisa y guarda: al guardar sale de «Por revisar».' : 'Datos rellenados. Revisa y guarda.')
 }
 const lookupSource = computed(() => ({
   book: 'Open Library', rpg: 'Open Library', manga: 'AniList', film: 'TMDB', series: 'TMDB', boardgame: 'BoardGameGeek', videogame: null,
@@ -141,7 +155,7 @@ const publicUrl = computed(() => item.value && `/api/v1/items/${item.value.kind}
 </script>
 
 <template>
-  <form @submit.prevent="save">
+  <form @submit.prevent="save()">
     <RouterLink to="/catalogo" class="back"><AppIcon name="arrow-left" :size="14" /> Catálogo</RouterLink>
     <header class="view-head">
       <div>
@@ -157,16 +171,20 @@ const publicUrl = computed(() => item.value && `/api/v1/items/${item.value.kind}
 
     <div class="split">
       <div style="display: grid; gap: 16px">
-        <section v-if="isNew" class="panel panel-pad">
-          <h2 class="section-title">Autocompletar</h2>
+        <section v-if="isNew || pending" class="panel panel-pad" :class="{ 'review-box': pending }">
+          <h2 class="section-title">{{ isNew ? 'Autocompletar' : 'Por revisar' }}</h2>
+          <p v-if="pending" class="review-help">
+            <span class="pill pill-warn">{{ pending.label }}</span>
+            {{ pending.help }} Búscala aquí para rellenar la ficha, o dala por buena si ya está bien.
+          </p>
           <div class="form-grid">
-            <label class="field">
+            <label v-if="isNew" class="field">
               <span>Tipo</span>
               <select v-model="form.kind" class="select">
                 <option v-for="(k, key) in KINDS" :key="key" :value="key">{{ k.one }}</option>
               </select>
             </label>
-            <label class="field" style="grid-column: span 2">
+            <label class="field" :class="{ wide: !isNew }" :style="isNew ? 'grid-column: span 2' : undefined">
               <span>Buscar en {{ lookupSource || '—' }}</span>
               <div class="lookup-row">
                 <input v-model="lq" class="input" :disabled="!lookupSource" placeholder="Título…" @keydown.enter.prevent="lookup" />
@@ -184,6 +202,10 @@ const publicUrl = computed(() => item.value && `/api/v1/items/${item.value.kind}
               </button>
             </li>
           </ul>
+          <div v-if="pending" class="review-actions">
+            <button type="button" class="btn" :disabled="saving" @click="confirmReview"><AppIcon name="check" :size="16" /> Dar por buena</button>
+            <span class="hint">Guarda la ficha como está y la saca de «Por revisar», también en las próximas importaciones.</span>
+          </div>
         </section>
 
         <section class="panel panel-pad">
@@ -321,6 +343,27 @@ const publicUrl = computed(() => item.value && `/api/v1/items/${item.value.kind}
 }
 .candidates button:hover {
   border-color: var(--lavender);
+}
+.review-box {
+  border-color: rgba(255, 207, 138, 0.35);
+}
+.review-help {
+  margin: 0 0 14px;
+  color: var(--text-soft);
+  line-height: 1.55;
+}
+.review-help .pill {
+  margin-right: 6px;
+}
+.review-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px 14px;
+  margin-top: 14px;
+}
+.review-actions .hint {
+  margin: 0;
 }
 .cover-box {
   display: grid;

@@ -201,12 +201,18 @@
   width: auto;
   flex: 0 1 220px;
 }
+.table .show-sm {
+  display: none;
+}
 @media (max-width: 700px) {
   .toolbar-row > .select {
     flex: 1 1 100%;
   }
   .table .hide-sm {
     display: none;
+  }
+  .table .show-sm {
+    display: block;
   }
 }
 .chips {

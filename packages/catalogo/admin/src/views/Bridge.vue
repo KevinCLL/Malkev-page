@@ -48,6 +48,10 @@ const total = (s) => Object.values(s.items).reduce((a, b) => a + b, 0)
           <span class="label">Programadas</span><span class="value">{{ stats.blog.scheduled }}</span>
         </RouterLink>
         <div class="panel stat"><span class="label">Comentarios visibles</span><span class="value">{{ stats.blog.comments }}</span></div>
+        <RouterLink v-if="stats.to_review" :to="{ path: '/catalogo', query: { review: 'true' } }" class="panel stat">
+          <span class="label">Fichas por revisar</span>
+          <span class="value" style="color: var(--amber)">{{ stats.to_review }}</span>
+        </RouterLink>
       </section>
 
       <div class="two">
